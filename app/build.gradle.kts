@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,44 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+}
+
+/**
+ * Release signing credentials, resolved in this order:
+ *  1. Environment variables (CI): KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+ *  2. A git-ignored `keystore.properties` at the repository root (local builds), with keys
+ *     storeFile, storePassword, keyAlias, keyPassword.
+ * When neither is present `assembleRelease` still works but is signed with the debug key so the
+ * APK stays installable for testing; the build prints a warning so it is never mistaken for a
+ * store-ready artifact.
+ */
+data class ReleaseSigning(val storeFile: File, val storePassword: String, val keyAlias: String, val keyPassword: String)
+
+val releaseSigning: ReleaseSigning? = run {
+    val env = System.getenv()
+    val fromEnv = env["KEYSTORE_FILE"]?.takeIf { it.isNotBlank() }?.let { path ->
+        ReleaseSigning(
+            storeFile = rootProject.file(path),
+            storePassword = env["KEYSTORE_PASSWORD"].orEmpty(),
+            keyAlias = env["KEY_ALIAS"].orEmpty(),
+            keyPassword = env["KEY_PASSWORD"].orEmpty(),
+        )
+    }
+    val propsFile = rootProject.file("keystore.properties")
+    val fromFile = if (fromEnv == null && propsFile.exists()) {
+        val props = Properties().apply { propsFile.inputStream().use(::load) }
+        ReleaseSigning(
+            storeFile = rootProject.file(props.getProperty("storeFile", "")),
+            storePassword = props.getProperty("storePassword", ""),
+            keyAlias = props.getProperty("keyAlias", ""),
+            keyPassword = props.getProperty("keyPassword", ""),
+        )
+    } else null
+    (fromEnv ?: fromFile)?.takeIf { cfg ->
+        val ok = cfg.storeFile.isFile && cfg.storePassword.isNotEmpty() && cfg.keyAlias.isNotEmpty()
+        if (!ok) logger.warn("Release signing config found but incomplete (missing keystore file, password or alias); ignoring it.")
+        ok
+    }
 }
 
 android {
@@ -22,6 +62,20 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        releaseSigning?.let { cfg ->
+            create("release") {
+                storeFile = cfg.storeFile
+                storePassword = cfg.storePassword
+                keyAlias = cfg.keyAlias
+                keyPassword = cfg.keyPassword.ifEmpty { cfg.storePassword }
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -30,6 +84,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            val cfg = releaseSigning
+            signingConfig = if (cfg != null) {
+                logger.lifecycle("Release build: signing with keystore ${cfg.storeFile.name} (alias ${cfg.keyAlias}).")
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn("Release build: NO release keystore configured; signing with the DEBUG key. Not suitable for Google Play.")
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             isMinifyEnabled = false

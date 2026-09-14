@@ -1,7 +1,15 @@
 name: Release
 
-# Publishes a GitHub Release with an installable APK.
+# Publishes a GitHub Release with installable artifacts.
 # Trigger either by pushing a tag (v0.1.0) or manually from the Actions tab with a version.
+#
+# Signed builds need four repository secrets (Settings > Secrets and variables > Actions):
+#   KEYSTORE_BASE64   base64 of the .jks file      (base64 -w0 release.jks)
+#   KEYSTORE_PASSWORD keystore password
+#   KEY_ALIAS         key alias inside the keystore
+#   KEY_PASSWORD      key password (omit if identical to the keystore password)
+# Without them the workflow still publishes a debug-signed APK and marks the release as a
+# pre-release regardless of the input.
 on:
   push:
     tags: ["v*"]
@@ -21,19 +29,28 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve version
+      - name: Resolve version and signing mode
         id: v
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            tag="${GITHUB_REF_NAME}"; pre="true"
           else
-            echo "tag=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
-            echo "prerelease=${{ inputs.prerelease }}" >> "$GITHUB_OUTPUT"
+            tag="${{ inputs.version }}"; pre="${{ inputs.prerelease }}"
           fi
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            signed="true"
+          else
+            signed="false"; pre="true"
+            echo "::warning::No KEYSTORE_BASE64 secret; publishing a debug-signed APK as a pre-release."
+          fi
+          echo "tag=$tag"          >> "$GITHUB_OUTPUT"
+          echo "prerelease=$pre"   >> "$GITHUB_OUTPUT"
+          echo "signed=$signed"    >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v4
         with:
@@ -45,16 +62,36 @@ jobs:
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
 
-      - name: Build APK
-        # Debug-signed so it installs on any device without a keystore. A Play-Store build
-        # needs a signing config wired into the release build type (see README > Releases).
-        run: ./gradlew --no-daemon assembleDebug
+      - name: Decode release keystore
+        if: steps.v.outputs.signed == 'true'
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
 
-      - name: Rename artifact
+      - name: Build signed release APK and AAB
+        if: steps.v.outputs.signed == 'true'
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          ./gradlew --no-daemon assembleRelease bundleRelease
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-release.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-release.aab"
+
+      - name: Build debug-signed APK (no keystore configured)
+        if: steps.v.outputs.signed != 'true'
+        run: |
+          ./gradlew --no-daemon assembleDebug
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-debug.apk"
-          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+
+      - name: Checksums
+        run: (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Remove keystore from runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -66,4 +103,5 @@ jobs:
           generate_release_notes: true
           files: |
             dist/*.apk
+            dist/*.aab
             dist/SHA256SUMS.txt

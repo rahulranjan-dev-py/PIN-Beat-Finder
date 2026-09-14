@@ -16,3 +16,8 @@ captures/
 
 # OS
 .DS_Store
+
+# Release signing secrets — never commit
+keystore.properties
+*.jks
+*.keystore
