@@ -72,6 +72,24 @@ rows are listed in the import report and skipped; valid rows are inserted in one
 Requires JDK 17 and the Android SDK (platform 35). CI (`.github/workflows/android.yml`) runs the
 unit tests, lint and a debug build on every push.
 
+## Releases
+
+Installable builds are published on the repository's
+[Releases page](https://github.com/rahulranjan-dev-py/PIN-Beat-Finder/releases). Each release
+carries a debug-signed `pin-beat-finder-<version>-debug.apk` (Android 8.0+), a `SHA256SUMS.txt`
+and the notes from [`CHANGELOG.md`](CHANGELOG.md).
+
+To cut a release:
+
+1. Bump `versionCode` / `versionName` in `app/build.gradle.kts` and add a section to `CHANGELOG.md`.
+2. Either push a tag (`git tag v0.2.0 && git push origin v0.2.0`) or run the **Release** workflow
+   from the Actions tab with the version. The workflow runs the unit tests, builds the APK and
+   publishes the GitHub Release.
+
+Current releases are **pre-releases for internal pilots**: the APK is debug-signed and the app has
+not yet been verified on physical devices by the maintainers. A Play Store build needs a signing
+config on the `release` build type (keystore via CI secrets) before `assembleRelease` is used.
+
 ## Verification status
 
 - The pure-Kotlin layers (phonetic engine, validators, `ExcelCodec`, API DTO parsing) were
