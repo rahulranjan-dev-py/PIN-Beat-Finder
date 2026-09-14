@@ -86,9 +86,38 @@ To cut a release:
    from the Actions tab with the version. The workflow runs the unit tests, builds the APK and
    publishes the GitHub Release.
 
-Current releases are **pre-releases for internal pilots**: the APK is debug-signed and the app has
-not yet been verified on physical devices by the maintainers. A Play Store build needs a signing
-config on the `release` build type (keystore via CI secrets) before `assembleRelease` is used.
+### Release signing
+
+`assembleRelease` / `bundleRelease` produce store-ready artifacts when a keystore is configured;
+otherwise they fall back to the debug key (installable for testing, printed as a warning, never
+suitable for Google Play). Credentials are resolved from environment variables first, then from a
+git-ignored `keystore.properties`.
+
+**One-time setup**
+
+1. Generate a keystore and keep it somewhere safe (losing it means you can never update the app on
+   Google Play):
+   ```bash
+   keytool -genkeypair -v -keystore release.jks -alias pinbeatfinder \
+       -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. **CI (GitHub Actions)** – add repository secrets under *Settings → Secrets and variables → Actions*:
+
+   | Secret | Value |
+   | --- | --- |
+   | `KEYSTORE_BASE64` | `base64 -w0 release.jks` |
+   | `KEYSTORE_PASSWORD` | keystore password |
+   | `KEY_ALIAS` | `pinbeatfinder` (or the alias you chose) |
+   | `KEY_PASSWORD` | key password (optional if same as the keystore password) |
+
+   With these present the Release workflow publishes `pin-beat-finder-<version>-release.apk`
+   and a `.aab` for Play Console, and honours the *pre-release* input. Without them it publishes a
+   debug-signed APK and forces pre-release.
+3. **Local builds** – copy `keystore.properties.example` to `keystore.properties`, fill it in, then
+   run `./gradlew assembleRelease`. The file and `*.jks` are git-ignored.
+
+The env-var names the build script reads are `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`
+and `KEY_PASSWORD`.
 
 ## Verification status
 
