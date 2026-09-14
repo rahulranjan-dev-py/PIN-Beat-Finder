@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Envelope glyph -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,38h48a4,4 0,0 1,4 4v26a4,4 0,0 1,-4 4H30a4,4 0,0 1,-4 -4V42a4,4 0,0 1,4 -4z" />
+    <path
+        android:fillColor="#B71C1C"
+        android:pathData="M30,42l24,16l24,-16v4l-24,16l-24,-16z" />
+</vector>

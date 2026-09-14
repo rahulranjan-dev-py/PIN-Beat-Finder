@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PIN Beat Finder</string>
+    <string name="tab_online">Online All-India</string>
+    <string name="tab_local">Local Beats (Offline)</string>
+    <string name="search_online_hint">PIN code or post office name</string>
+    <string name="search_local_hint">Village / locality (misspellings OK)</string>
+    <string name="add_beat">Add beat record</string>
+    <string name="share_backup">Share backup (.xlsx)</string>
+    <string name="import_excel">Import .xlsx</string>
+    <string name="export_template">Download blank template</string>
+</resources>

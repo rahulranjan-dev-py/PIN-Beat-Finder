@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Only the Room database is backed up; cache exports and the HTTP cache are regenerable. -->
+    <include domain="database" path="." />
+</full-backup-content>
