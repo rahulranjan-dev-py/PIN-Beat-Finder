@@ -12,4 +12,6 @@ data class PostOffice(
     val district: String,
     val state: String,
     val pincode: String,
+    /** Human-readable name of the provider that answered, shown in the UI. */
+    val source: String = "",
 )

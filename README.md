@@ -8,7 +8,7 @@ post office across India when online, and — with or without a network — find
 
 | Area | What it does |
 | --- | --- |
-| **Online All-India** | Live lookup against `api.postalpincode.in` by PIN or post-office name, with a 10 MB OkHttp cache so recent answers work offline. |
+| **Online All-India** | Live lookup by PIN or post-office name with automatic failover across the official Department of Posts directory on data.gov.in, a key-free mirror of it, and `api.postalpincode.in`; 10 MB OkHttp cache so recent answers work offline. |
 | **Local Beats (offline)** | Room-backed directory of localities → Beat / BO / SO / PIN. Debounced (250 ms) search combines substring, exact beat/PIN and **phonetic** matching (Double Metaphone with an Indian-transliteration pre-normaliser). State and District filter chips. |
 | **CRUD** | Add/edit via a modal bottom sheet, delete with confirmation. Validation is shared with the importer. |
 | **Excel** | Download/share a blank `.xlsx` template, bulk-import via the Storage Access Framework (append or replace-all, row-level validation report), and export/share a backup through the Android share sheet via `FileProvider`. |
@@ -50,6 +50,24 @@ app/src/main/kotlin/com/pinbeatfinder/
    exact match on `beatNumber` / `pincode`), optionally narrowed by state/district.
 4. The repository re-ranks candidates in memory (exact > prefix > contains > phonetic-equal >
    phonetic-prefix > Jaro–Winkler), so the whole query stays well under 300 ms.
+
+### Online lookup providers
+
+`PostalLookupRepository` consults providers in order and returns the first non-empty answer:
+
+| Order | Source | Lookup by | Notes |
+| --- | --- | --- | --- |
+| 1 | `api.data.gov.in` — *All India Pincode Directory* (Department of Posts) | PIN | Needs an API key. The public sample key is baked in but is shared and throttled. |
+| 2 | `aniket-thapa.github.io/india-pincode-api` — static mirror of the same dataset | PIN | No key, no rate limit. |
+| 3 | `api.postalpincode.in` — community API | PIN or office name | 1000 req/hour/IP; only source for name search. |
+
+Payloads are parsed leniently (case-insensitive keys, several aliases per field) so an upstream
+schema tweak degrades to "no results from this source" rather than a crash. The results list shows
+which source answered.
+
+**Own data.gov.in key (recommended for regular use).** Register free at https://data.gov.in, then
+build with either `DATA_GOV_IN_API_KEY=<key>` in the environment or `dataGovInApiKey=<key>` in
+`gradle.properties` / `-PdataGovInApiKey=<key>`. The key is compiled into `BuildConfig`.
 
 ### Excel template
 

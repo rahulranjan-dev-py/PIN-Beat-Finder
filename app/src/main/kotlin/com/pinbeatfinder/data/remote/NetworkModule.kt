@@ -16,33 +16,34 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/** Answers "is there a usable network right now?" — used for cache policy and error mapping. */
-fun interface ConnectivityChecker {
-    fun isOnline(): Boolean
-}
-
 class AndroidConnectivityChecker(context: Context) : ConnectivityChecker {
     private val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
+    /**
+     * "Online" means a network that claims internet access. `NET_CAPABILITY_VALIDATED` is
+     * deliberately *not* required: many Indian mobile networks never pass Android's captive-portal
+     * probe even though real traffic flows, and requiring it made the app force cache-only
+     * requests and report "You are offline" while actually connected.
+     */
     override fun isOnline(): Boolean {
         val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }
 
 /**
- * Builds the OkHttp/Retrofit stack for the public postal API.
+ * Builds the OkHttp/Retrofit stack shared by every postal provider.
  *
- * Caching strategy: the API sends no cache headers, so a *network* interceptor stamps every
- * successful response with `max-age=1 day`, and an *application* interceptor switches to
- * `only-if-cached` when the device is offline. Postal data changes rarely, so a stale answer
+ * Caching strategy: providers send weak or no cache headers, so a *network* interceptor stamps
+ * every successful response with `max-age=1 day`, and an *application* interceptor switches to
+ * `only-if-cached` when there is no network at all. Postal data changes rarely, so a stale answer
  * beats an error for field staff.
  */
 object NetworkModule {
     const val CACHE_SIZE_BYTES = 10L * 1024 * 1024 // 10 MB
     private const val ONLINE_MAX_AGE_SECONDS = 24 * 60 * 60
     private const val OFFLINE_MAX_STALE_DAYS = 30
+    private const val USER_AGENT = "PINBeatFinder/${BuildConfig.VERSION_NAME} (Android; +https://github.com/rahulranjan-dev-py/PIN-Beat-Finder)"
 
     val json: Json get() = PostalJson.instance
 
@@ -54,6 +55,7 @@ object NetworkModule {
             .writeTimeout(15, TimeUnit.SECONDS)
             .callTimeout(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            .addInterceptor(headersInterceptor())
             .addInterceptor(offlineCacheInterceptor(connectivity))
             .addNetworkInterceptor(responseCacheInterceptor())
 
@@ -70,6 +72,41 @@ object NetworkModule {
         .build()
 
     fun postalApi(retrofit: Retrofit): PostalApiService = retrofit.create(PostalApiService::class.java)
+
+    /** Ordered provider chain. Name searches are only served by providers that support them. */
+    fun postalProviders(api: PostalApiService, dataGovInApiKey: String): List<PostalProvider> = listOf(
+        PostalProvider(
+            id = PostalProviders.ID_DATA_GOV_IN,
+            label = PostalProviders.LABEL_DATA_GOV_IN,
+            supportsNameSearch = false,
+            fetch = { q, _ -> api.dataGovInByPincode(PostalApiService.DATA_GOV_IN_RESOURCE_ID, dataGovInApiKey, q) },
+            map = { root, _ -> PostalProviders.mapDataGovIn(root) },
+        ),
+        PostalProvider(
+            id = PostalProviders.ID_GITHUB_MIRROR,
+            label = PostalProviders.LABEL_GITHUB_MIRROR,
+            supportsNameSearch = false,
+            fetch = { q, _ -> api.githubMirrorByPincode(q) },
+            // The mirror omits the pincode on each office; the mapper needs the requested one.
+            map = { root, pin -> PostalProviders.mapGithubMirror(root, pin) },
+        ),
+        PostalProvider(
+            id = PostalProviders.ID_POSTALPINCODE_IN,
+            label = PostalProviders.LABEL_POSTALPINCODE_IN,
+            supportsNameSearch = true,
+            fetch = { q, isPin -> if (isPin) api.postalPincodeInByPincode(q) else api.postalPincodeInByName(q) },
+            map = { root, _ -> PostalProviders.mapPostalPincodeIn(root) },
+        ),
+    )
+
+    private fun headersInterceptor() = Interceptor { chain ->
+        chain.proceed(
+            chain.request().newBuilder()
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .build(),
+        )
+    }
 
     private fun offlineCacheInterceptor(connectivity: ConnectivityChecker) = Interceptor { chain ->
         var request = chain.request()
