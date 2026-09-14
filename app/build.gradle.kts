@@ -55,11 +55,19 @@ android {
         applicationId = "com.pinbeatfinder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        // data.gov.in key for the official Department of Posts directory. The public sample key
+        // works but is shared and throttled; set DATA_GOV_IN_API_KEY (env) or dataGovInApiKey
+        // (gradle.properties / -P) to use your own free key from https://data.gov.in.
+        val dataGovInApiKey = System.getenv("DATA_GOV_IN_API_KEY")?.takeIf { it.isNotBlank() }
+            ?: (project.findProperty("dataGovInApiKey") as String?)?.takeIf { it.isNotBlank() }
+            ?: "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b"
+        buildConfigField("String", "DATA_GOV_IN_API_KEY", "\"$dataGovInApiKey\"")
     }
 
     signingConfigs {

@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.0 — reliable online lookups
+
+### Fixed
+- **Online All-India lookups were failing.** The app relied on a single third-party API
+  (`api.postalpincode.in`, rate-limited to 1000 requests/hour per IP and prone to timeouts) and
+  also demanded Android's "validated internet" flag, which many Indian mobile networks never
+  set — so it forced cache-only requests and reported "You are offline" while connected.
+
+### Changed
+- Online lookup now fails over across three sources, in order:
+  1. **data.gov.in** — the official *All India Pincode Directory* published by the Department of
+     Posts (Open Government Data platform).
+  2. **India Post directory mirror** — a static, key-free copy of the same dataset on GitHub Pages.
+  3. **postalpincode.in** — community API; the only source that supports search by office name.
+  The first source that returns results wins; a source that is down, throttled, or returns an
+  unexpected payload is skipped. The result list shows which source answered.
+- Connectivity check no longer requires the validated-internet flag.
+- Requests carry a proper User-Agent and Accept header; non-JSON responses degrade gracefully.
+- Optional: use your own free data.gov.in API key (see README) to avoid the shared sample key's
+  throttling.
+
 ## v0.2.0 — release tooling (pre-release, debug-signed)
 
 ### Changed

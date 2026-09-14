@@ -116,6 +116,13 @@ fun OnlineSearchContent(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    state.results.firstOrNull()?.source?.takeIf { it.isNotBlank() }?.let { source ->
+                        Text(
+                            "Source: $source",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 items(state.results, key = { "${it.name}|${it.pincode}|${it.branchType}" }) { office ->
                     PostOfficeCard(office)

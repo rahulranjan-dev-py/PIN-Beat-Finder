@@ -1,6 +1,7 @@
 package com.pinbeatfinder.di
 
 import android.content.Context
+import com.pinbeatfinder.BuildConfig
 import com.pinbeatfinder.core.phonetic.PhoneticSearchEngine
 import com.pinbeatfinder.data.excel.ExcelSyncManager
 import com.pinbeatfinder.data.local.BeatFinderDatabase
@@ -34,7 +35,10 @@ class AppContainer(context: Context) {
     }
 
     val postalLookupRepository: PostalLookupRepository by lazy {
-        PostalLookupRepository(postalApi, connectivity)
+        PostalLookupRepository(
+            providers = NetworkModule.postalProviders(postalApi, BuildConfig.DATA_GOV_IN_API_KEY),
+            connectivity = connectivity,
+        )
     }
 
     val excelSyncManager: ExcelSyncManager by lazy {
