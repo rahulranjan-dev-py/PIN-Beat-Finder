@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.2.0 — first signed build
+
+### Changed
+- Release APK and AAB are now signed with the project's release keystore (v1 + v2 + v3 signing),
+  so this build can be uploaded to Google Play. Future versions signed with the same key install
+  as in-place updates. The debug-signed v0.1.0 pilot APK uses a different certificate, so it must
+  be uninstalled before this build is installed.
+- Release workflow publishes both `.apk` (sideload) and `.aab` (Play Console) with checksums.
+- CI builds the release variant on every pull request so R8 / resource-shrinking issues surface early.
+
+### Unchanged
+- App features are identical to v0.1.0; see below.
+- Still not verified on physical devices by the maintainers — please report issues.
+
 ## v0.1.0 — first pilot build (pre-release)
 
 Offline-first Android app for India Post mail-branch staff.
