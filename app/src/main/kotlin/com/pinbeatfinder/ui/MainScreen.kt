@@ -70,6 +70,7 @@ fun MainScreen() {
                     container.recentSearchesRepository,
                     container.beatDirectoryRepository,
                     container.connectivity,
+                    container.directorySeeder.state,
                 )
             }
         },

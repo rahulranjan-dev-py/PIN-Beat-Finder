@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PIN Beat Finder</string>
-    <string name="tab_online">Online All-India</string>
+    <string name="tab_online">All-India</string>
     <string name="tab_local">Local Beats (Offline)</string>
     <string name="search_online_hint">PIN code or post office name</string>
     <string name="search_local_hint">Village / locality (misspellings OK)</string>
@@ -42,7 +42,7 @@
     <!-- online tab -->
     <string name="online_supporting">Enter a 6-digit PIN or a post office name, then press Search.</string>
     <string name="online_intro_title">All-India post office lookup</string>
-    <string name="online_intro_message">Search any PIN code or post office name across India. Results are cached for offline reuse, and your searches appear here for quick re-use.</string>
+    <string name="online_intro_message">Search any PIN code or post office name across India. The complete directory is built in and works offline; online sources fill in anything newer. Your searches appear here for quick re-use.</string>
     <string name="online_no_results_title">No results</string>
     <string name="online_no_results_message">Nothing matched “%1$s”.</string>
     <string name="online_filtered_out_title">No results match the filters</string>
@@ -52,7 +52,7 @@
     <string name="online_count_filtered">%1$d of %2$d post office(s) for “%3$s”</string>
     <string name="online_source">Source: %1$s • tap a card for details</string>
     <string name="online_cached">cached</string>
-    <string name="online_offline_banner">You are offline — showing saved results where available.</string>
+    <string name="online_offline_banner">You are offline — using the built-in directory and saved results.</string>
     <string name="online_local_count">%1$d local beat record(s) for this PIN  ›</string>
     <string name="recents_title">Recent searches</string>
     <string name="recents_searched_times">Searched %1$d times</string>
@@ -212,4 +212,8 @@
     <string name="source_status_ok">Working • %1$d ms</string>
     <string name="source_status_failed">Not responding (%1$s)</string>
     <string name="source_status_unknown">Not tried yet</string>
+
+    <!-- v0.8.0 -->
+    <string name="directory_preparing">Preparing the built-in All-India directory… %1$d%%</string>
+    <string name="directory_failed">Built-in directory could not be loaded (%1$s). Online sources will be used.</string>
 </resources>

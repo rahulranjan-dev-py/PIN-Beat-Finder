@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.8.0 — the whole of India, built in
+
+### Added
+- **Bundled All-India directory.** The complete Department of Posts pincode directory
+  (165,627 offices, 19,586 PINs, snapshot 2026-09) ships inside the app. PIN and name lookups
+  are answered from the device — instantly and offline — with the same misspelling-tolerant
+  phonetic search as the beat tab. Online sources are only consulted when the built-in directory
+  has no match (for example an office newer than the snapshot).
+- On first launch after installing, the directory is loaded once (a progress bar shows on the
+  All-India tab; about 3 MB, a few seconds). Searching works meanwhile via the online sources.
+- Settings → Online data sources now lists the built-in directory with its snapshot version.
+
+### Changed
+- The "Online All-India" tab is now simply **All-India**.
+
 ## v0.7.0 — faster lookups, grouped results, stable updates
 
 ### Fixed

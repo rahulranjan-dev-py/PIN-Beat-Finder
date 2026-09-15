@@ -4,6 +4,7 @@ import com.pinbeatfinder.core.util.AppError
 import com.pinbeatfinder.core.util.AppResult
 import com.pinbeatfinder.data.remote.ConnectivityChecker
 import com.pinbeatfinder.data.remote.FetchResult
+import com.pinbeatfinder.data.remote.LocalDirectorySource
 import com.pinbeatfinder.data.remote.PostalProvider
 import com.pinbeatfinder.data.remote.ProviderFormatException
 import com.pinbeatfinder.data.remote.ProviderHealth
@@ -84,6 +85,39 @@ class PostalLookupRepositoryTest {
         assertEquals(ProviderHealth.Status.FAILED, h.getValue("bad").status)
         assertEquals("timeout", h.getValue("bad").detail)
         assertTrue(h.getValue("ok").latencyMs!! > 0)
+    }
+
+    private fun localSource(ready: Boolean, answer: List<PostOffice>) = object : LocalDirectorySource {
+        override val id = "bundled"; override val label = "Built-in"
+        override suspend fun isReady() = ready
+        override suspend fun search(query: String, isPincode: Boolean) = answer
+    }
+
+    @Test
+    fun `bundled directory answers first and skips the network`() = runBlocking {
+        var networkCalled = false
+        val r = PostalLookupRepository(
+            listOf(provider("net") { networkCalled = true; listOf(office("Net", "net")) }),
+            online, Dispatchers.Unconfined, local = localSource(ready = true, answer = listOf(office("Local", "bundled"))),
+        ).lookup("110001")
+        assertEquals("bundled", (r as AppResult.Success).value.single().source)
+        assertTrue(!networkCalled)
+        assertEquals(ProviderHealth.Status.OK, PostalLookupRepository(emptyList(), online, Dispatchers.Unconfined, local = localSource(true, emptyList())).also { it.lookup("110001") }.health.value.getValue("bundled").status)
+    }
+
+    @Test
+    fun `network is used when the bundle is not ready or has no match`() = runBlocking {
+        val notReady = PostalLookupRepository(
+            listOf(provider("net") { listOf(office("Net", "net")) }),
+            online, Dispatchers.Unconfined, local = localSource(ready = false, answer = listOf(office("Local", "bundled"))),
+        ).lookup("110001")
+        assertEquals("net", (notReady as AppResult.Success).value.single().source)
+
+        val noMatch = PostalLookupRepository(
+            listOf(provider("net") { listOf(office("Net", "net")) }),
+            online, Dispatchers.Unconfined, local = localSource(ready = true, answer = emptyList()),
+        ).lookup("110001")
+        assertEquals("net", (noMatch as AppResult.Success).value.single().source)
     }
 
     @Test

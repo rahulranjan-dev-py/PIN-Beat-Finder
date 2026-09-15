@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pinbeatfinder.R
 import com.pinbeatfinder.core.util.AppError
+import com.pinbeatfinder.data.directory.SeedState
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.domain.model.toBeatDraft
@@ -133,6 +134,24 @@ fun OnlineSearchContent(
     val isNumeric = state.query.all(Char::isDigit) && state.query.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
+        when (val seed = state.seedState) {
+            is SeedState.Seeding -> Column(Modifier.fillMaxWidth()) {
+                Text(
+                    stringResource(R.string.directory_preparing, (seed.progress * 100).toInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+                LinearProgressIndicator(progress = { seed.progress }, modifier = Modifier.fillMaxWidth())
+            }
+            is SeedState.Failed -> Text(
+                stringResource(R.string.directory_failed, seed.message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            else -> Unit
+        }
         if (state.isOffline) {
             Row(
                 modifier = Modifier

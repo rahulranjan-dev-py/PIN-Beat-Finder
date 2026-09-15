@@ -51,6 +51,17 @@ app/src/main/kotlin/com/pinbeatfinder/
 4. The repository re-ranks candidates in memory (exact > prefix > contains > phonetic-equal >
    phonetic-prefix > Jaro–Winkler), so the whole query stays well under 300 ms.
 
+### Bundled All-India directory
+
+`app/src/main/assets/india_post_directory.tsv.gz` (≈2.9 MB) is the Department of Posts
+*All India Pincode Directory* from data.gov.in, reduced to the columns the app shows plus
+precomputed phonetic keys. `DirectorySeeder` loads it into a separate Room database
+(`india_post_directory.db`) once per asset version; `IndiaPostDirectoryRepository` answers PIN
+and name lookups from it, and `PostalLookupRepository` only races the online providers when the
+bundle has no match. To refresh the snapshot, download the latest CSV from data.gov.in and rerun
+the generator (a small Kotlin tool that applies `PhoneticSearchEngine` to every office name),
+then bump `version` in `india_post_directory.json`.
+
 ### Online lookup providers
 
 `PostalLookupRepository` queries every applicable provider **in parallel** and returns the
