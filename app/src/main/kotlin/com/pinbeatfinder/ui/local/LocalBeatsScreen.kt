@@ -79,6 +79,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -100,15 +102,17 @@ import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.domain.model.MatchKind
 import com.pinbeatfinder.ui.components.EmptyState
 import com.pinbeatfinder.ui.components.FilterChipsRow
+import com.pinbeatfinder.ui.components.message
+import com.pinbeatfinder.ui.theme.rememberHaptic
 
 /** Overflow-menu actions surfaced by the host screen's top bar. Order = menu order. */
-enum class LocalBeatsMenuAction(val label: String, val icon: ImageVector) {
-    IMPORT_APPEND("Import from Excel (add rows)", Icons.Default.FileUpload),
-    IMPORT_REPLACE("Import from Excel (replace all)", Icons.Default.SwapHoriz),
-    SHARE_BACKUP("Share backup (.xlsx)", Icons.Default.Share),
-    SAVE_BACKUP("Save backup to device…", Icons.Default.Save),
-    SHARE_TEMPLATE("Share blank template", Icons.Default.Share),
-    SAVE_TEMPLATE("Save blank template to device…", Icons.Default.Download),
+enum class LocalBeatsMenuAction(val labelRes: Int, val icon: ImageVector) {
+    IMPORT_APPEND(R.string.menu_import_append, Icons.Default.FileUpload),
+    IMPORT_REPLACE(R.string.menu_import_replace, Icons.Default.SwapHoriz),
+    SHARE_BACKUP(R.string.menu_share_backup, Icons.Default.Share),
+    SAVE_BACKUP(R.string.menu_save_backup, Icons.Default.Save),
+    SHARE_TEMPLATE(R.string.menu_share_template, Icons.Default.Share),
+    SAVE_TEMPLATE(R.string.menu_save_template, Icons.Default.Download),
 }
 
 private val XLSX_MIME_TYPES = arrayOf(
@@ -127,6 +131,8 @@ fun LocalBeatsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val onIntent = viewModel::onIntent
+    val context = LocalContext.current
+    val haptic = rememberHaptic()
 
     // ---- SAF launchers -------------------------------------------------------------------
     var pendingImportMode by remember { mutableStateOf(ImportMode.APPEND) }
@@ -161,12 +167,13 @@ fun LocalBeatsScreen(
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is LocalBeatsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.text)
+                is LocalBeatsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.text.asString(context))
                 is LocalBeatsEffect.LaunchIntent -> launchIntent(effect.intent)
+                LocalBeatsEffect.Saved -> haptic(HapticFeedbackType.Confirm)
                 is LocalBeatsEffect.ShowUndoDelete -> {
                     val result = snackbarHostState.showSnackbar(
-                        message = "Deleted ${effect.record.localityName}",
-                        actionLabel = "Undo",
+                        message = context.getString(R.string.msg_deleted, effect.record.localityName),
+                        actionLabel = context.getString(R.string.action_undo),
                         duration = SnackbarDuration.Long,
                     )
                     if (result == SnackbarResult.ActionPerformed) onIntent(LocalBeatsIntent.UndoDelete(effect.record))
@@ -200,10 +207,10 @@ fun LocalBeatsScreen(
         AlertDialog(
             onDismissRequest = { onIntent(LocalBeatsIntent.CancelDelete) },
             icon = { Icon(Icons.Default.Delete, contentDescription = null) },
-            title = { Text("Delete record?") },
-            text = { Text("\"${record.localityName}\" (Beat ${record.beatNumber}, ${record.branchOffice}) will be removed. You can undo right after.") },
-            confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmDelete) }) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelDelete) }) { Text("Cancel") } },
+            title = { Text(stringResource(R.string.delete_title)) },
+            text = { Text(stringResource(R.string.delete_message, record.localityName, record.beatNumber, record.branchOffice)) },
+            confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmDelete) }) { Text(stringResource(R.string.action_delete)) } },
+            dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelDelete) }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
 
@@ -211,10 +218,10 @@ fun LocalBeatsScreen(
         AlertDialog(
             onDismissRequest = { onIntent(LocalBeatsIntent.CancelBulkDelete) },
             icon = { Icon(Icons.Default.Delete, contentDescription = null) },
-            title = { Text("Delete ${state.selectedIds.size} record(s)?") },
-            text = { Text("The selected villages will be removed from the local directory. This cannot be undone.") },
-            confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmBulkDelete) }) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelBulkDelete) }) { Text("Cancel") } },
+            title = { Text(stringResource(R.string.bulk_delete_title, state.selectedIds.size)) },
+            text = { Text(stringResource(R.string.bulk_delete_message)) },
+            confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmBulkDelete) }) { Text(stringResource(R.string.action_delete)) } },
+            dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelBulkDelete) }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
 
@@ -222,16 +229,16 @@ fun LocalBeatsScreen(
         AlertDialog(
             onDismissRequest = { confirmReplaceImport = false },
             icon = { Icon(Icons.Default.SwapHoriz, contentDescription = null) },
-            title = { Text("Replace entire directory?") },
-            text = { Text("All ${state.totalRecords} existing record(s) will be deleted and replaced by the rows in the selected spreadsheet. You will see a preview before anything is written.") },
+            title = { Text(stringResource(R.string.replace_title)) },
+            text = { Text(stringResource(R.string.replace_message, state.totalRecords)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmReplaceImport = false
                     pendingImportMode = ImportMode.REPLACE_ALL
                     importPicker.launch(XLSX_MIME_TYPES)
-                }) { Text("Continue") }
+                }) { Text(stringResource(R.string.action_continue)) }
             },
-            dismissButton = { TextButton(onClick = { confirmReplaceImport = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmReplaceImport = false }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
 
@@ -249,12 +256,12 @@ fun LocalBeatsScreen(
         AlertDialog(
             onDismissRequest = {},
             confirmButton = {},
-            title = { Text(message) },
+            title = { Text(message.asString()) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator()
                     Spacer(Modifier.width(16.dp))
-                    Text("Please wait…")
+                    Text(stringResource(R.string.please_wait))
                 }
             },
         )
@@ -290,17 +297,17 @@ fun LocalBeatsContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = { onIntent(LocalBeatsIntent.ClearSelection) }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Cancel selection")
+                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.local_cancel_selection))
                 }
                 Text(
-                    "${state.selectedIds.size} selected",
+                    stringResource(R.string.local_selected, state.selectedIds.size),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = { onIntent(LocalBeatsIntent.RequestBulkDelete) }) {
                     Icon(Icons.Default.Delete, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
-                    Text("Delete")
+                    Text(stringResource(R.string.action_delete))
                 }
             }
         }
@@ -330,7 +337,7 @@ fun LocalBeatsContent(
                         )
                     },
                 ) {
-                    Text(if (mode == LocalViewMode.SEARCH) "Search" else "By beat")
+                    Text(stringResource(if (mode == LocalViewMode.SEARCH) R.string.local_view_search else R.string.local_view_by_beat))
                 }
             }
         }
@@ -347,26 +354,24 @@ fun LocalBeatsContent(
                 trailingIcon = {
                     if (state.query.isNotEmpty()) {
                         IconButton(onClick = { onIntent(LocalBeatsIntent.QueryChanged("")) }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_clear))
                         }
                     }
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                supportingText = {
-                    Text("${state.totalRecords} record(s) offline • also matches beat number or PIN • long-press to select")
-                },
+                supportingText = { Text(stringResource(R.string.local_supporting, state.totalRecords)) },
             )
         }
 
         FilterChipsRow(
-            label = "State",
+            label = stringResource(R.string.filter_state),
             options = state.states,
             selected = state.selectedState,
             onSelect = { onIntent(LocalBeatsIntent.StateSelected(it)) },
         )
         FilterChipsRow(
-            label = "District",
+            label = stringResource(R.string.filter_district),
             options = state.districts,
             selected = state.selectedDistrict,
             onSelect = { onIntent(LocalBeatsIntent.DistrictSelected(it)) },
@@ -388,9 +393,9 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
     if (state.hits.isEmpty() && !state.isSearching) {
         EmptyState(
             icon = Icons.Default.SearchOff,
-            title = "No matches",
-            message = if (state.hasFilters) "Nothing matched with the current State/District filters." else "Try a different spelling — phonetic matching handles most transliteration variants.",
-            actionLabel = if (state.hasFilters) "Clear filters" else null,
+            title = stringResource(R.string.local_no_matches_title),
+            message = stringResource(if (state.hasFilters) R.string.local_no_matches_filtered else R.string.local_no_matches_hint),
+            actionLabel = if (state.hasFilters) stringResource(R.string.action_clear_filters) else null,
             onAction = { onIntent(LocalBeatsIntent.ClearFilters) },
         )
         return
@@ -404,6 +409,7 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
             SwipeToDeleteRow(
                 enabled = !state.isSelecting,
                 onDelete = { onIntent(LocalBeatsIntent.SwipeDelete(hit.record)) },
+                modifier = Modifier.animateItem(),
             ) {
                 BeatRecordCard(
                     hit = hit,
@@ -422,7 +428,7 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeToDeleteRow(enabled: Boolean, onDelete: () -> Unit, content: @Composable () -> Unit) {
+private fun SwipeToDeleteRow(enabled: Boolean, onDelete: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -435,6 +441,7 @@ private fun SwipeToDeleteRow(enabled: Boolean, onDelete: () -> Unit, content: @C
     )
     SwipeToDismissBox(
         state = dismissState,
+        modifier = modifier,
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = enabled,
         backgroundContent = {
@@ -445,7 +452,7 @@ private fun SwipeToDeleteRow(enabled: Boolean, onDelete: () -> Unit, content: @C
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onErrorContainer)
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.onErrorContainer)
             }
         },
     ) {
@@ -466,6 +473,7 @@ private fun BeatRecordCard(
     onToggleSelect: () -> Unit,
 ) {
     val record: BeatRecord = hit.record
+    val haptic = rememberHaptic()
     val highlight = if (hit.matchKind == MatchKind.TEXT || hit.matchKind == MatchKind.EXACT) MatchHighlighter.range(record.localityName, query) else null
     val title = buildAnnotatedString {
         if (highlight == null) {
@@ -484,7 +492,10 @@ private fun BeatRecordCard(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { if (selecting) onToggleSelect() else onEdit() },
-                onLongClick = onToggleSelect,
+                onLongClick = {
+                    haptic(HapticFeedbackType.LongPress)
+                    onToggleSelect()
+                },
             ),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -505,9 +516,9 @@ private fun BeatRecordCard(
                     )
                 }
                 if (!selecting) {
-                    IconButton(onClick = onLookupOnline) { Icon(Icons.Default.TravelExplore, contentDescription = "Look up online") }
-                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
-                    IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
+                    IconButton(onClick = onLookupOnline) { Icon(Icons.Default.TravelExplore, contentDescription = stringResource(R.string.action_look_up_online)) }
+                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.action_edit)) }
+                    IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete)) }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -517,10 +528,10 @@ private fun BeatRecordCard(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                SuggestionChip(onClick = onEdit, label = { Text("Beat ${record.beatNumber}") })
-                SuggestionChip(onClick = onEdit, label = { Text("BO: ${record.branchOffice}") })
-                SuggestionChip(onClick = onEdit, label = { Text("SO: ${record.subPostOffice}") })
-                SuggestionChip(onClick = onEdit, label = { Text("PIN ${record.pincode}") })
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_beat, record.beatNumber)) })
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_bo, record.branchOffice)) })
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_so, record.subPostOffice)) })
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_pin, record.pincode)) })
             }
             if (record.remarks.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
@@ -528,8 +539,8 @@ private fun BeatRecordCard(
             }
             if (query.isNotBlank()) {
                 when (hit.matchKind) {
-                    MatchKind.EXACT -> MatchLabel("Exact match", MaterialTheme.colorScheme.primary)
-                    MatchKind.PHONETIC -> MatchLabel("Sounds like “${query.trim()}”", MaterialTheme.colorScheme.tertiary)
+                    MatchKind.EXACT -> MatchLabel(stringResource(R.string.match_exact), MaterialTheme.colorScheme.primary)
+                    MatchKind.PHONETIC -> MatchLabel(stringResource(R.string.match_sounds_like, query.trim()), MaterialTheme.colorScheme.tertiary)
                     MatchKind.TEXT, MatchKind.NONE -> Unit
                 }
             }
@@ -550,9 +561,9 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
     if (state.beatGroups.isEmpty()) {
         EmptyState(
             icon = Icons.Default.Route,
-            title = "No beats to show",
-            message = if (state.hasFilters) "No records match the current State/District filters." else "Loading…",
-            actionLabel = if (state.hasFilters) "Clear filters" else null,
+            title = stringResource(R.string.local_no_beats_title),
+            message = stringResource(if (state.hasFilters) R.string.local_no_beats_filtered else R.string.local_loading),
+            actionLabel = if (state.hasFilters) stringResource(R.string.action_clear_filters) else null,
             onAction = { onIntent(LocalBeatsIntent.ClearFilters) },
         )
         return
@@ -564,13 +575,14 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
     ) {
         item {
             Text(
-                "${state.beatGroups.size} beat(s) • ${state.beatGroups.sumOf { it.villageCount }} village(s)",
+                stringResource(R.string.local_beats_summary, state.beatGroups.size, state.beatGroups.sumOf { it.villageCount }),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         items(state.beatGroups, key = { it.key }) { group ->
             BeatGroupCard(
+                modifier = Modifier.animateItem(),
                 group = group,
                 expanded = group.key in state.expandedBeats,
                 onToggle = { onIntent(LocalBeatsIntent.ToggleBeatExpanded(group.key)) },
@@ -584,26 +596,25 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
 @Composable
 private fun BeatGroupCard(
     group: BeatGroup,
+    modifier: Modifier = Modifier,
     expanded: Boolean,
     onToggle: () -> Unit,
     onEdit: (BeatRecord) -> Unit,
     onLookupOnline: (String) -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         onClick = onToggle,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(Modifier.padding(start = 16.dp, top = 12.dp, end = 4.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Beat ${group.beatNumber}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.local_beat_title, group.beatNumber), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    val soText = if (group.subPostOffice.isNotBlank()) " • " + stringResource(R.string.local_beat_subtitle_so, group.subPostOffice) else ""
+                    val pinText = if (group.pincodes.isNotEmpty()) " • " + stringResource(R.string.local_beat_subtitle_pin, group.pincodes.joinToString(", ")) else ""
                     Text(
-                        buildString {
-                            append(group.branchOffice)
-                            if (group.subPostOffice.isNotBlank()) append(" • SO ").append(group.subPostOffice)
-                            if (group.pincodes.isNotEmpty()) append(" • PIN ").append(group.pincodes.joinToString(", "))
-                        },
+                        group.branchOffice + soText + pinText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -614,9 +625,12 @@ private fun BeatGroupCard(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                 )
-                Text(" villages", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(" " + stringResource(R.string.local_villages), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 IconButton(onClick = onToggle) {
-                    Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = if (expanded) "Collapse" else "Expand")
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = stringResource(if (expanded) R.string.action_collapse else R.string.action_expand),
+                    )
                 }
             }
             AnimatedVisibility(visible = expanded) {
@@ -638,7 +652,7 @@ private fun BeatGroupCard(
                             }
                             Text(record.pincode, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             IconButton(onClick = { onLookupOnline(record.pincode) }) {
-                                Icon(Icons.Default.TravelExplore, contentDescription = "Look up online")
+                                Icon(Icons.Default.TravelExplore, contentDescription = stringResource(R.string.action_look_up_online))
                             }
                         }
                     }
@@ -664,10 +678,10 @@ private fun OnboardingEmptyState(onAdd: () -> Unit, onImport: () -> Unit, onTemp
     ) {
         Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(16.dp))
-        Text("Set up your beat directory", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.onboarding_title), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Map every village to its beat and branch office once, then find it offline in seconds — even with a misspelled name.",
+            stringResource(R.string.onboarding_message),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -676,19 +690,19 @@ private fun OnboardingEmptyState(onAdd: () -> Unit, onImport: () -> Unit, onTemp
         Button(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.FileUpload, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Import spreadsheet (.xlsx)")
+            Text(stringResource(R.string.onboarding_import))
         }
         Spacer(Modifier.height(10.dp))
         FilledTonalButton(onClick = onTemplate, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Download, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Get the blank template first")
+            Text(stringResource(R.string.onboarding_template))
         }
         Spacer(Modifier.height(10.dp))
         OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Add the first village by hand")
+            Text(stringResource(R.string.onboarding_add))
         }
     }
 }
@@ -698,43 +712,49 @@ private fun ImportPreviewDialog(preview: ImportPreview, onConfirm: () -> Unit, o
     AlertDialog(
         onDismissRequest = onCancel,
         icon = { Icon(Icons.Default.FileUpload, contentDescription = null) },
-        title = { Text(if (preview.mode == ImportMode.REPLACE_ALL) "Replace directory?" else "Import these rows?") },
+        title = { Text(stringResource(if (preview.mode == ImportMode.REPLACE_ALL) R.string.preview_title_replace else R.string.preview_title_import)) },
         text = {
             Column {
                 if (preview.mode == ImportMode.REPLACE_ALL && preview.existingCount > 0) {
-                    Text("• ${preview.existingCount} existing record(s) will be deleted first", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.preview_existing_deleted, preview.existingCount), color = MaterialTheme.colorScheme.error)
                 }
-                Text("• ${preview.willInsert} row(s) will be added")
-                if (preview.duplicatesSkipped > 0) Text("• ${preview.duplicatesSkipped} duplicate(s) will be skipped")
-                if (preview.blankRowsSkipped > 0) Text("• ${preview.blankRowsSkipped} blank row(s) ignored")
-                if (preview.hasErrors) Text("• ${preview.errors.size} row(s) have errors and will be skipped", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.preview_will_add, preview.willInsert))
+                if (preview.duplicatesSkipped > 0) Text(stringResource(R.string.preview_duplicates, preview.duplicatesSkipped))
+                if (preview.blankRowsSkipped > 0) Text(stringResource(R.string.preview_blank, preview.blankRowsSkipped))
+                if (preview.hasErrors) Text(stringResource(R.string.preview_errors, preview.errors.size), color = MaterialTheme.colorScheme.error)
                 if (preview.hasErrors) {
                     Spacer(Modifier.height(10.dp))
                     RowErrorList(preview.errors)
                 }
                 if (preview.isEmpty) {
                     Spacer(Modifier.height(10.dp))
-                    Text("Nothing to import.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.preview_nothing), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = !preview.isEmpty || preview.mode == ImportMode.REPLACE_ALL) {
-                Text(if (preview.mode == ImportMode.REPLACE_ALL) "Replace" else "Import ${preview.willInsert}")
+                Text(if (preview.mode == ImportMode.REPLACE_ALL) stringResource(R.string.action_replace) else stringResource(R.string.action_import_n, preview.willInsert))
             }
         },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
 @Composable
 private fun RowErrorList(errors: List<RowError>) {
-    Text("Rows with errors:", style = MaterialTheme.typography.labelLarge)
+    val context = LocalContext.current
+    Text(stringResource(R.string.rows_with_errors), style = MaterialTheme.typography.labelLarge)
     Spacer(Modifier.height(4.dp))
     Box(Modifier.height(160.dp)) {
         LazyColumn {
             items(errors.take(200)) { err ->
-                Text(err.describe(), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 2.dp))
+                val detail = err.messages.entries.joinToString("; ") { (field, e) -> e.message(context, field) }
+                Text(
+                    stringResource(R.string.row_error, err.rowNumber, detail),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(vertical = 2.dp),
+                )
             }
         }
     }
@@ -745,12 +765,17 @@ private fun ImportReportDialog(report: ImportReport, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(if (report.hasErrors) Icons.Default.SearchOff else Icons.Default.Check, contentDescription = null) },
-        title = { Text(if (report.hasErrors) "Import finished with issues" else "Import complete") },
+        title = { Text(stringResource(if (report.hasErrors) R.string.report_title_issues else R.string.report_title_ok)) },
         text = {
             Column {
-                Text(report.summary())
+                val parts = buildList {
+                    add(stringResource(R.string.report_imported, report.inserted))
+                    if (report.duplicatesSkipped > 0) add(stringResource(R.string.report_duplicates, report.duplicatesSkipped))
+                    if (report.errors.isNotEmpty()) add(stringResource(R.string.report_rejected, report.errors.size))
+                }
+                Text(parts.joinToString(", ") + ".")
                 if (report.blankRowsSkipped > 0) {
-                    Text("${report.blankRowsSkipped} blank row(s) ignored.", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.report_blank, report.blankRowsSkipped), style = MaterialTheme.typography.bodySmall)
                 }
                 if (report.hasErrors) {
                     Spacer(Modifier.height(12.dp))
@@ -758,6 +783,6 @@ private fun ImportReportDialog(report: ImportReport, onDismiss: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
     )
 }

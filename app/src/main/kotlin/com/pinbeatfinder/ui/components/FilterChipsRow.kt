@@ -17,6 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.pinbeatfinder.R
 import androidx.compose.ui.unit.dp
 
 /**
@@ -45,7 +47,7 @@ fun FilterChipsRow(
         FilterChip(
             selected = selected == null,
             onClick = { onSelect(null) },
-            label = { Text("All") },
+            label = { Text(stringResource(R.string.chip_all)) },
         )
         options.forEach { option ->
             val isSelected = option == selected

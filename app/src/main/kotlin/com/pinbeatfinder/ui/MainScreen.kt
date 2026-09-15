@@ -1,5 +1,6 @@
 package com.pinbeatfinder.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -16,7 +18,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -40,6 +41,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.pinbeatfinder.R
 import com.pinbeatfinder.appContainer
+import com.pinbeatfinder.data.prefs.DefaultTab
 import com.pinbeatfinder.ui.local.LocalBeatsIntent
 import com.pinbeatfinder.ui.local.LocalBeatsMenuAction
 import com.pinbeatfinder.ui.local.LocalBeatsScreen
@@ -47,6 +49,7 @@ import com.pinbeatfinder.ui.local.LocalBeatsViewModel
 import com.pinbeatfinder.ui.online.OnlineBridge
 import com.pinbeatfinder.ui.online.OnlineSearchScreen
 import com.pinbeatfinder.ui.online.OnlineSearchViewModel
+import com.pinbeatfinder.ui.settings.SettingsScreen
 import com.pinbeatfinder.ui.theme.OnPostBoxRed
 import com.pinbeatfinder.ui.theme.PostBoxRed
 
@@ -66,6 +69,7 @@ fun MainScreen() {
                     container.postalLookupRepository,
                     container.recentSearchesRepository,
                     container.beatDirectoryRepository,
+                    container.connectivity,
                 )
             }
         },
@@ -76,10 +80,14 @@ fun MainScreen() {
         },
     )
 
-    var selectedTab by rememberSaveable { mutableIntStateOf(MainTab.ONLINE.ordinal) }
+    val initialTab = remember {
+        if (container.appSettingsRepository.settings.value.defaultTab == DefaultTab.LOCAL) MainTab.LOCAL else MainTab.ONLINE
+    }
+    var selectedTab by rememberSaveable { mutableIntStateOf(initialTab.ordinal) }
     val tab = MainTab.entries[selectedTab]
     val snackbarHostState = remember { SnackbarHostState() }
     var menuExpanded by remember { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     // The menu lives in the top bar but its actions belong to the local tab; bridge via callback.
     var menuActionHandler by remember { mutableStateOf<(LocalBeatsMenuAction) -> Unit>({}) }
 
@@ -101,6 +109,12 @@ fun MainScreen() {
         selectedTab = MainTab.ONLINE.ordinal
     }
 
+    if (showSettings) {
+        BackHandler { showSettings = false }
+        SettingsScreen(onBack = { showSettings = false })
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -111,15 +125,18 @@ fun MainScreen() {
                     actionIconContentColor = OnPostBoxRed,
                 ),
                 actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.action_settings))
+                    }
                     if (tab == MainTab.LOCAL) {
                         IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.action_more_options))
                         }
                         DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                             LocalBeatsMenuAction.entries.forEachIndexed { index, action ->
                                 if (index == 2 || index == 4) HorizontalDivider()
                                 DropdownMenuItem(
-                                    text = { Text(action.label) },
+                                    text = { Text(stringResource(action.labelRes)) },
                                     leadingIcon = { Icon(action.icon, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false

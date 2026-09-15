@@ -1,6 +1,8 @@
 package com.pinbeatfinder.ui.online
 
+import com.pinbeatfinder.R
 import com.pinbeatfinder.core.util.AppError
+import com.pinbeatfinder.ui.components.UiText
 import com.pinbeatfinder.data.prefs.RecentSearch
 import com.pinbeatfinder.domain.model.PostOffice
 
@@ -19,6 +21,8 @@ data class OnlineSearchState(
     val localCountsByPin: Map<String, Int> = emptyMap(),
     /** Result whose detail sheet is open, if any. */
     val selectedOffice: PostOffice? = null,
+    /** From the connectivity observer; drives the offline banner. */
+    val isOffline: Boolean = false,
 ) {
     val hasSearched: Boolean get() = submittedQuery.isNotEmpty()
     val hasFilters: Boolean get() = stateFilter != null || districtFilter != null
@@ -62,11 +66,11 @@ sealed interface OnlineSearchIntent {
     data object DismissDetail : OnlineSearchIntent
 }
 
-/** Human-readable message for an [AppError]; lives here so both tabs phrase errors the same way. */
-fun AppError.userMessage(): String = when (this) {
-    AppError.Offline -> "You are offline. Connect to the internet for All-India lookups, or use the Local Beats tab."
-    AppError.Timeout -> "The postal server took too long to respond. Please try again."
-    is AppError.NotFound -> "No post office found. Check the PIN code or spelling."
-    is AppError.Http -> if (code == 0) "Postal data services are unreachable ($message). Please try again later." else "Postal server error ($code). Please try again later."
-    is AppError.Unknown -> "Something went wrong: ${cause.message ?: cause::class.simpleName}"
+/** Localised message for an [AppError]; lives here so both tabs phrase errors the same way. */
+fun AppError.userMessage(): UiText = when (this) {
+    AppError.Offline -> UiText.Res(R.string.error_offline)
+    AppError.Timeout -> UiText.Res(R.string.error_timeout)
+    is AppError.NotFound -> UiText.Res(R.string.error_not_found)
+    is AppError.Http -> if (code == 0) UiText.Res(R.string.error_unreachable, message) else UiText.Res(R.string.error_http, code)
+    is AppError.Unknown -> UiText.Res(R.string.error_unknown, cause.message ?: cause::class.simpleName.orEmpty())
 }

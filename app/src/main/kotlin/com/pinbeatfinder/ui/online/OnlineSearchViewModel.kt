@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pinbeatfinder.core.util.AppResult
 import com.pinbeatfinder.data.prefs.RecentSearchesRepository
+import com.pinbeatfinder.data.remote.ConnectivityChecker
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.data.repository.PostalLookupRepository
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ class OnlineSearchViewModel(
     private val repository: PostalLookupRepository,
     private val recents: RecentSearchesRepository,
     private val beatDirectory: BeatDirectoryRepository,
+    private val connectivity: ConnectivityChecker,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnlineSearchState())
@@ -33,6 +35,9 @@ class OnlineSearchViewModel(
         beatDirectory.observePincodeCounts()
             .onEach { counts -> _state.update { it.copy(localCountsByPin = counts) } }
             .launchIn(viewModelScope)
+        connectivity.observe()
+            .onEach { online -> _state.update { it.copy(isOffline = !online) } }
+            .launchIn(viewModelScope)
     }
 
     fun onIntent(intent: OnlineSearchIntent) {
@@ -42,7 +47,7 @@ class OnlineSearchViewModel(
             OnlineSearchIntent.Retry -> search(_state.value.submittedQuery)
             OnlineSearchIntent.Clear -> {
                 inFlight?.cancel()
-                _state.update { OnlineSearchState(recents = it.recents, localCountsByPin = it.localCountsByPin) }
+                _state.update { OnlineSearchState(recents = it.recents, localCountsByPin = it.localCountsByPin, isOffline = it.isOffline) }
             }
             is OnlineSearchIntent.StateFilterSelected -> _state.update {
                 it.copy(stateFilter = intent.state, districtFilter = null)

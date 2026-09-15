@@ -10,12 +10,14 @@ import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
+import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.ui.components.UiText
 
 enum class LocalViewMode { SEARCH, BY_BEAT }
 
 data class EditorState(
     val draft: BeatDraft,
-    val errors: Map<BeatField, String> = emptyMap(),
+    val errors: Map<BeatField, FieldError> = emptyMap(),
     val isSaving: Boolean = false,
 ) {
     val isNew: Boolean get() = draft.id == 0L
@@ -35,7 +37,7 @@ data class LocalBeatsState(
     val importPreview: ImportPreview? = null,
     val importReport: ImportReport? = null,
     /** Non-null while a long-running file operation blocks the screen (e.g. "Importing…"). */
-    val busyMessage: String? = null,
+    val busyMessage: UiText? = null,
 
     val viewMode: LocalViewMode = LocalViewMode.SEARCH,
     val beatGroups: List<BeatGroup> = emptyList(),
@@ -93,8 +95,10 @@ sealed interface LocalBeatsIntent {
 }
 
 sealed interface LocalBeatsEffect {
-    data class ShowMessage(val text: String) : LocalBeatsEffect
+    data class ShowMessage(val text: UiText) : LocalBeatsEffect
     data class LaunchIntent(val intent: Intent) : LocalBeatsEffect
     /** Snackbar with an Undo action that re-inserts [record]. */
     data class ShowUndoDelete(val record: BeatRecord) : LocalBeatsEffect
+    /** A record was saved; the screen may vibrate briefly. */
+    data object Saved : LocalBeatsEffect
 }

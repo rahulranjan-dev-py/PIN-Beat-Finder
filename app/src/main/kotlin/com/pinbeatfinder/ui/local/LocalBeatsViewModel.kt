@@ -1,6 +1,8 @@
 package com.pinbeatfinder.ui.local
 
 import androidx.lifecycle.ViewModel
+import com.pinbeatfinder.R
+import com.pinbeatfinder.ui.components.UiText
 import androidx.lifecycle.viewModelScope
 import com.pinbeatfinder.core.util.BeatDraftValidator
 import com.pinbeatfinder.data.excel.ExcelFormatException
@@ -145,21 +147,21 @@ class LocalBeatsViewModel(
             LocalBeatsIntent.ConfirmImport -> commitImport()
             LocalBeatsIntent.CancelImport -> _state.update { it.copy(importPreview = null) }
             LocalBeatsIntent.DismissImportReport -> _state.update { it.copy(importReport = null) }
-            LocalBeatsIntent.ShareBackup -> fileOperation("Preparing backup…") {
+            LocalBeatsIntent.ShareBackup -> fileOperation(UiText.Res(R.string.busy_backup)) {
                 val file = excel.exportBackup()
-                _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, "Share beat directory backup")))
+                _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_backup_title))))
             }
-            is LocalBeatsIntent.SaveBackupTo -> fileOperation("Saving backup…") {
+            is LocalBeatsIntent.SaveBackupTo -> fileOperation(UiText.Res(R.string.busy_saving_backup)) {
                 excel.saveBackupTo(intent.uri)
-                _effects.send(LocalBeatsEffect.ShowMessage("Backup saved."))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_backup_saved)))
             }
-            LocalBeatsIntent.ShareTemplate -> fileOperation("Preparing template…") {
+            LocalBeatsIntent.ShareTemplate -> fileOperation(UiText.Res(R.string.busy_template)) {
                 val file = excel.exportTemplate()
-                _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, "Share import template")))
+                _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_template_title))))
             }
-            is LocalBeatsIntent.SaveTemplateTo -> fileOperation("Saving template…") {
+            is LocalBeatsIntent.SaveTemplateTo -> fileOperation(UiText.Res(R.string.busy_saving_template)) {
                 excel.saveTemplateTo(intent.uri)
-                _effects.send(LocalBeatsEffect.ShowMessage("Template saved."))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_template_saved)))
             }
         }
     }
@@ -194,12 +196,13 @@ class LocalBeatsViewModel(
                     repository.save(validation.record)
                     dataVersion.update { it + 1 }
                     _state.update { it.copy(editor = null) }
-                    _effects.send(LocalBeatsEffect.ShowMessage(if (editor.isNew) "Record added." else "Record updated."))
+                    _effects.send(LocalBeatsEffect.Saved)
+                    _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(if (editor.isNew) R.string.msg_record_added else R.string.msg_record_updated)))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     _state.update { it.copy(editor = editor.copy(isSaving = false)) }
-                    _effects.send(LocalBeatsEffect.ShowMessage("Could not save: ${e.message}"))
+                    _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_save_failed, e.message.orEmpty())))
                 }
             }
         }
@@ -223,7 +226,7 @@ class LocalBeatsViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _effects.send(LocalBeatsEffect.ShowMessage("Could not delete: ${e.message}"))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_delete_failed, e.message.orEmpty())))
             }
         }
     }
@@ -233,11 +236,11 @@ class LocalBeatsViewModel(
             try {
                 repository.save(record.copy(id = 0L))
                 dataVersion.update { it + 1 }
-                _effects.send(LocalBeatsEffect.ShowMessage("Restored ${record.localityName}."))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_restored, record.localityName)))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _effects.send(LocalBeatsEffect.ShowMessage("Could not restore: ${e.message}"))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_restore_failed, e.message.orEmpty())))
             }
         }
     }
@@ -250,38 +253,38 @@ class LocalBeatsViewModel(
                 repository.deleteMany(ids)
                 dataVersion.update { it + 1 }
                 _state.update { it.copy(selectedIds = emptySet(), confirmBulkDelete = false) }
-                _effects.send(LocalBeatsEffect.ShowMessage("Deleted ${ids.size} record(s)."))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_deleted_n, ids.size)))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _state.update { it.copy(confirmBulkDelete = false) }
-                _effects.send(LocalBeatsEffect.ShowMessage("Could not delete: ${e.message}"))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_delete_failed, e.message.orEmpty())))
             }
         }
     }
 
     // ------------------------------------------------------------------ excel
 
-    private fun prepareImport(intent: LocalBeatsIntent.ImportFile) = fileOperation("Reading spreadsheet…") {
+    private fun prepareImport(intent: LocalBeatsIntent.ImportFile) = fileOperation(UiText.Res(R.string.busy_reading)) {
         try {
             val preview = excel.prepareImport(intent.uri, intent.mode)
             _state.update { it.copy(importPreview = preview) }
         } catch (e: ExcelFormatException) {
-            _effects.send(LocalBeatsEffect.ShowMessage(e.message ?: "Unrecognised spreadsheet format."))
+            _effects.send(LocalBeatsEffect.ShowMessage(e.message?.let { UiText.Raw(it) } ?: UiText.Res(R.string.msg_bad_format)))
         }
     }
 
     private fun commitImport() {
         val preview = _state.value.importPreview ?: return
         _state.update { it.copy(importPreview = null) }
-        fileOperation(if (preview.mode == ImportMode.REPLACE_ALL) "Replacing directory…" else "Importing…") {
+        fileOperation(UiText.Res(if (preview.mode == ImportMode.REPLACE_ALL) R.string.busy_replacing else R.string.busy_importing)) {
             val report = excel.commitImport(preview)
             dataVersion.update { it + 1 }
             _state.update { it.copy(importReport = report) }
         }
     }
 
-    private fun fileOperation(busyMessage: String, block: suspend () -> Unit) {
+    private fun fileOperation(busyMessage: UiText, block: suspend () -> Unit) {
         if (_state.value.busyMessage != null) return // one file job at a time
         viewModelScope.launch {
             _state.update { it.copy(busyMessage = busyMessage) }
@@ -290,7 +293,7 @@ class LocalBeatsViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _effects.send(LocalBeatsEffect.ShowMessage("File operation failed: ${e.message ?: e::class.simpleName}"))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_file_failed, e.message ?: e::class.simpleName.orEmpty())))
             } finally {
                 _state.update { it.copy(busyMessage = null) }
             }

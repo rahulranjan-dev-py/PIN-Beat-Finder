@@ -1,6 +1,7 @@
 package com.pinbeatfinder.data.remote
 
 import kotlinx.serialization.json.JsonElement
+import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -26,18 +27,18 @@ interface PostalApiService {
         @Query("filters[pincode]") pincode: String,
         @Query("format") format: String = "json",
         @Query("limit") limit: Int = 100,
-    ): JsonElement
+    ): Response<JsonElement>
 
     /** Static mirror of the same Department of Posts dataset, served from GitHub Pages (no key, no limits). */
     @GET("https://aniket-thapa.github.io/india-pincode-api/pincodes/{pincode}.json")
-    suspend fun githubMirrorByPincode(@Path("pincode") pincode: String): JsonElement
+    suspend fun githubMirrorByPincode(@Path("pincode") pincode: String): Response<JsonElement>
 
     /** Community API (postalpincode.in). The only provider that supports search by office name. */
     @GET("https://api.postalpincode.in/pincode/{pincode}")
-    suspend fun postalPincodeInByPincode(@Path("pincode") pincode: String): JsonElement
+    suspend fun postalPincodeInByPincode(@Path("pincode") pincode: String): Response<JsonElement>
 
     @GET("https://api.postalpincode.in/postoffice/{name}")
-    suspend fun postalPincodeInByName(@Path("name") name: String): JsonElement
+    suspend fun postalPincodeInByName(@Path("name") name: String): Response<JsonElement>
 
     companion object {
         /** Retrofit still needs a base URL even though every endpoint is absolute. */

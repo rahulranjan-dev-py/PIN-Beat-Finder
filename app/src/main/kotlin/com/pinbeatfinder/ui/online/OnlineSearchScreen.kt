@@ -1,6 +1,8 @@
 package com.pinbeatfinder.ui.online
 
+import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -63,6 +67,7 @@ import com.pinbeatfinder.domain.model.toBeatDraft
 import com.pinbeatfinder.ui.components.EmptyState
 import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.LabeledValue
+import com.pinbeatfinder.ui.theme.rememberHaptic
 import kotlinx.coroutines.launch
 
 /** Cross-tab actions the host screen fulfils (switching tabs, opening the local editor). */
@@ -81,6 +86,7 @@ fun OnlineSearchScreen(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
+    val haptic = rememberHaptic()
 
     OnlineSearchContent(state = state, onIntent = viewModel::onIntent, bridge = bridge)
 
@@ -91,15 +97,16 @@ fun OnlineSearchScreen(
             onDismiss = { viewModel.onIntent(OnlineSearchIntent.DismissDetail) },
             onCopyPin = {
                 clipboard.setText(AnnotatedString(office.pincode))
-                scope.launch { snackbarHostState.showSnackbar("PIN ${office.pincode} copied") }
+                haptic(HapticFeedbackType.Confirm)
+                scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.snackbar_pin_copied, office.pincode)) }
             },
             onShare = {
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "${office.name} – PIN ${office.pincode}")
-                    putExtra(Intent.EXTRA_TEXT, office.shareText())
+                    putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.share_subject, office.name, office.pincode))
+                    putExtra(Intent.EXTRA_TEXT, office.shareText(context))
                 }
-                context.startActivity(Intent.createChooser(send, "Share post office"))
+                context.startActivity(Intent.createChooser(send, context.getString(R.string.share_office_title)))
             },
             onAddToLocal = {
                 viewModel.onIntent(OnlineSearchIntent.DismissDetail)
@@ -123,6 +130,24 @@ fun OnlineSearchContent(
     val isNumeric = state.query.all(Char::isDigit) && state.query.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
+        if (state.isOffline) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.tertiaryContainer)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.CloudOff, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    stringResource(R.string.online_offline_banner),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+        }
+
         OutlinedTextField(
             value = state.query,
             onValueChange = { onIntent(OnlineSearchIntent.QueryChanged(it)) },
@@ -134,7 +159,7 @@ fun OnlineSearchContent(
             trailingIcon = {
                 if (state.query.isNotEmpty()) {
                     IconButton(onClick = { onIntent(OnlineSearchIntent.Clear) }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_clear))
                     }
                 }
             },
@@ -147,7 +172,7 @@ fun OnlineSearchContent(
                 keyboard?.hide()
                 onIntent(OnlineSearchIntent.Submit)
             }),
-            supportingText = { Text("Enter a 6-digit PIN or a post office name, then press Search.") },
+            supportingText = { Text(stringResource(R.string.online_supporting)) },
         )
 
         if (state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -156,14 +181,14 @@ fun OnlineSearchContent(
         // user narrow the fetched list without another network call.
         if (state.results.isNotEmpty()) {
             FilterChipsRow(
-                label = "State",
+                label = stringResource(R.string.filter_state),
                 options = state.states,
                 selected = state.stateFilter,
                 onSelect = { onIntent(OnlineSearchIntent.StateFilterSelected(it)) },
                 hideWhenSingle = true,
             )
             FilterChipsRow(
-                label = "District",
+                label = stringResource(R.string.filter_district),
                 options = state.districts,
                 selected = state.districtFilter,
                 onSelect = { onIntent(OnlineSearchIntent.DistrictFilterSelected(it)) },
@@ -175,27 +200,27 @@ fun OnlineSearchContent(
         when {
             state.error != null -> EmptyState(
                 icon = if (state.error is AppError.Offline) Icons.Default.CloudOff else Icons.Default.SearchOff,
-                title = if (state.error is AppError.NotFound) "No results" else "Lookup failed",
-                message = state.error.userMessage(),
-                actionLabel = if (state.error is AppError.NotFound) null else "Retry",
+                title = stringResource(if (state.error is AppError.NotFound) R.string.online_no_results_title else R.string.online_lookup_failed),
+                message = state.error.userMessage().asString(),
+                actionLabel = if (state.error is AppError.NotFound) null else stringResource(R.string.action_retry),
                 onAction = { onIntent(OnlineSearchIntent.Retry) },
             )
             !state.hasSearched && state.recents.isNotEmpty() -> RecentSearchesList(state = state, onIntent = onIntent)
             !state.hasSearched -> EmptyState(
                 icon = Icons.Default.TravelExplore,
-                title = "All-India post office lookup",
-                message = "Search any PIN code or post office name across India. Results are cached for offline reuse, and your searches appear here for quick re-use.",
+                title = stringResource(R.string.online_intro_title),
+                message = stringResource(R.string.online_intro_message),
             )
             state.results.isEmpty() && !state.isLoading -> EmptyState(
                 icon = Icons.Default.SearchOff,
-                title = "No results",
-                message = "Nothing matched \"${state.submittedQuery}\".",
+                title = stringResource(R.string.online_no_results_title),
+                message = stringResource(R.string.online_no_results_message, state.submittedQuery),
             )
             state.visibleResults.isEmpty() -> EmptyState(
                 icon = Icons.Default.SearchOff,
-                title = "No results match the filters",
-                message = "Clear the State/District filters to see all ${state.results.size} result(s).",
-                actionLabel = "Clear filters",
+                title = stringResource(R.string.online_filtered_out_title),
+                message = stringResource(R.string.online_filtered_out_message, state.results.size),
+                actionLabel = stringResource(R.string.action_clear_filters),
                 onAction = { onIntent(OnlineSearchIntent.ClearFilters) },
             )
             else -> LazyColumn(
@@ -206,14 +231,14 @@ fun OnlineSearchContent(
                 item {
                     val shown = state.visibleResults.size
                     Text(
-                        if (state.hasFilters) "$shown of ${state.results.size} post office(s) for \"${state.submittedQuery}\""
-                        else "$shown post office(s) for \"${state.submittedQuery}\"",
+                        if (state.hasFilters) stringResource(R.string.online_count_filtered, shown, state.results.size, state.submittedQuery)
+                        else stringResource(R.string.online_count, shown, state.submittedQuery),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     state.results.firstOrNull()?.source?.takeIf { it.isNotBlank() }?.let { source ->
                         Text(
-                            "Source: $source • tap a card for details",
+                            stringResource(R.string.online_source, source),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -225,6 +250,7 @@ fun OnlineSearchContent(
                         localCount = state.localCountFor(office),
                         onClick = { onIntent(OnlineSearchIntent.SelectOffice(office)) },
                         onShowLocalBeats = { bridge.showLocalBeatsFor(office.pincode) },
+                        modifier = Modifier.animateItem(),
                     )
                 }
             }
@@ -246,19 +272,21 @@ private fun RecentSearchesList(state: OnlineSearchState, onIntent: (OnlineSearch
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Recent searches",
+                    stringResource(R.string.recents_title),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
                 if (state.recents.any { !it.pinned }) {
-                    TextButton(onClick = { onIntent(OnlineSearchIntent.ClearRecents) }) { Text("Clear") }
+                    TextButton(onClick = { onIntent(OnlineSearchIntent.ClearRecents) }) { Text(stringResource(R.string.action_clear)) }
                 }
             }
         }
         items(state.recents, key = { it.query.lowercase() }) { recent ->
             ListItem(
-                modifier = Modifier.clickable { onIntent(OnlineSearchIntent.SearchRecent(recent.query)) },
+                modifier = Modifier
+                    .animateItem()
+                    .clickable { onIntent(OnlineSearchIntent.SearchRecent(recent.query)) },
                 colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                 leadingContent = {
                     Icon(
@@ -269,19 +297,19 @@ private fun RecentSearchesList(state: OnlineSearchState, onIntent: (OnlineSearch
                 },
                 headlineContent = { Text(recent.query) },
                 supportingContent = if (recent.useCount > 1) {
-                    { Text("Searched ${recent.useCount} times", style = MaterialTheme.typography.bodySmall) }
+                    { Text(stringResource(R.string.recents_searched_times, recent.useCount), style = MaterialTheme.typography.bodySmall) }
                 } else null,
                 trailingContent = {
                     Row {
                         IconButton(onClick = { onIntent(OnlineSearchIntent.TogglePinRecent(recent.query)) }) {
                             Icon(
                                 if (recent.pinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
-                                contentDescription = if (recent.pinned) "Unpin" else "Pin",
+                                contentDescription = stringResource(if (recent.pinned) R.string.action_unpin else R.string.action_pin),
                                 tint = if (recent.pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         IconButton(onClick = { onIntent(OnlineSearchIntent.RemoveRecent(recent.query)) }) {
-                            Icon(Icons.Default.Close, contentDescription = "Remove")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_remove))
                         }
                     }
                 },
@@ -296,9 +324,10 @@ private fun PostOfficeCard(
     localCount: Int,
     onClick: () -> Unit,
     onShowLocalBeats: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
@@ -313,20 +342,27 @@ private fun PostOfficeCard(
                 AssistChip(onClick = onClick, label = { Text(office.pincode) })
             }
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(office.branchType, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 if (office.deliveryStatus.isNotBlank()) {
                     Text("•", style = MaterialTheme.typography.bodySmall)
                     Text(office.deliveryStatus, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (office.fromCache) {
+                    SuggestionChip(
+                        onClick = onClick,
+                        label = { Text(stringResource(R.string.online_cached), style = MaterialTheme.typography.labelSmall) },
+                        icon = { Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.width(14.dp)) },
+                    )
+                }
             }
             Spacer(Modifier.height(10.dp))
-            LabeledValue("District", office.district)
-            LabeledValue("State", office.state)
-            LabeledValue("Division", office.division)
-            LabeledValue("Region", office.region)
-            LabeledValue("Circle", office.circle)
-            LabeledValue("Block", office.block)
+            LabeledValue(stringResource(R.string.label_district), office.district)
+            LabeledValue(stringResource(R.string.label_state), office.state)
+            LabeledValue(stringResource(R.string.label_division), office.division)
+            LabeledValue(stringResource(R.string.label_region), office.region)
+            LabeledValue(stringResource(R.string.label_circle), office.circle)
+            LabeledValue(stringResource(R.string.label_block), office.block)
             if (localCount > 0) {
                 Spacer(Modifier.height(10.dp))
                 Row(
@@ -338,7 +374,7 @@ private fun PostOfficeCard(
                     Icon(Icons.Default.Storage, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "$localCount local beat record(s) for this PIN  ›",
+                        stringResource(R.string.online_local_count, localCount),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -348,14 +384,14 @@ private fun PostOfficeCard(
     }
 }
 
-internal fun PostOffice.shareText(): String = buildString {
+internal fun PostOffice.shareText(context: Context): String = buildString {
     appendLine(name)
-    appendLine("PIN: $pincode")
+    appendLine(context.getString(R.string.detail_pin, pincode))
     if (branchType.isNotBlank()) appendLine(branchType + if (deliveryStatus.isNotBlank()) " • $deliveryStatus" else "")
-    if (district.isNotBlank()) appendLine("District: $district")
-    if (state.isNotBlank()) appendLine("State: $state")
-    if (division.isNotBlank()) appendLine("Division: $division")
-    if (region.isNotBlank()) appendLine("Region: $region")
-    if (circle.isNotBlank()) appendLine("Circle: $circle")
-    append("— shared from PIN Beat Finder")
+    if (district.isNotBlank()) appendLine("${context.getString(R.string.label_district)}: $district")
+    if (state.isNotBlank()) appendLine("${context.getString(R.string.label_state)}: $state")
+    if (division.isNotBlank()) appendLine("${context.getString(R.string.label_division)}: $division")
+    if (region.isNotBlank()) appendLine("${context.getString(R.string.label_region)}: $region")
+    if (circle.isNotBlank()) appendLine("${context.getString(R.string.label_circle)}: $circle")
+    append(context.getString(R.string.share_footer))
 }

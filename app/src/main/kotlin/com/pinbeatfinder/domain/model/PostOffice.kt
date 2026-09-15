@@ -14,4 +14,6 @@ data class PostOffice(
     val pincode: String,
     /** Human-readable name of the provider that answered, shown in the UI. */
     val source: String = "",
+    /** True when the answer came from the on-device HTTP cache rather than the network. */
+    val fromCache: Boolean = false,
 )

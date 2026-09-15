@@ -25,7 +25,7 @@ class PostalProvider(
     val id: String,
     val label: String,
     val supportsNameSearch: Boolean,
-    val fetch: suspend (query: String, isPincode: Boolean) -> JsonElement,
+    val fetch: suspend (query: String, isPincode: Boolean) -> FetchResult,
     /** Receives the raw payload and the original query (some providers omit the PIN in results). */
     val map: (payload: JsonElement, query: String) -> List<PostOffice>,
 )

@@ -126,6 +126,9 @@ class ExcelSyncManager(
         return Intent.createChooser(send, title).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
+    /** Localised string lookup for callers without a Context (share-sheet titles). */
+    fun string(resId: Int): String = appContext.getString(resId)
+
     /** Removes exports older than [maxAgeMillis]; call opportunistically at start-up. */
     suspend fun pruneOldExports(maxAgeMillis: Long = 7L * 24 * 60 * 60 * 1000) = withContext(ioDispatcher) {
         val cutoff = System.currentTimeMillis() - maxAgeMillis
