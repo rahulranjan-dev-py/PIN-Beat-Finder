@@ -194,4 +194,16 @@
     <string name="settings_cache_cleared">सहेजे गए ऑनलाइन परिणाम मिटा दिए गए।</string>
     <string name="settings_about">परिचय</string>
     <string name="settings_version">PIN Beat Finder %1$s • भारतीय डाक शाखाओं के लिए ऑफ़लाइन-प्रथम निर्देशिका</string>
+
+    <!-- v0.7.0 -->
+    <string name="online_group_header">%1$s • %2$d</string>
+    <string name="online_expand_all">सभी राज्य खोलें</string>
+    <string name="settings_high_contrast">उच्च कंट्रास्ट</string>
+    <string name="settings_high_contrast_desc">तेज़ धूप के लिए काले-सफ़ेद सतहें और गहरे रंग।</string>
+    <string name="settings_sources">ऑनलाइन डेटा स्रोत</string>
+    <string name="settings_sources_desc">सभी स्रोतों से एक साथ पूछा जाता है और सबसे तेज़ उत्तर चुना जाता है। स्थिति पिछले प्रयास की है।</string>
+    <string name="source_test_now">अभी जाँचें</string>
+    <string name="source_status_ok">चालू • %1$d ms</string>
+    <string name="source_status_failed">जवाब नहीं (%1$s)</string>
+    <string name="source_status_unknown">अभी तक नहीं आज़माया</string>
 </resources>

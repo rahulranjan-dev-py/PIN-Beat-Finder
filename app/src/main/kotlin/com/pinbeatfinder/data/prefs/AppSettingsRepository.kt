@@ -18,6 +18,8 @@ data class AppSettings(
     /** Empty means "use the key compiled into BuildConfig". */
     val dataGovInApiKey: String = "",
     val hapticsEnabled: Boolean = true,
+    /** Pure black/white surfaces with darker/lighter accents for sunlight readability. */
+    val highContrast: Boolean = false,
 )
 
 /** User preferences, persisted as one JSON blob. Language is handled by AppCompat's per-app locale API. */

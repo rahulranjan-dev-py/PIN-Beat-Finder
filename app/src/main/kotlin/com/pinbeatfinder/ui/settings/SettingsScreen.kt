@@ -1,7 +1,9 @@
 package com.pinbeatfinder.ui.settings
 
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,7 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -42,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +62,7 @@ import com.pinbeatfinder.appContainer
 import com.pinbeatfinder.data.prefs.DefaultTab
 import com.pinbeatfinder.data.prefs.TextScale
 import com.pinbeatfinder.data.prefs.ThemeMode
+import com.pinbeatfinder.data.remote.ProviderHealth
 import com.pinbeatfinder.ui.theme.OnPostBoxRed
 import com.pinbeatfinder.ui.theme.PostBoxRed
 import kotlinx.coroutines.Dispatchers
@@ -164,6 +172,19 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_high_contrast), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.settings_high_contrast_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(checked = settings.highContrast, onCheckedChange = { v -> repo.update { it.copy(highContrast = v) } })
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_haptics), style = MaterialTheme.typography.titleMedium)
                     Text(
                         stringResource(R.string.settings_haptics_desc),
@@ -193,6 +214,62 @@ fun SettingsScreen(onBack: () -> Unit) {
                     },
                     enabled = apiKeyDraft != settings.dataGovInApiKey,
                 ) { Text(stringResource(R.string.action_save)) }
+            }
+
+            SettingGroup(stringResource(R.string.settings_sources), description = stringResource(R.string.settings_sources_desc)) {
+                val health by container.postalLookupRepository.health.collectAsStateWithLifecycle()
+                var probing by remember { mutableStateOf(false) }
+                health.values.forEach { h ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val dot = when (h.status) {
+                            ProviderHealth.Status.OK -> Color(0xFF2E7D32)
+                            ProviderHealth.Status.FAILED -> MaterialTheme.colorScheme.error
+                            ProviderHealth.Status.UNKNOWN -> MaterialTheme.colorScheme.outline
+                        }
+                        Box(
+                            Modifier
+                                .size(12.dp)
+                                .background(dot, CircleShape),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(h.label, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                when (h.status) {
+                                    ProviderHealth.Status.OK -> stringResource(R.string.source_status_ok, h.latencyMs ?: 0L)
+                                    ProviderHealth.Status.FAILED -> stringResource(R.string.source_status_failed, h.detail ?: "")
+                                    ProviderHealth.Status.UNKNOWN -> stringResource(R.string.source_status_unknown)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    enabled = !probing,
+                    onClick = {
+                        probing = true
+                        scope.launch {
+                            runCatching { container.postalLookupRepository.probeAll() }
+                            probing = false
+                        }
+                    },
+                ) {
+                    if (probing) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Icon(Icons.Default.NetworkCheck, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.source_test_now))
+                }
             }
 
             SettingGroup(stringResource(R.string.settings_clear_cache), description = stringResource(R.string.settings_clear_cache_desc)) {

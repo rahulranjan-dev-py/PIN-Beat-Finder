@@ -67,10 +67,11 @@ object NetworkModule {
     fun okHttpClient(cacheDir: File, connectivity: ConnectivityChecker): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .cache(Cache(File(cacheDir, "http_cache"), CACHE_SIZE_BYTES))
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
-            .callTimeout(20, TimeUnit.SECONDS)
+            // Providers race in parallel, so a slow one only needs to lose, not to finish.
+            .connectTimeout(6, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .writeTimeout(8, TimeUnit.SECONDS)
+            .callTimeout(12, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor(headersInterceptor())
             .addInterceptor(offlineCacheInterceptor(connectivity))
@@ -91,17 +92,12 @@ object NetworkModule {
     fun postalApi(retrofit: Retrofit): PostalApiService = retrofit.create(PostalApiService::class.java)
 
     /**
-     * Ordered provider chain. Name searches are only served by providers that support them.
+     * Provider list; all are queried in parallel and the fastest non-empty answer wins, so order
+     * only matters as a tie-break. The static mirror is a CDN and usually wins for PIN lookups.
+     * Name searches are only served by providers that support them.
      * [dataGovInApiKey] is read on every call so a key changed in Settings applies immediately.
      */
     fun postalProviders(api: PostalApiService, dataGovInApiKey: () -> String): List<PostalProvider> = listOf(
-        PostalProvider(
-            id = PostalProviders.ID_DATA_GOV_IN,
-            label = PostalProviders.LABEL_DATA_GOV_IN,
-            supportsNameSearch = false,
-            fetch = { q, _ -> api.dataGovInByPincode(PostalApiService.DATA_GOV_IN_RESOURCE_ID, dataGovInApiKey(), q).toFetchResult() },
-            map = { root, _ -> PostalProviders.mapDataGovIn(root) },
-        ),
         PostalProvider(
             id = PostalProviders.ID_GITHUB_MIRROR,
             label = PostalProviders.LABEL_GITHUB_MIRROR,
@@ -109,6 +105,13 @@ object NetworkModule {
             fetch = { q, _ -> api.githubMirrorByPincode(q).toFetchResult() },
             // The mirror omits the pincode on each office; the mapper needs the requested one.
             map = { root, pin -> PostalProviders.mapGithubMirror(root, pin) },
+        ),
+        PostalProvider(
+            id = PostalProviders.ID_DATA_GOV_IN,
+            label = PostalProviders.LABEL_DATA_GOV_IN,
+            supportsNameSearch = false,
+            fetch = { q, _ -> api.dataGovInByPincode(PostalApiService.DATA_GOV_IN_RESOURCE_ID, dataGovInApiKey(), q).toFetchResult() },
+            map = { root, _ -> PostalProviders.mapDataGovIn(root) },
         ),
         PostalProvider(
             id = PostalProviders.ID_POSTALPINCODE_IN,

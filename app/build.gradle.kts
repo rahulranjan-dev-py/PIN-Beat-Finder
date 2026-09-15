@@ -55,8 +55,8 @@ android {
         applicationId = "com.pinbeatfinder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.6.0"
+        versionCode = 8
+        versionName = "0.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -71,6 +71,15 @@ android {
     }
 
     signingConfigs {
+        // Stable debug identity shared by every machine and CI run. Without this, Gradle generates
+        // a fresh debug key per runner and Android refuses to install an update over the previous
+        // build ("package conflicts with an existing package").
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         releaseSigning?.let { cfg ->
             create("release") {
                 storeFile = cfg.storeFile

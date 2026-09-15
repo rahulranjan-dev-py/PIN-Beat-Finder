@@ -6,11 +6,20 @@ import com.pinbeatfinder.core.util.PinCodeValidator
 import com.pinbeatfinder.data.remote.ConnectivityChecker
 import com.pinbeatfinder.data.remote.PostalProvider
 import com.pinbeatfinder.data.remote.ProviderFormatException
+import com.pinbeatfinder.data.remote.ProviderHealth
 import com.pinbeatfinder.data.remote.ProviderNoResultsException
 import com.pinbeatfinder.domain.model.PostOffice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
@@ -20,18 +29,23 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
 /**
- * Online All-India lookup with automatic failover.
+ * Online All-India lookup with parallel failover.
  *
- * Providers are tried in order; the first one that returns at least one office wins. A provider
- * that is down, rate-limited, returns HTML, or has changed its schema is skipped and the next one
- * is consulted. Only when every provider fails is an error surfaced, chosen to be the most useful
- * one: "not found" beats "offline" beats "timeout" beats "server error".
+ * Every applicable provider is queried at once and the first non-empty answer wins; the rest are
+ * cancelled. This trades a little extra traffic for latency that equals the *fastest* source
+ * instead of the sum of every slow one before it. Only when every provider fails is an error
+ * surfaced, chosen to be the most useful one: "not found" beats "offline" beats "timeout" beats
+ * "server error". Each attempt also updates [health] for the Settings screen.
  */
 class PostalLookupRepository(
     private val providers: List<PostalProvider>,
     private val connectivity: ConnectivityChecker,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
+    private val _health = MutableStateFlow(providers.associate { it.id to ProviderHealth(it.id, it.label) })
+    val health: StateFlow<Map<String, ProviderHealth>> = _health.asStateFlow()
+
     suspend fun lookup(query: String): AppResult<List<PostOffice>> = withContext(ioDispatcher) {
         val q = query.trim()
         if (q.isEmpty()) return@withContext AppResult.Success(emptyList())
@@ -42,18 +56,40 @@ class PostalLookupRepository(
             return@withContext AppResult.Failure(AppError.NotFound("Search by name is not available right now; try a PIN code."))
         }
 
-        val failures = ArrayList<AppError>(candidates.size)
-        for (provider in candidates) {
-            when (val outcome = tryProvider(provider, q, isPincode)) {
-                is AppResult.Success -> if (outcome.value.isNotEmpty()) return@withContext outcome
-                is AppResult.Failure -> failures += outcome.error
-            }
-        }
-        AppResult.Failure(pickMostUseful(failures))
+        raceProviders(candidates, q, isPincode)
     }
 
-    private suspend fun tryProvider(provider: PostalProvider, query: String, isPincode: Boolean): AppResult<List<PostOffice>> =
-        try {
+    /** Runs a PIN lookup through every provider (in parallel) purely to refresh [health]. */
+    suspend fun probeAll(pincode: String = PROBE_PINCODE) = withContext(ioDispatcher) {
+        coroutineScope {
+            providers.map { p -> async { tryProvider(p, pincode, isPincode = true) } }.forEach { it.await() }
+        }
+    }
+
+    private suspend fun raceProviders(candidates: List<PostalProvider>, query: String, isPincode: Boolean): AppResult<List<PostOffice>> =
+        coroutineScope {
+            val pending: MutableList<Deferred<AppResult<List<PostOffice>>>> =
+                candidates.map { p -> async { tryProvider(p, query, isPincode) } }.toMutableList()
+            val failures = ArrayList<AppError>(candidates.size)
+            while (pending.isNotEmpty()) {
+                val (finished, outcome) = select<Pair<Deferred<AppResult<List<PostOffice>>>, AppResult<List<PostOffice>>>> {
+                    pending.forEach { d -> d.onAwait { r -> d to r } }
+                }
+                pending.remove(finished)
+                when (outcome) {
+                    is AppResult.Success -> if (outcome.value.isNotEmpty()) {
+                        pending.forEach { it.cancel() }
+                        return@coroutineScope outcome
+                    }
+                    is AppResult.Failure -> failures += outcome.error
+                }
+            }
+            AppResult.Failure(pickMostUseful(failures))
+        }
+
+    private suspend fun tryProvider(provider: PostalProvider, query: String, isPincode: Boolean): AppResult<List<PostOffice>> {
+        val started = clock()
+        val result: AppResult<List<PostOffice>> = try {
             val fetched = provider.fetch(query, isPincode)
             val offices = provider.map(fetched.body, query)
             AppResult.Success(if (fetched.fromCache) offices.map { it.copy(fromCache = true) } else offices)
@@ -84,8 +120,30 @@ class PostalLookupRepository(
             // Serialization or any other unexpected failure: treat as this provider being broken.
             AppResult.Failure(AppError.Unknown(e))
         }
+        recordHealth(provider, result, clock() - started)
+        return result
+    }
+
+    private fun recordHealth(provider: PostalProvider, result: AppResult<List<PostOffice>>, latencyMs: Long) {
+        // "Not found" still means the service answered, so it counts as healthy.
+        val (status, detail) = when (result) {
+            is AppResult.Success -> ProviderHealth.Status.OK to null
+            is AppResult.Failure -> when (val e = result.error) {
+                is AppError.NotFound -> ProviderHealth.Status.OK to null
+                AppError.Offline -> ProviderHealth.Status.FAILED to "offline"
+                AppError.Timeout -> ProviderHealth.Status.FAILED to "timeout"
+                is AppError.Http -> ProviderHealth.Status.FAILED to (if (e.code == 0) e.message else "HTTP ${e.code}")
+                is AppError.Unknown -> ProviderHealth.Status.FAILED to (e.cause.message ?: e.cause::class.simpleName)
+            }
+        }
+        _health.update { map ->
+            map + (provider.id to ProviderHealth(provider.id, provider.label, status, latencyMs, clock(), detail))
+        }
+    }
 
     companion object {
+        const val PROBE_PINCODE = "110001"
+
         /** Rank errors so the aggregate message reflects the most actionable cause. */
         fun pickMostUseful(errors: List<AppError>): AppError {
             errors.firstOrNull { it is AppError.NotFound }?.let { return it }

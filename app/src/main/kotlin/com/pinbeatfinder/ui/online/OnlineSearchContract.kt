@@ -23,7 +23,19 @@ data class OnlineSearchState(
     val selectedOffice: PostOffice? = null,
     /** From the connectivity observer; drives the offline banner. */
     val isOffline: Boolean = false,
+    /** State groups the user has collapsed in the grouped result list. */
+    val collapsedStates: Set<String> = emptySet(),
 ) {
+    /** Grouped view applies when several states are present and none is selected. */
+    val isGrouped: Boolean get() = stateFilter == null && states.size > 1
+
+    /** Visible results ordered for the grouped list: state, district, name. */
+    val groupedResults: List<Pair<String, List<PostOffice>>>
+        get() = visibleResults
+            .sortedWith(compareBy({ it.state.lowercase() }, { it.district.lowercase() }, { it.name.lowercase() }))
+            .groupBy { it.state }
+            .map { (state, offices) -> state to offices }
+
     val hasSearched: Boolean get() = submittedQuery.isNotEmpty()
     val hasFilters: Boolean get() = stateFilter != null || districtFilter != null
 
@@ -64,6 +76,8 @@ sealed interface OnlineSearchIntent {
 
     data class SelectOffice(val office: PostOffice) : OnlineSearchIntent
     data object DismissDetail : OnlineSearchIntent
+    data class ToggleStateGroup(val state: String) : OnlineSearchIntent
+    data object ExpandAllGroups : OnlineSearchIntent
 }
 
 /** Localised message for an [AppError]; lives here so both tabs phrase errors the same way. */

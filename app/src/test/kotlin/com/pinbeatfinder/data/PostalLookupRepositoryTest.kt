@@ -6,6 +6,7 @@ import com.pinbeatfinder.data.remote.ConnectivityChecker
 import com.pinbeatfinder.data.remote.FetchResult
 import com.pinbeatfinder.data.remote.PostalProvider
 import com.pinbeatfinder.data.remote.ProviderFormatException
+import com.pinbeatfinder.data.remote.ProviderHealth
 import com.pinbeatfinder.data.remote.ProviderNoResultsException
 import com.pinbeatfinder.data.repository.PostalLookupRepository
 import com.pinbeatfinder.domain.model.PostOffice
@@ -63,6 +64,26 @@ class PostalLookupRepositoryTest {
         ).lookup("Rampur")
         assertTrue(!pinOnlyCalled)
         assertEquals("names", (r as AppResult.Success).value.single().source)
+    }
+
+    @Test
+    fun `health records ok, not-found-as-ok and failures with latency`() = runBlocking {
+        var t = 1000L
+        val r = PostalLookupRepository(
+            listOf(
+                provider("ok") { listOf(office("X", "ok")) },
+                provider("nf") { throw ProviderNoResultsException("none") },
+                provider("bad") { throw SocketTimeoutException() },
+            ),
+            online, Dispatchers.Unconfined, clock = { t += 5; t },
+        )
+        r.probeAll()
+        val h = r.health.value
+        assertEquals(ProviderHealth.Status.OK, h.getValue("ok").status)
+        assertEquals(ProviderHealth.Status.OK, h.getValue("nf").status)
+        assertEquals(ProviderHealth.Status.FAILED, h.getValue("bad").status)
+        assertEquals("timeout", h.getValue("bad").detail)
+        assertTrue(h.getValue("ok").latencyMs!! > 0)
     }
 
     @Test
