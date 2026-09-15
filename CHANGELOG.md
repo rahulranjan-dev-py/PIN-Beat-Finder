@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.5.0 — a friendlier offline directory
+
+### Added
+- **By beat view.** A Search / By beat toggle on the local tab. "By beat" lists every beat per
+  branch office with its village count, PIN(s) and SO; expand a beat to see its villages and tap
+  one to edit. Beats sort naturally (2, 2A, 10).
+- **Import preview.** Importing a spreadsheet now shows what will happen first — rows to add,
+  duplicates and blank rows skipped, rows with errors (listed) and, for replace-all, how many
+  existing records will be deleted — with Confirm/Cancel before anything is written.
+- **Swipe to delete with Undo.** Swipe a village card left to delete; a snackbar offers Undo.
+  The Delete button now also offers Undo instead of a confirmation.
+- **Multi-select.** Long-press a card to start selecting; tap others, then Delete.
+- **Duplicate.** While editing a record, "Duplicate" starts a new record on the same beat/BO/SO/PIN
+  with a blank locality — for entering neighbouring villages quickly.
+- **First-run screen.** An empty directory shows three clear actions: import a spreadsheet, get
+  the blank template, or add the first village by hand.
+
+### Changed
+- Search results bold the part of the name that matched, and phonetic hits say
+  "Sounds like ‹what you typed›" so it is clear why a differently spelled village appeared.
+
 ## v0.4.0 — bridged tabs, recents, detail sheet, India Post palette
 
 ### Added

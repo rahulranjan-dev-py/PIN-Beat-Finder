@@ -35,10 +35,11 @@ class ExcelSyncManager(
     // ------------------------------------------------------------------ import
 
     /**
-     * Parses the user-selected workbook at [uri], validates every row, and writes the valid
-     * rows to Room in a single transaction. Invalid rows are reported, never partially saved.
+     * Phase 1 of an import: parse the workbook at [uri], validate every row and work out what
+     * would be inserted or skipped — without touching the database. The result is shown to the
+     * user for confirmation and then handed to [commitImport].
      */
-    suspend fun importFrom(uri: Uri, mode: ImportMode): ImportReport = withContext(ioDispatcher) {
+    suspend fun prepareImport(uri: Uri, mode: ImportMode): ImportPreview = withContext(ioDispatcher) {
         val stream = appContext.contentResolver.openInputStream(uri)
             ?: throw FileNotFoundException("Could not open the selected file.")
         val parsed = stream.use { ExcelCodec.read(it) }
@@ -52,15 +53,30 @@ class ExcelSyncManager(
                 is DraftValidation.Invalid -> errors += RowError(row.rowNumber, v.errors)
             }
         }
-
-        val outcome = repository.importRecords(valid, replaceExisting = mode == ImportMode.REPLACE_ALL)
-        ImportReport(
-            inserted = outcome.inserted,
-            duplicatesSkipped = outcome.duplicatesSkipped,
+        val (fresh, duplicates) = repository.partitionForImport(valid, replaceExisting = mode == ImportMode.REPLACE_ALL)
+        ImportPreview(
+            mode = mode,
+            records = fresh,
+            duplicatesSkipped = duplicates,
             blankRowsSkipped = parsed.blankRowsSkipped,
             errors = errors,
+            existingCount = if (mode == ImportMode.REPLACE_ALL) repository.getAll().size else 0,
         )
     }
+
+    /** Phase 2: write the previewed rows in one transaction. */
+    suspend fun commitImport(preview: ImportPreview): ImportReport = withContext(ioDispatcher) {
+        val outcome = repository.importRecords(preview.records, replaceExisting = preview.mode == ImportMode.REPLACE_ALL)
+        ImportReport(
+            inserted = outcome.inserted,
+            duplicatesSkipped = preview.duplicatesSkipped + outcome.duplicatesSkipped,
+            blankRowsSkipped = preview.blankRowsSkipped,
+            errors = preview.errors,
+        )
+    }
+
+    /** One-shot import (preview + commit) for callers that do not need confirmation. */
+    suspend fun importFrom(uri: Uri, mode: ImportMode): ImportReport = commitImport(prepareImport(uri, mode))
 
     // ------------------------------------------------------------------ export / template
 

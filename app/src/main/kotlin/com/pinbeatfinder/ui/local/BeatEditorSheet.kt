@@ -53,6 +53,7 @@ fun BeatEditorSheet(
     onFieldChange: (BeatField, String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit,
+    onDuplicate: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val draft = editor.draft
@@ -67,10 +68,17 @@ fun BeatEditorSheet(
                 .imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                if (editor.isNew) "Add beat record" else "Edit beat record",
-                style = MaterialTheme.typography.titleLarge,
-            )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (editor.isNew) "Add beat record" else "Edit beat record",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                if (!editor.isNew) {
+                    // Entering neighbouring villages on the same beat: keep everything but the name.
+                    TextButton(onClick = onDuplicate, enabled = !editor.isSaving) { Text("Duplicate") }
+                }
+            }
 
             EditorField(BeatField.LOCALITY, draft.localityName, editor.errors, onFieldChange, capitalize = true)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

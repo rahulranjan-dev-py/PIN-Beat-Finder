@@ -28,8 +28,32 @@ data class BeatSearchFilters(
     val district: String? = null,
 )
 
+/** Why a row matched, so the UI can explain it (bold substring vs. "sounds like"). */
+enum class MatchKind {
+    /** Matched the beat number or PIN exactly, or the name exactly. */
+    EXACT,
+    /** The query text occurs in the locality name. */
+    TEXT,
+    /** Only the phonetic keys matched (misspelling tolerated). */
+    PHONETIC,
+    /** Browse mode, no query. */
+    NONE,
+    ;
+
+    companion object {
+        fun fromScore(score: Double, hasQuery: Boolean): MatchKind = when {
+            !hasQuery -> NONE
+            score >= 0.99 -> EXACT
+            score >= 0.80 -> TEXT
+            score >= 0.55 -> PHONETIC
+            else -> PHONETIC
+        }
+    }
+}
+
 /** A locally matched row plus its relevance so the UI can show "best match" affordances. */
 data class BeatSearchHit(
     val record: BeatRecord,
     val score: Double,
+    val matchKind: MatchKind = MatchKind.NONE,
 )

@@ -65,6 +65,20 @@ interface BeatDirectoryDao {
     @Query("SELECT * FROM local_beat_directory ORDER BY state, district, branchOffice, beatNumber, localityName")
     suspend fun getAll(): List<BeatDirectoryEntity>
 
+    /** Every row matching the optional filters; used by the "By beat" view, which groups in memory. */
+    @Query(
+        """
+        SELECT * FROM local_beat_directory
+        WHERE (:state IS NULL OR state = :state)
+          AND (:district IS NULL OR district = :district)
+        ORDER BY branchOffice, beatNumber, localityName
+        """,
+    )
+    suspend fun listAll(state: String?, district: String?): List<BeatDirectoryEntity>
+
+    @Query("DELETE FROM local_beat_directory WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     @Query("SELECT * FROM local_beat_directory WHERE id = :id")
     suspend fun getById(id: Long): BeatDirectoryEntity?
 

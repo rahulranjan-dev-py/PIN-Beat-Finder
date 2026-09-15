@@ -9,6 +9,8 @@ import com.pinbeatfinder.data.excel.ImportMode
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
+import com.pinbeatfinder.domain.model.BeatGrouping
+import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.DraftValidation
 import kotlinx.coroutines.CancellationException
@@ -32,10 +34,10 @@ import kotlinx.coroutines.launch
 /**
  * MVI ViewModel for the offline directory tab.
  *
- * The search pipeline is a single cold flow: (query, state, district, dataVersion) →
- * debounce 250 ms → `mapLatest` (cancels a stale search when the user keeps typing) →
- * repository. `dataVersion` is bumped after every write so the list refreshes without the
- * user retyping.
+ * Two read pipelines share the filter state and a `dataVersion` counter that is bumped after
+ * every write:
+ *  - search: (query, state, district) → debounce 250 ms → `mapLatest` → ranked hits
+ *  - by-beat: (state, district) → all rows → grouped by (BO, beat)
  */
 class LocalBeatsViewModel(
     private val repository: BeatDirectoryRepository,
@@ -51,6 +53,7 @@ class LocalBeatsViewModel(
     private val dataVersion = MutableStateFlow(0)
 
     private data class SearchKey(val query: String, val state: String?, val district: String?, val version: Int)
+    private data class GroupKey(val state: String?, val district: String?, val version: Int, val active: Boolean)
 
     init {
         combine(
@@ -63,26 +66,27 @@ class LocalBeatsViewModel(
             .onEach { hits -> _state.update { it.copy(hits = hits, isSearching = false) } }
             .launchIn(viewModelScope)
 
+        combine(
+            _state.map { Triple(it.selectedState, it.selectedDistrict, it.viewMode == LocalViewMode.BY_BEAT) }.distinctUntilChanged(),
+            dataVersion,
+        ) { (s, d, active), v -> GroupKey(s, d, v, active) }
+            .mapLatest { key ->
+                if (!key.active) emptyList()
+                else BeatGrouping.group(repository.listAll(BeatSearchFilters(key.state, key.district)))
+            }
+            .onEach { groups -> _state.update { it.copy(beatGroups = groups) } }
+            .launchIn(viewModelScope)
+
         repository.observeStates()
             .onEach { states ->
-                _state.update { s ->
-                    s.copy(
-                        states = states,
-                        selectedState = s.selectedState?.takeIf { it in states },
-                    )
-                }
+                _state.update { s -> s.copy(states = states, selectedState = s.selectedState?.takeIf { it in states }) }
             }
             .launchIn(viewModelScope)
 
         _state.map { it.selectedState }.distinctUntilChanged()
             .flatMapLatest { repository.observeDistricts(it) }
             .onEach { districts ->
-                _state.update { s ->
-                    s.copy(
-                        districts = districts,
-                        selectedDistrict = s.selectedDistrict?.takeIf { it in districts },
-                    )
-                }
+                _state.update { s -> s.copy(districts = districts, selectedDistrict = s.selectedDistrict?.takeIf { it in districts }) }
             }
             .launchIn(viewModelScope)
 
@@ -96,11 +100,13 @@ class LocalBeatsViewModel(
     fun onIntent(intent: LocalBeatsIntent) {
         when (intent) {
             is LocalBeatsIntent.QueryChanged -> _state.update { it.copy(query = intent.query) }
-            is LocalBeatsIntent.StateSelected -> _state.update {
-                it.copy(selectedState = intent.state, selectedDistrict = null)
-            }
+            is LocalBeatsIntent.StateSelected -> _state.update { it.copy(selectedState = intent.state, selectedDistrict = null) }
             is LocalBeatsIntent.DistrictSelected -> _state.update { it.copy(selectedDistrict = intent.district) }
             LocalBeatsIntent.ClearFilters -> _state.update { it.copy(selectedState = null, selectedDistrict = null) }
+            is LocalBeatsIntent.SetViewMode -> _state.update { it.copy(viewMode = intent.mode, selectedIds = emptySet()) }
+            is LocalBeatsIntent.ToggleBeatExpanded -> _state.update {
+                it.copy(expandedBeats = if (intent.key in it.expandedBeats) it.expandedBeats - intent.key else it.expandedBeats + intent.key)
+            }
 
             is LocalBeatsIntent.OpenEditor -> _state.update {
                 val draft = intent.record?.let(BeatDraft::from) ?: BeatDraft(
@@ -111,17 +117,33 @@ class LocalBeatsViewModel(
             }
             is LocalBeatsIntent.OpenEditorWithDraft -> _state.update { it.copy(editor = EditorState(intent.draft)) }
             is LocalBeatsIntent.ShowPincode -> _state.update {
-                it.copy(query = intent.pincode, selectedState = null, selectedDistrict = null)
+                it.copy(query = intent.pincode, selectedState = null, selectedDistrict = null, viewMode = LocalViewMode.SEARCH)
             }
             is LocalBeatsIntent.EditorFieldChanged -> updateEditorField(intent.field, intent.value)
             LocalBeatsIntent.SaveEditor -> saveEditor()
             LocalBeatsIntent.DismissEditor -> _state.update { it.copy(editor = null) }
+            LocalBeatsIntent.DuplicateInEditor -> _state.update { s ->
+                val d = s.editor?.draft ?: return@update s
+                s.copy(editor = EditorState(d.copy(id = 0L, localityName = "", remarks = "")))
+            }
 
             is LocalBeatsIntent.RequestDelete -> _state.update { it.copy(pendingDelete = intent.record) }
             LocalBeatsIntent.CancelDelete -> _state.update { it.copy(pendingDelete = null) }
             LocalBeatsIntent.ConfirmDelete -> confirmDelete()
+            is LocalBeatsIntent.SwipeDelete -> swipeDelete(intent.record)
+            is LocalBeatsIntent.UndoDelete -> undoDelete(intent.record)
 
-            is LocalBeatsIntent.ImportFile -> importFile(intent)
+            is LocalBeatsIntent.ToggleSelected -> _state.update {
+                it.copy(selectedIds = if (intent.id in it.selectedIds) it.selectedIds - intent.id else it.selectedIds + intent.id)
+            }
+            LocalBeatsIntent.ClearSelection -> _state.update { it.copy(selectedIds = emptySet(), confirmBulkDelete = false) }
+            LocalBeatsIntent.RequestBulkDelete -> _state.update { it.copy(confirmBulkDelete = it.selectedIds.isNotEmpty()) }
+            LocalBeatsIntent.CancelBulkDelete -> _state.update { it.copy(confirmBulkDelete = false) }
+            LocalBeatsIntent.ConfirmBulkDelete -> bulkDelete()
+
+            is LocalBeatsIntent.ImportFile -> prepareImport(intent)
+            LocalBeatsIntent.ConfirmImport -> commitImport()
+            LocalBeatsIntent.CancelImport -> _state.update { it.copy(importPreview = null) }
             LocalBeatsIntent.DismissImportReport -> _state.update { it.copy(importReport = null) }
             LocalBeatsIntent.ShareBackup -> fileOperation("Preparing backup…") {
                 val file = excel.exportBackup()
@@ -183,34 +205,79 @@ class LocalBeatsViewModel(
         }
     }
 
+    // ------------------------------------------------------------------ delete
+
     private fun confirmDelete() {
         val record = _state.value.pendingDelete ?: return
+        _state.update { it.copy(pendingDelete = null) }
+        swipeDelete(record)
+    }
+
+    private fun swipeDelete(record: BeatRecord) {
         viewModelScope.launch {
             try {
                 repository.delete(record.id)
                 dataVersion.update { it + 1 }
-                _effects.send(LocalBeatsEffect.ShowMessage("Deleted ${record.localityName}."))
+                _state.update { it.copy(selectedIds = it.selectedIds - record.id) }
+                _effects.send(LocalBeatsEffect.ShowUndoDelete(record))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _effects.send(LocalBeatsEffect.ShowMessage("Could not delete: ${e.message}"))
-            } finally {
-                _state.update { it.copy(pendingDelete = null) }
+            }
+        }
+    }
+
+    private fun undoDelete(record: BeatRecord) {
+        viewModelScope.launch {
+            try {
+                repository.save(record.copy(id = 0L))
+                dataVersion.update { it + 1 }
+                _effects.send(LocalBeatsEffect.ShowMessage("Restored ${record.localityName}."))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effects.send(LocalBeatsEffect.ShowMessage("Could not restore: ${e.message}"))
+            }
+        }
+    }
+
+    private fun bulkDelete() {
+        val ids = _state.value.selectedIds
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                repository.deleteMany(ids)
+                dataVersion.update { it + 1 }
+                _state.update { it.copy(selectedIds = emptySet(), confirmBulkDelete = false) }
+                _effects.send(LocalBeatsEffect.ShowMessage("Deleted ${ids.size} record(s)."))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(confirmBulkDelete = false) }
+                _effects.send(LocalBeatsEffect.ShowMessage("Could not delete: ${e.message}"))
             }
         }
     }
 
     // ------------------------------------------------------------------ excel
 
-    private fun importFile(intent: LocalBeatsIntent.ImportFile) = fileOperation(
-        if (intent.mode == ImportMode.REPLACE_ALL) "Replacing directory…" else "Importing…",
-    ) {
+    private fun prepareImport(intent: LocalBeatsIntent.ImportFile) = fileOperation("Reading spreadsheet…") {
         try {
-            val report = excel.importFrom(intent.uri, intent.mode)
-            dataVersion.update { it + 1 }
-            _state.update { it.copy(importReport = report) }
+            val preview = excel.prepareImport(intent.uri, intent.mode)
+            _state.update { it.copy(importPreview = preview) }
         } catch (e: ExcelFormatException) {
             _effects.send(LocalBeatsEffect.ShowMessage(e.message ?: "Unrecognised spreadsheet format."))
+        }
+    }
+
+    private fun commitImport() {
+        val preview = _state.value.importPreview ?: return
+        _state.update { it.copy(importPreview = null) }
+        fileOperation(if (preview.mode == ImportMode.REPLACE_ALL) "Replacing directory…" else "Importing…") {
+            val report = excel.commitImport(preview)
+            dataVersion.update { it + 1 }
+            _state.update { it.copy(importReport = report) }
         }
     }
 
