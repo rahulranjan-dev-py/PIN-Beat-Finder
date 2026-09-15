@@ -200,4 +200,16 @@
     <string name="settings_cache_cleared">Saved online results cleared.</string>
     <string name="settings_about">About</string>
     <string name="settings_version">PIN Beat Finder %1$s • offline-first directory for India Post mail branches</string>
+
+    <!-- v0.7.0 -->
+    <string name="online_group_header">%1$s • %2$d</string>
+    <string name="online_expand_all">Expand all states</string>
+    <string name="settings_high_contrast">High contrast</string>
+    <string name="settings_high_contrast_desc">Black-and-white surfaces with stronger colours for bright sunlight.</string>
+    <string name="settings_sources">Online data sources</string>
+    <string name="settings_sources_desc">Sources are queried together and the fastest answer wins. Status reflects the most recent attempt.</string>
+    <string name="source_test_now">Test now</string>
+    <string name="source_status_ok">Working • %1$d ms</string>
+    <string name="source_status_failed">Not responding (%1$s)</string>
+    <string name="source_status_unknown">Not tried yet</string>
 </resources>

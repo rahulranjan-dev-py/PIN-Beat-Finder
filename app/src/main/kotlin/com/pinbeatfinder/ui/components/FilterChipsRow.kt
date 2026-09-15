@@ -17,8 +17,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import com.pinbeatfinder.R
+import com.pinbeatfinder.ui.theme.rememberHaptic
 import androidx.compose.ui.unit.dp
 
 /**
@@ -35,6 +37,11 @@ fun FilterChipsRow(
     hideWhenSingle: Boolean = false,
 ) {
     if (options.isEmpty() || (hideWhenSingle && options.size == 1 && selected == null)) return
+    val haptic = rememberHaptic()
+    val select: (String?) -> Unit = { value ->
+        haptic(HapticFeedbackType.SegmentTick)
+        onSelect(value)
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -46,14 +53,14 @@ fun FilterChipsRow(
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         FilterChip(
             selected = selected == null,
-            onClick = { onSelect(null) },
+            onClick = { select(null) },
             label = { Text(stringResource(R.string.chip_all)) },
         )
         options.forEach { option ->
             val isSelected = option == selected
             FilterChip(
                 selected = isSelected,
-                onClick = { onSelect(if (isSelected) null else option) },
+                onClick = { select(if (isSelected) null else option) },
                 label = { Text(option) },
                 leadingIcon = if (isSelected) {
                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.width(FilterChipDefaults.IconSize)) }

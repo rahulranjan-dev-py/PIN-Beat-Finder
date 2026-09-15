@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            PinBeatFinderTheme(darkTheme = darkTheme) {
+            PinBeatFinderTheme(darkTheme = darkTheme, highContrast = settings.highContrast) {
                 val base = LocalDensity.current
                 CompositionLocalProvider(
                     LocalDensity provides Density(base.density, base.fontScale * settings.textScale.factor),

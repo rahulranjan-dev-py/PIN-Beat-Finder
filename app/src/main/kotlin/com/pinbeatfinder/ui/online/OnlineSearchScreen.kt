@@ -2,6 +2,7 @@ package com.pinbeatfinder.ui.online
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
@@ -223,36 +226,89 @@ fun OnlineSearchContent(
                 actionLabel = stringResource(R.string.action_clear_filters),
                 onAction = { onIntent(OnlineSearchIntent.ClearFilters) },
             )
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                item {
-                    val shown = state.visibleResults.size
-                    Text(
-                        if (state.hasFilters) stringResource(R.string.online_count_filtered, shown, state.results.size, state.submittedQuery)
-                        else stringResource(R.string.online_count, shown, state.submittedQuery),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    state.results.firstOrNull()?.source?.takeIf { it.isNotBlank() }?.let { source ->
+            else -> ResultsList(state, onIntent, bridge)
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ResultsList(state: OnlineSearchState, onIntent: (OnlineSearchIntent) -> Unit, bridge: OnlineBridge) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            val shown = state.visibleResults.size
+            Text(
+                if (state.hasFilters) stringResource(R.string.online_count_filtered, shown, state.results.size, state.submittedQuery)
+                else stringResource(R.string.online_count, shown, state.submittedQuery),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            state.results.firstOrNull()?.source?.takeIf { it.isNotBlank() }?.let { source ->
+                Text(
+                    stringResource(R.string.online_source, source),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state.isGrouped && state.collapsedStates.isNotEmpty()) {
+                TextButton(onClick = { onIntent(OnlineSearchIntent.ExpandAllGroups) }, contentPadding = PaddingValues(0.dp)) {
+                    Text(stringResource(R.string.online_expand_all))
+                }
+            }
+        }
+        if (state.isGrouped) {
+            // A common name spans several states: sticky state headers turn the list into a
+            // table of contents, and groups stay collapsed until the user opens one.
+            state.groupedResults.forEach { (stateName, offices) ->
+                val collapsed = stateName in state.collapsedStates
+                stickyHeader(key = "hdr|$stateName") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface)
+                            .clickable { onIntent(OnlineSearchIntent.ToggleStateGroup(stateName)) }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            stringResource(R.string.online_source, source),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            stringResource(R.string.online_group_header, stateName, offices.size),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            if (collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                            contentDescription = stringResource(if (collapsed) R.string.action_expand else R.string.action_collapse),
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
-                items(state.visibleResults, key = { "${it.name}|${it.pincode}|${it.branchType}|${it.district}" }) { office ->
-                    PostOfficeCard(
-                        office = office,
-                        localCount = state.localCountFor(office),
-                        onClick = { onIntent(OnlineSearchIntent.SelectOffice(office)) },
-                        onShowLocalBeats = { bridge.showLocalBeatsFor(office.pincode) },
-                        modifier = Modifier.animateItem(),
-                    )
+                if (!collapsed) {
+                    items(offices, key = { "${it.name}|${it.pincode}|${it.branchType}|${it.district}" }) { office ->
+                        PostOfficeCard(
+                            office = office,
+                            localCount = state.localCountFor(office),
+                            onClick = { onIntent(OnlineSearchIntent.SelectOffice(office)) },
+                            onShowLocalBeats = { bridge.showLocalBeatsFor(office.pincode) },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
                 }
+            }
+        } else {
+            items(state.visibleResults, key = { "${it.name}|${it.pincode}|${it.branchType}|${it.district}" }) { office ->
+                PostOfficeCard(
+                    office = office,
+                    localCount = state.localCountFor(office),
+                    onClick = { onIntent(OnlineSearchIntent.SelectOffice(office)) },
+                    onShowLocalBeats = { bridge.showLocalBeatsFor(office.pincode) },
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
     }

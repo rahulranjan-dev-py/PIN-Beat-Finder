@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.7.0 — faster lookups, grouped results, stable updates
+
+### Fixed
+- **Updates now install over the previous version.** Each CI build used to sign with a freshly
+  generated debug key, so Android reported "package conflicts with an existing package". Builds
+  now share one committed debug keystore. **One last uninstall of v0.6.0 or older is required**;
+  from v0.7.0 onwards updates install in place.
+
+### Changed
+- **Faster online search.** All data sources are queried in parallel and the fastest answer
+  wins (previously they were tried one after another, each allowed up to 20 s). Timeouts are
+  tighter and the static directory mirror, usually the quickest, is tried first.
+- **Grouped results.** When a name exists in several states, the online list groups by state
+  with sticky headers and counts; groups start collapsed when there are more than two states.
+
+### Added
+- **Data sources status** in Settings: which sources are working, how fast they answered last
+  time, and a "Test now" button.
+- **High contrast** theme option for bright sunlight.
+- Vibration tick on filter chips.
+- Redesigned launcher icon (with a themed/monochrome variant on Android 13+).
+
 ## v0.6.0 — settings, Hindi, offline awareness
 
 ### Added

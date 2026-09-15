@@ -85,6 +85,60 @@ private val DarkColors = darkColorScheme(
     inversePrimary = Color(0xFFB3261E),
 )
 
+/*
+ * High-contrast variants for bright sunlight: pure white/black surfaces, near-black/near-white
+ * text, darker or lighter accents, and outlines that read as solid lines.
+ */
+private val LightHighContrast = LightColors.copy(
+    primary = Color(0xFF8C1D18),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFB3261E),
+    onPrimaryContainer = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE6C9C6),
+    onSecondaryContainer = Color(0xFF000000),
+    tertiary = Color(0xFF4A3B00),
+    tertiaryContainer = Color(0xFFFFD54A),
+    onTertiaryContainer = Color(0xFF000000),
+    background = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF000000),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF000000),
+    surfaceVariant = Color(0xFFEDEDED),
+    onSurfaceVariant = Color(0xFF1A1A1A),
+    outline = Color(0xFF000000),
+    outlineVariant = Color(0xFF444444),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF4F4F4),
+    surfaceContainer = Color(0xFFECECEC),
+    surfaceContainerHigh = Color(0xFFE2E2E2),
+    surfaceContainerHighest = Color(0xFFD8D8D8),
+)
+
+private val DarkHighContrast = DarkColors.copy(
+    primary = Color(0xFFFFD1CB),
+    onPrimary = Color(0xFF000000),
+    primaryContainer = Color(0xFFFFB4AB),
+    onPrimaryContainer = Color(0xFF000000),
+    secondaryContainer = Color(0xFF6E514E),
+    onSecondaryContainer = Color(0xFFFFFFFF),
+    tertiary = Color(0xFFFFE08A),
+    tertiaryContainer = Color(0xFF6E5A00),
+    onTertiaryContainer = Color(0xFFFFFFFF),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFFFFFFF),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFF2A2A2A),
+    onSurfaceVariant = Color(0xFFF2F2F2),
+    outline = Color(0xFFFFFFFF),
+    outlineVariant = Color(0xFFBBBBBB),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF141414),
+    surfaceContainer = Color(0xFF1E1E1E),
+    surfaceContainerHigh = Color(0xFF2A2A2A),
+    surfaceContainerHighest = Color(0xFF363636),
+)
+
 /** Brand colour used for the app bar regardless of light/dark so the header is always post-box red. */
 val PostBoxRed = Color(0xFFB3261E)
 val OnPostBoxRed = Color(0xFFFFFFFF)
@@ -92,10 +146,12 @@ val OnPostBoxRed = Color(0xFFFFFFFF)
 @Composable
 fun PinBeatFinderTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    highContrast: Boolean = false,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
+        highContrast -> if (darkTheme) DarkHighContrast else LightHighContrast
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

@@ -21,3 +21,7 @@ captures/
 keystore.properties
 *.jks
 *.keystore
+
+# The debug keystore is intentionally committed so every CI build shares one signature
+# (otherwise each release refuses to install over the previous one).
+!app/debug.keystore

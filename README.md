@@ -53,7 +53,9 @@ app/src/main/kotlin/com/pinbeatfinder/
 
 ### Online lookup providers
 
-`PostalLookupRepository` consults providers in order and returns the first non-empty answer:
+`PostalLookupRepository` queries every applicable provider **in parallel** and returns the
+fastest non-empty answer (the others are cancelled); Settings → *Online data sources* shows each
+provider's last status and latency. Order below is the tie-break only:
 
 | Order | Source | Lookup by | Notes |
 | --- | --- | --- | --- |
@@ -87,6 +89,12 @@ Sheet `Beat Directory`, header row (columns marked `*` are mandatory):
 Header matching on import is tolerant (case, punctuation, `*`, and `(BO)`-style hints are ignored).
 PINs must match `^[1-9][0-9]{5}$`; numeric cells such as `110001` or `3.0` are normalised. Invalid
 rows are listed in the import report and skipped; valid rows are inserted in one Room transaction.
+
+### Debug signing
+
+`app/debug.keystore` is committed on purpose (standard `android`/`androiddebugkey` credentials,
+not a secret). Without it every CI runner would generate its own debug key and Android would
+refuse to install one build over another. Release signing is unaffected.
 
 ## Building
 

@@ -65,6 +65,10 @@ class OnlineSearchViewModel(
 
             is OnlineSearchIntent.SelectOffice -> _state.update { it.copy(selectedOffice = intent.office) }
             OnlineSearchIntent.DismissDetail -> _state.update { it.copy(selectedOffice = null) }
+            is OnlineSearchIntent.ToggleStateGroup -> _state.update {
+                it.copy(collapsedStates = if (intent.state in it.collapsedStates) it.collapsedStates - intent.state else it.collapsedStates + intent.state)
+            }
+            OnlineSearchIntent.ExpandAllGroups -> _state.update { it.copy(collapsedStates = emptySet()) }
         }
     }
 
@@ -84,7 +88,10 @@ class OnlineSearchViewModel(
             }
             when (val result = repository.lookup(query)) {
                 is AppResult.Success -> {
-                    _state.update { it.copy(isLoading = false, results = result.value) }
+                    // With many states, start collapsed so the list reads as a table of contents.
+                    val stateCount = result.value.map { it.state }.distinct().size
+                    val collapsed = if (stateCount > 2) result.value.map { it.state }.toSet() else emptySet()
+                    _state.update { it.copy(isLoading = false, results = result.value, collapsedStates = collapsed) }
                     if (result.value.isNotEmpty()) recents.record(query)
                 }
                 is AppResult.Failure -> _state.update { it.copy(isLoading = false, results = emptyList(), error = result.error) }
