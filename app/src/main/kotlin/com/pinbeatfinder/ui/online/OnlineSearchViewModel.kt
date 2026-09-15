@@ -29,6 +29,11 @@ class OnlineSearchViewModel(
                 inFlight?.cancel()
                 _state.value = OnlineSearchState()
             }
+            is OnlineSearchIntent.StateFilterSelected -> _state.update {
+                it.copy(stateFilter = intent.state, districtFilter = null)
+            }
+            is OnlineSearchIntent.DistrictFilterSelected -> _state.update { it.copy(districtFilter = intent.district) }
+            OnlineSearchIntent.ClearFilters -> _state.update { it.copy(stateFilter = null, districtFilter = null) }
         }
     }
 
@@ -37,7 +42,7 @@ class OnlineSearchViewModel(
         if (query.isEmpty()) return
         inFlight?.cancel()
         inFlight = viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null, submittedQuery = query) }
+            _state.update { it.copy(isLoading = true, error = null, submittedQuery = query, stateFilter = null, districtFilter = null) }
             when (val result = repository.lookup(query)) {
                 is AppResult.Success -> _state.update { it.copy(isLoading = false, results = result.value) }
                 is AppResult.Failure -> _state.update { it.copy(isLoading = false, results = emptyList(), error = result.error) }

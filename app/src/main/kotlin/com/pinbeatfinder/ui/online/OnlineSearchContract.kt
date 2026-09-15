@@ -7,10 +7,31 @@ data class OnlineSearchState(
     val query: String = "",
     val submittedQuery: String = "",
     val isLoading: Boolean = false,
+    /** Everything the providers returned for [submittedQuery]; filters never touch this. */
     val results: List<PostOffice> = emptyList(),
     val error: AppError? = null,
+    val stateFilter: String? = null,
+    val districtFilter: String? = null,
 ) {
     val hasSearched: Boolean get() = submittedQuery.isNotEmpty()
+    val hasFilters: Boolean get() = stateFilter != null || districtFilter != null
+
+    /** Distinct states present in the results, alphabetical. */
+    val states: List<String>
+        get() = results.map { it.state }.filter { it.isNotBlank() }.distinct().sorted()
+
+    /** Distinct districts, narrowed to the selected state when one is chosen. */
+    val districts: List<String>
+        get() = results.asSequence()
+            .filter { stateFilter == null || it.state == stateFilter }
+            .map { it.district }.filter { it.isNotBlank() }.distinct().sorted().toList()
+
+    /** Results after applying the chips; this is what the list shows. */
+    val visibleResults: List<PostOffice>
+        get() = results.filter {
+            (stateFilter == null || it.state == stateFilter) &&
+                (districtFilter == null || it.district == districtFilter)
+        }
 }
 
 sealed interface OnlineSearchIntent {
@@ -18,6 +39,9 @@ sealed interface OnlineSearchIntent {
     data object Submit : OnlineSearchIntent
     data object Retry : OnlineSearchIntent
     data object Clear : OnlineSearchIntent
+    data class StateFilterSelected(val state: String?) : OnlineSearchIntent
+    data class DistrictFilterSelected(val district: String?) : OnlineSearchIntent
+    data object ClearFilters : OnlineSearchIntent
 }
 
 /** Human-readable message for an [AppError]; lives here so both tabs phrase errors the same way. */
