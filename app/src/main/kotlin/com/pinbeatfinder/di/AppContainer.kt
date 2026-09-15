@@ -3,6 +3,9 @@ package com.pinbeatfinder.di
 import android.content.Context
 import com.pinbeatfinder.BuildConfig
 import com.pinbeatfinder.core.phonetic.PhoneticSearchEngine
+import com.pinbeatfinder.data.directory.DirectoryDatabase
+import com.pinbeatfinder.data.directory.DirectorySeeder
+import com.pinbeatfinder.data.directory.IndiaPostDirectoryRepository
 import com.pinbeatfinder.data.excel.ExcelSyncManager
 import com.pinbeatfinder.data.local.BeatFinderDatabase
 import com.pinbeatfinder.data.prefs.AppSettingsRepository
@@ -41,12 +44,23 @@ class AppContainer(context: Context) {
 
     val postalApi: PostalApiService by lazy { NetworkModule.postalApi(NetworkModule.retrofit(okHttpClient)) }
 
+    val directoryDatabase: DirectoryDatabase by lazy { DirectoryDatabase.build(appContext) }
+
+    val directorySeeder: DirectorySeeder by lazy {
+        DirectorySeeder(appContext, directoryDatabase, SharedPrefsStore(appContext))
+    }
+
+    val indiaPostDirectory: IndiaPostDirectoryRepository by lazy {
+        IndiaPostDirectoryRepository(directoryDatabase.directoryDao(), directorySeeder, phoneticEngine)
+    }
+
     val postalLookupRepository: PostalLookupRepository by lazy {
         PostalLookupRepository(
             providers = NetworkModule.postalProviders(postalApi) {
                 appSettingsRepository.settings.value.dataGovInApiKey.ifBlank { BuildConfig.DATA_GOV_IN_API_KEY }
             },
             connectivity = connectivity,
+            local = indiaPostDirectory,
         )
     }
 

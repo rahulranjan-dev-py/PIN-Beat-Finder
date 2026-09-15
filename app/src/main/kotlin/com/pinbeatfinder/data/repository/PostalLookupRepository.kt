@@ -4,6 +4,7 @@ import com.pinbeatfinder.core.util.AppError
 import com.pinbeatfinder.core.util.AppResult
 import com.pinbeatfinder.core.util.PinCodeValidator
 import com.pinbeatfinder.data.remote.ConnectivityChecker
+import com.pinbeatfinder.data.remote.LocalDirectorySource
 import com.pinbeatfinder.data.remote.PostalProvider
 import com.pinbeatfinder.data.remote.ProviderFormatException
 import com.pinbeatfinder.data.remote.ProviderHealth
@@ -42,14 +43,35 @@ class PostalLookupRepository(
     private val connectivity: ConnectivityChecker,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** On-device directory consulted first; network providers only run when it has no answer. */
+    private val local: LocalDirectorySource? = null,
 ) {
-    private val _health = MutableStateFlow(providers.associate { it.id to ProviderHealth(it.id, it.label) })
+    private val _health = MutableStateFlow(
+        buildMap {
+            local?.let { put(it.id, ProviderHealth(it.id, it.label)) }
+            providers.forEach { put(it.id, ProviderHealth(it.id, it.label)) }
+        },
+    )
     val health: StateFlow<Map<String, ProviderHealth>> = _health.asStateFlow()
 
     suspend fun lookup(query: String): AppResult<List<PostOffice>> = withContext(ioDispatcher) {
         val q = query.trim()
         if (q.isEmpty()) return@withContext AppResult.Success(emptyList())
         val isPincode = PinCodeValidator.isValid(q)
+
+        local?.let { src ->
+            if (src.isReady()) {
+                val started = clock()
+                val hit = runCatching { src.search(q, isPincode) }
+                val latency = clock() - started
+                hit.onSuccess { offices ->
+                    _health.update { it + (src.id to ProviderHealth(src.id, src.label, ProviderHealth.Status.OK, latency, clock())) }
+                    if (offices.isNotEmpty()) return@withContext AppResult.Success(offices)
+                }.onFailure { e ->
+                    _health.update { it + (src.id to ProviderHealth(src.id, src.label, ProviderHealth.Status.FAILED, latency, clock(), e.message)) }
+                }
+            }
+        }
 
         val candidates = providers.filter { isPincode || it.supportsNameSearch }
         if (candidates.isEmpty()) {

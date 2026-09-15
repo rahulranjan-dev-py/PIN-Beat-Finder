@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PIN Beat Finder</string>
-    <string name="tab_online">ऑनलाइन अखिल भारत</string>
+    <string name="tab_online">अखिल भारत</string>
     <string name="tab_local">स्थानीय बीट (ऑफ़लाइन)</string>
     <string name="search_online_hint">पिन कोड या डाकघर का नाम</string>
     <string name="search_local_hint">गाँव / मोहल्ला (वर्तनी गलत हो तो भी चलेगा)</string>
@@ -40,7 +40,7 @@
 
     <string name="online_supporting">6 अंकों का पिन या डाकघर का नाम लिखें, फिर खोजें दबाएँ।</string>
     <string name="online_intro_title">अखिल भारतीय डाकघर खोज</string>
-    <string name="online_intro_message">भारत के किसी भी पिन कोड या डाकघर का नाम खोजें। परिणाम ऑफ़लाइन उपयोग के लिए सहेजे जाते हैं और आपकी खोजें यहाँ दोबारा उपयोग के लिए दिखती हैं।</string>
+    <string name="online_intro_message">भारत के किसी भी पिन कोड या डाकघर का नाम खोजें। पूरी निर्देशिका ऐप में शामिल है और ऑफ़लाइन काम करती है; नई प्रविष्टियाँ ऑनलाइन स्रोतों से आती हैं। आपकी खोजें यहाँ दोबारा उपयोग के लिए दिखती हैं।</string>
     <string name="online_no_results_title">कोई परिणाम नहीं</string>
     <string name="online_no_results_message">“%1$s” से कुछ नहीं मिला।</string>
     <string name="online_filtered_out_title">फ़िल्टर से कोई परिणाम नहीं मिला</string>
@@ -50,7 +50,7 @@
     <string name="online_count_filtered">“%3$s” के लिए %2$d में से %1$d डाकघर</string>
     <string name="online_source">स्रोत: %1$s • विवरण के लिए कार्ड पर टैप करें</string>
     <string name="online_cached">सहेजा हुआ</string>
-    <string name="online_offline_banner">आप ऑफ़लाइन हैं — जहाँ उपलब्ध हों, सहेजे हुए परिणाम दिखाए जा रहे हैं।</string>
+    <string name="online_offline_banner">आप ऑफ़लाइन हैं — अंतर्निहित निर्देशिका और सहेजे हुए परिणाम उपयोग हो रहे हैं।</string>
     <string name="online_local_count">इस पिन के %1$d स्थानीय बीट रिकॉर्ड  ›</string>
     <string name="recents_title">हाल की खोजें</string>
     <string name="recents_searched_times">%1$d बार खोजा गया</string>
@@ -206,4 +206,8 @@
     <string name="source_status_ok">चालू • %1$d ms</string>
     <string name="source_status_failed">जवाब नहीं (%1$s)</string>
     <string name="source_status_unknown">अभी तक नहीं आज़माया</string>
+
+    <!-- v0.8.0 -->
+    <string name="directory_preparing">अंतर्निहित अखिल भारतीय निर्देशिका तैयार हो रही है… %1$d%%</string>
+    <string name="directory_failed">अंतर्निहित निर्देशिका लोड नहीं हो सकी (%1$s)। ऑनलाइन स्रोत उपयोग होंगे।</string>
 </resources>

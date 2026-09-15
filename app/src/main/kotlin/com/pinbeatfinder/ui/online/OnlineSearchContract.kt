@@ -3,6 +3,7 @@ package com.pinbeatfinder.ui.online
 import com.pinbeatfinder.R
 import com.pinbeatfinder.core.util.AppError
 import com.pinbeatfinder.ui.components.UiText
+import com.pinbeatfinder.data.directory.SeedState
 import com.pinbeatfinder.data.prefs.RecentSearch
 import com.pinbeatfinder.domain.model.PostOffice
 
@@ -25,6 +26,8 @@ data class OnlineSearchState(
     val isOffline: Boolean = false,
     /** State groups the user has collapsed in the grouped result list. */
     val collapsedStates: Set<String> = emptySet(),
+    /** Progress of the one-time bundled directory load. */
+    val seedState: SeedState = SeedState.NotStarted,
 ) {
     /** Grouped view applies when several states are present and none is selected. */
     val isGrouped: Boolean get() = stateFilter == null && states.size > 1
