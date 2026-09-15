@@ -88,6 +88,13 @@ class ExcelSyncManager(
         file
     }
 
+    /** Writes just [records] (one beat, one office…) into the app cache under a [label]-based name. */
+    suspend fun exportRecords(records: List<BeatRecord>, label: String): File = withContext(ioDispatcher) {
+        val file = File(exportDir, ExcelCodec.exportFileName(label))
+        file.outputStream().buffered().use { ExcelCodec.writeRecords(records, it) }
+        file
+    }
+
     /** Writes the blank template into the app cache and returns the file. */
     suspend fun exportTemplate(): File = withContext(ioDispatcher) {
         val file = File(exportDir, ExcelCodec.TEMPLATE_FILE_NAME)

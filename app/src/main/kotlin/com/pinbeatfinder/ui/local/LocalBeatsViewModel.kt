@@ -20,6 +20,7 @@ import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.DraftValidation
 import com.pinbeatfinder.domain.model.FieldError
 import com.pinbeatfinder.domain.model.OfficeSummary
+import com.pinbeatfinder.domain.model.OfficeType
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.domain.model.withOffice
 import kotlinx.coroutines.CancellationException
@@ -103,6 +104,22 @@ class LocalBeatsViewModel(
             .onEach { suggestions -> updateEditor { it.copy(officeSuggestions = suggestions) } }
             .launchIn(viewModelScope)
 
+        // Account Office suggestions: same lookup, restricted to SO/HO/GPO; same PIN, then same district, first.
+        _state.map { s -> s.editor?.let { Triple(it.draft.accountOffice.trim(), it.draft.pincode, it.draft.district.trim().lowercase()) } }
+            .distinctUntilChanged()
+            .debounce { if (it == null || it.first.length < SUGGEST_MIN_CHARS) 0L else SEARCH_DEBOUNCE_MS }
+            .mapLatest { key ->
+                if (key == null || key.first.length < SUGGEST_MIN_CHARS) return@mapLatest emptyList<PostOffice>()
+                runCatching {
+                    directory.search(key.first, isPincode = false)
+                        .filter { it.officeType in ACCOUNT_OFFICE_TYPES }
+                        .sortedBy { if (it.pincode == key.second) 0 else if (it.district.trim().lowercase() == key.third) 1 else 2 }
+                        .take(SUGGEST_LIMIT)
+                }.getOrDefault(emptyList())
+            }
+            .onEach { suggestions -> updateEditor { it.copy(accountSuggestions = suggestions) } }
+            .launchIn(viewModelScope)
+
         repository.observeStates()
             .onEach { states ->
                 _state.update { s -> s.copy(states = states, selectedState = s.selectedState?.takeIf { it in states }) }
@@ -148,7 +165,21 @@ class LocalBeatsViewModel(
             is LocalBeatsIntent.EditorFieldChanged -> updateEditorField(intent.field, intent.value)
             LocalBeatsIntent.FetchOfficesForPin -> fetchOfficesForPin()
             is LocalBeatsIntent.OfficeSelected -> selectOffice(intent.office)
-            LocalBeatsIntent.DismissFetchedOffices -> updateEditor { it.copy(fetchedOffices = null) }
+            LocalBeatsIntent.DismissFetchedOffices -> updateEditor { it.copy(fetchedOffices = null, pickerSelection = emptySet()) }
+            is LocalBeatsIntent.TogglePickerOffice -> updateEditor {
+                val name = intent.office.name
+                it.copy(pickerSelection = if (name in it.pickerSelection) it.pickerSelection - name else it.pickerSelection + name)
+            }
+            LocalBeatsIntent.ConfirmPickerSelection -> confirmPickerSelection()
+            LocalBeatsIntent.SkipQueued -> advanceQueue()
+            is LocalBeatsIntent.ShareBeat -> shareRecords(intent.group.records, "${intent.group.officeDisplay} beat ${intent.group.beatNumber}")
+            is LocalBeatsIntent.ShareOffice -> fileOperation(UiText.Res(R.string.busy_backup)) {
+                val pins = intent.group.pincodes.toSet()
+                val records = repository.listAll().filter {
+                    it.officeName.equals(intent.group.officeName, ignoreCase = true) && it.pincode in pins
+                }
+                shareNow(records, intent.group.officeDisplay)
+            }
             LocalBeatsIntent.ShowOfficeTypes -> _state.update { it.copy(showOfficeTypes = true) }
             LocalBeatsIntent.HideOfficeTypes -> _state.update { it.copy(showOfficeTypes = false) }
             is LocalBeatsIntent.SetOfficeType -> setOfficeType(intent)
@@ -267,6 +298,53 @@ class LocalBeatsViewModel(
         }
     }
 
+    /** Batch entry: the first ticked office fills the form now, the rest wait in [EditorState.queue]. */
+    private fun confirmPickerSelection() {
+        val editor = _state.value.editor ?: return
+        val offices = editor.fetchedOffices.orEmpty()
+        val picked = offices.filter { it.name in editor.pickerSelection }
+        if (picked.isEmpty()) return
+        updateEditor {
+            it.copy(
+                draft = it.draft.withOffice(picked.first()),
+                errors = emptyMap(),
+                fetchedOffices = null,
+                pickerSelection = emptySet(),
+                officeSuggestions = emptyList(),
+                queue = picked.drop(1),
+                queueTotal = picked.size,
+            )
+        }
+    }
+
+    /** Opens a fresh form for the next queued office, or closes the editor when the batch is done. */
+    private fun advanceQueue() {
+        val editor = _state.value.editor ?: return
+        val next = editor.queue.firstOrNull()
+        if (next == null) {
+            _state.update { it.copy(editor = null) }
+            return
+        }
+        // Beat numbers are per office, so nothing but the office fields carries over.
+        val base = BeatDraft().withOffice(next)
+        _state.update {
+            it.copy(editor = EditorState(draft = base, queue = editor.queue.drop(1), queueTotal = editor.queueTotal))
+        }
+    }
+
+    private fun shareRecords(records: List<BeatRecord>, label: String) = fileOperation(UiText.Res(R.string.busy_backup)) {
+        shareNow(records, label)
+    }
+
+    private suspend fun shareNow(records: List<BeatRecord>, label: String) {
+        if (records.isEmpty()) {
+            _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_nothing_to_share)))
+            return
+        }
+        val file = excel.exportRecords(records, label)
+        _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_export_title))))
+    }
+
     private fun selectOffice(office: PostOffice) {
         updateEditor { editor ->
             editor.copy(
@@ -304,7 +382,7 @@ class LocalBeatsViewModel(
                 try {
                     repository.save(validation.record)
                     dataVersion.update { it + 1 }
-                    _state.update { it.copy(editor = null) }
+                    if (editor.isBatch) advanceQueue() else _state.update { it.copy(editor = null) }
                     _effects.send(LocalBeatsEffect.Saved)
                     _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(if (editor.isNew) R.string.msg_record_added else R.string.msg_record_updated)))
                 } catch (e: CancellationException) {
@@ -413,5 +491,6 @@ class LocalBeatsViewModel(
         const val SEARCH_DEBOUNCE_MS = 250L
         const val SUGGEST_MIN_CHARS = 2
         const val SUGGEST_LIMIT = 8
+        val ACCOUNT_OFFICE_TYPES = setOf(OfficeType.SO, OfficeType.HO, OfficeType.GPO)
     }
 }
