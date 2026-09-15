@@ -9,6 +9,9 @@ import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
+/** Projection for [BeatDirectoryDao.observePincodeCounts]. */
+data class PincodeCount(val pincode: String, val count: Int)
+
 @Dao
 interface BeatDirectoryDao {
 
@@ -80,6 +83,10 @@ interface BeatDirectoryDao {
         """,
     )
     fun observeDistricts(state: String?): Flow<List<String>>
+
+    /** How many directory rows exist per PIN; drives the "N local beats for this PIN" bridge on online results. */
+    @Query("SELECT pincode AS pincode, COUNT(*) AS count FROM local_beat_directory GROUP BY pincode")
+    fun observePincodeCounts(): Flow<List<PincodeCount>>
 
     /** Natural keys already present, used for duplicate detection during import. */
     @Query("SELECT localityName || '|' || branchOffice || '|' || beatNumber || '|' || pincode FROM local_beat_directory")

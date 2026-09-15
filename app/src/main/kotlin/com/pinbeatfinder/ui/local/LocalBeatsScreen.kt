@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -90,6 +91,7 @@ fun LocalBeatsScreen(
     snackbarHostState: SnackbarHostState,
     registerMenuHandler: ((LocalBeatsMenuAction) -> Unit) -> Unit,
     launchIntent: (Intent) -> Unit,
+    onLookupOnline: (String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val onIntent = viewModel::onIntent
@@ -132,7 +134,7 @@ fun LocalBeatsScreen(
         }
     }
 
-    LocalBeatsContent(state = state, onIntent = onIntent)
+    LocalBeatsContent(state = state, onIntent = onIntent, onLookupOnline = onLookupOnline)
 
     // ---- dialogs & sheets ----------------------------------------------------------------
     state.editor?.let { editor ->
@@ -193,7 +195,11 @@ fun LocalBeatsScreen(
 }
 
 @Composable
-fun LocalBeatsContent(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> Unit) {
+fun LocalBeatsContent(
+    state: LocalBeatsState,
+    onIntent: (LocalBeatsIntent) -> Unit,
+    onLookupOnline: (String) -> Unit = {},
+) {
     Column(Modifier.fillMaxSize()) {
         OutlinedTextField(
             value = state.query,
@@ -259,6 +265,7 @@ fun LocalBeatsContent(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> Un
                         showScore = state.query.isNotBlank(),
                         onEdit = { onIntent(LocalBeatsIntent.OpenEditor(hit.record)) },
                         onDelete = { onIntent(LocalBeatsIntent.RequestDelete(hit.record)) },
+                        onLookupOnline = { onLookupOnline(hit.record.pincode) },
                     )
                 }
             }
@@ -272,6 +279,7 @@ private fun BeatRecordCard(
     showScore: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onLookupOnline: () -> Unit,
 ) {
     val record: BeatRecord = hit.record
     Card(
@@ -288,6 +296,7 @@ private fun BeatRecordCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                IconButton(onClick = onLookupOnline) { Icon(Icons.Default.TravelExplore, contentDescription = "Look up online") }
                 IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = "Edit") }
                 IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Delete") }
             }

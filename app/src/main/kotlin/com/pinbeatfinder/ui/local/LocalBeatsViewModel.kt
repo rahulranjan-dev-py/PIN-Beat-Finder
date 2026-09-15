@@ -109,6 +109,10 @@ class LocalBeatsViewModel(
                 )
                 it.copy(editor = EditorState(draft))
             }
+            is LocalBeatsIntent.OpenEditorWithDraft -> _state.update { it.copy(editor = EditorState(intent.draft)) }
+            is LocalBeatsIntent.ShowPincode -> _state.update {
+                it.copy(query = intent.pincode, selectedState = null, selectedDistrict = null)
+            }
             is LocalBeatsIntent.EditorFieldChanged -> updateEditorField(intent.field, intent.value)
             LocalBeatsIntent.SaveEditor -> saveEditor()
             LocalBeatsIntent.DismissEditor -> _state.update { it.copy(editor = null) }

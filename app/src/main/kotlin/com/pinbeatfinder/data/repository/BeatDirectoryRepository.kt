@@ -9,6 +9,7 @@ import com.pinbeatfinder.domain.model.BeatSearchHit
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /** Result of a bulk import. */
@@ -68,6 +69,10 @@ class BeatDirectoryRepository(
     }
 
     fun observeCount(): Flow<Int> = dao.observeCount()
+
+    /** PIN -> number of local records, kept live so online cards update after an add/import. */
+    fun observePincodeCounts(): Flow<Map<String, Int>> =
+        dao.observePincodeCounts().map { rows -> rows.associate { it.pincode to it.count } }
     fun observeStates(): Flow<List<String>> = dao.observeStates()
     fun observeDistricts(state: String?): Flow<List<String>> = dao.observeDistricts(state?.takeIf { it.isNotBlank() })
 
