@@ -93,12 +93,12 @@
     <string name="local_loading">Loading…</string>
     <string name="local_beats_summary">%1$d beat(s) • %2$d village(s)</string>
     <string name="local_beat_title">Beat %1$s</string>
-    <string name="local_beat_subtitle_so">SO %1$s</string>
+    <string name="local_beat_subtitle_account">Account %1$s</string>
     <string name="local_beat_subtitle_pin">PIN %1$s</string>
     <string name="local_villages">villages</string>
     <string name="chip_beat">Beat %1$s</string>
-    <string name="chip_bo">BO: %1$s</string>
-    <string name="chip_so">SO: %1$s</string>
+    <string name="chip_office">Office: %1$s</string>
+    <string name="chip_account">Account: %1$s</string>
     <string name="chip_pin">PIN %1$s</string>
     <string name="match_exact">Exact match</string>
     <string name="match_sounds_like">Sounds like “%1$s”</string>
@@ -165,8 +165,9 @@
     <string name="editor_add_title">Add beat record</string>
     <string name="editor_edit_title">Edit beat record</string>
     <string name="field_locality">Locality/Village Name</string>
-    <string name="field_bo">Branch Office (BO)</string>
-    <string name="field_so">Sub Post Office (SO)</string>
+    <string name="field_office_type">Office Type</string>
+    <string name="field_office_name">Office Name</string>
+    <string name="field_account_office">Account Office (SO/HO)</string>
     <string name="field_beat">Beat Number</string>
     <string name="field_district">District</string>
     <string name="field_state">State</string>
@@ -175,6 +176,14 @@
     <string name="field_required">%1$s is required</string>
     <string name="field_too_long">%1$s is too long</string>
     <string name="field_invalid_pin">Pincode must be 6 digits and not start with 0</string>
+    <string name="field_invalid_office_type">Office Type must be GPO, HO, IDC, SO or BO</string>
+    <string name="action_fetch">Fetch</string>
+    <string name="editor_fetch_hint">Type the PIN and tap Fetch to pick the office from the built-in directory.</string>
+    <string name="fetch_offices_title">Offices under PIN %1$s</string>
+    <string name="fetch_offices_hint">Tap an office to fill in its type, name, account office, district and state.</string>
+    <string name="fetch_account_office">Account office: %1$s</string>
+    <string name="fetch_no_offices">No offices found for PIN %1$s in the built-in directory.</string>
+    <string name="fetch_directory_not_ready">The built-in directory is still loading. Try again in a moment.</string>
 
     <!-- settings -->
     <string name="settings_title">Settings</string>

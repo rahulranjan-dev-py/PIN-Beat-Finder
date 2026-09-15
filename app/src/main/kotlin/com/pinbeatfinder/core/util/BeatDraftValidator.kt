@@ -5,6 +5,7 @@ import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.DraftValidation
 import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.domain.model.OfficeType
 
 /**
  * Single source of truth for what a valid beat row looks like. Used by the manual editor and
@@ -17,21 +18,25 @@ object BeatDraftValidator {
     fun validate(draft: BeatDraft, now: Long = System.currentTimeMillis()): DraftValidation {
         val errors = linkedMapOf<BeatField, FieldError>()
 
-        fun requiredText(field: BeatField, raw: String): String {
+        fun text(field: BeatField, raw: String, required: Boolean = true): String {
             val v = raw.trim()
             when {
-                v.isEmpty() -> errors[field] = FieldError.REQUIRED
+                required && v.isEmpty() -> errors[field] = FieldError.REQUIRED
                 v.length > MAX_TEXT -> errors[field] = FieldError.TOO_LONG
             }
             return v
         }
 
-        val locality = requiredText(BeatField.LOCALITY, draft.localityName)
-        val bo = requiredText(BeatField.BRANCH_OFFICE, draft.branchOffice)
-        val so = requiredText(BeatField.SUB_POST_OFFICE, draft.subPostOffice)
-        val beat = requiredText(BeatField.BEAT_NUMBER, normalizeNumberish(draft.beatNumber))
-        val district = requiredText(BeatField.DISTRICT, draft.district)
-        val state = requiredText(BeatField.STATE, draft.state)
+        val locality = text(BeatField.LOCALITY, draft.localityName)
+        val officeType = OfficeType.parse(draft.officeType)
+        if (officeType == null) {
+            errors[BeatField.OFFICE_TYPE] = if (draft.officeType.isBlank()) FieldError.REQUIRED else FieldError.INVALID_OFFICE_TYPE
+        }
+        val officeName = text(BeatField.OFFICE_NAME, draft.officeName)
+        val accountOffice = text(BeatField.ACCOUNT_OFFICE, draft.accountOffice, required = false)
+        val beat = text(BeatField.BEAT_NUMBER, normalizeNumberish(draft.beatNumber))
+        val district = text(BeatField.DISTRICT, draft.district)
+        val state = text(BeatField.STATE, draft.state)
 
         val pincode = PinCodeValidator.normalize(draft.pincode)
         if (pincode == null) {
@@ -49,8 +54,9 @@ object BeatDraftValidator {
             BeatRecord(
                 id = draft.id,
                 localityName = locality,
-                branchOffice = bo,
-                subPostOffice = so,
+                officeType = officeType!!,
+                officeName = officeName,
+                accountOffice = accountOffice,
                 beatNumber = beat,
                 district = district,
                 state = state,

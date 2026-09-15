@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.pinbeatfinder.core.phonetic.PhoneticKeys
 import com.pinbeatfinder.domain.model.BeatRecord
+import com.pinbeatfinder.domain.model.OfficeType
 
 /**
  * Persisted row of the offline beat directory.
@@ -32,8 +33,12 @@ data class BeatDirectoryEntity(
     @ColumnInfo(collate = ColumnInfo.NOCASE) val localityName: String,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val phoneticPrimary: String,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val phoneticAlternate: String,
-    @ColumnInfo(collate = ColumnInfo.NOCASE) val branchOffice: String,
-    @ColumnInfo(collate = ColumnInfo.NOCASE) val subPostOffice: String,
+    /** Office type code (BO/SO/HO/GPO/IDC). Added in schema v2; v1 rows default to BO. */
+    @ColumnInfo(defaultValue = "BO") val officeType: String = OfficeType.BO.code,
+    /** Serving office name. Column keeps its v1 name (`branchOffice`) so no table rebuild was needed. */
+    @ColumnInfo(name = "branchOffice", collate = ColumnInfo.NOCASE) val officeName: String,
+    /** Account (reporting) office. Column keeps its v1 name (`subPostOffice`). */
+    @ColumnInfo(name = "subPostOffice", collate = ColumnInfo.NOCASE) val accountOffice: String,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val beatNumber: String,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val district: String,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val state: String,
@@ -44,8 +49,9 @@ data class BeatDirectoryEntity(
     fun toDomain() = BeatRecord(
         id = id,
         localityName = localityName,
-        branchOffice = branchOffice,
-        subPostOffice = subPostOffice,
+        officeType = OfficeType.parse(officeType) ?: OfficeType.BO,
+        officeName = officeName,
+        accountOffice = accountOffice,
         beatNumber = beatNumber,
         district = district,
         state = state,
@@ -62,8 +68,9 @@ data class BeatDirectoryEntity(
             localityName = record.localityName,
             phoneticPrimary = keys.primary,
             phoneticAlternate = keys.alternate,
-            branchOffice = record.branchOffice,
-            subPostOffice = record.subPostOffice,
+            officeType = record.officeType.code,
+            officeName = record.officeName,
+            accountOffice = record.accountOffice,
             beatNumber = record.beatNumber,
             district = record.district,
             state = record.state,

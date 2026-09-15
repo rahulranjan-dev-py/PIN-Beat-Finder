@@ -11,6 +11,7 @@ import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.UiText
 
 enum class LocalViewMode { SEARCH, BY_BEAT }
@@ -19,6 +20,10 @@ data class EditorState(
     val draft: BeatDraft,
     val errors: Map<BeatField, FieldError> = emptyMap(),
     val isSaving: Boolean = false,
+    /** True while the built-in directory is being asked for the offices under the typed PIN. */
+    val isFetching: Boolean = false,
+    /** Offices under the draft's PIN, shown in a picker; null when the picker is closed. */
+    val fetchedOffices: List<PostOffice>? = null,
 ) {
     val isNew: Boolean get() = draft.id == 0L
 }
@@ -66,6 +71,11 @@ sealed interface LocalBeatsIntent {
     /** Show every local record for a PIN (bridge from the online tab). */
     data class ShowPincode(val pincode: String) : LocalBeatsIntent
     data class EditorFieldChanged(val field: BeatField, val value: String) : LocalBeatsIntent
+    /** Look up the offices under the draft's PIN in the built-in directory and offer them as a picker. */
+    data object FetchOfficesForPin : LocalBeatsIntent
+    /** The user picked one of the fetched offices; fill the office fields from it. */
+    data class OfficeSelected(val office: PostOffice) : LocalBeatsIntent
+    data object DismissFetchedOffices : LocalBeatsIntent
     data object SaveEditor : LocalBeatsIntent
     data object DismissEditor : LocalBeatsIntent
     /** Turn the record being edited into a new one on the same beat with a blank locality. */

@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.10.0 — office type dropdown, fetch offices by PIN
+
+### Changed
+- **Office fields.** The separate "Branch Office (BO)" and "Sub Post Office (SO)" fields are
+  replaced by an **Office Type** dropdown (GPO, HO, IDC, SO, BO), an **Office Name** field and an
+  optional **Account Office (SO/HO)** field. Cards, the "By beat" view and the delete prompt show
+  the office as "Name TYPE" (e.g. "Barbendia BO").
+- **Excel template** has the new columns (`Office Type*`, `Office Name*`,
+  `Account Office (SO/HO)`); the Instructions sheet lists the allowed type codes. Spreadsheets
+  made with the old template still import (BO → type BO with the SO as account office; SO-only
+  rows → type SO).
+- **Existing data is migrated in place.** Old records keep everything; a name typed with a
+  suffix ("Rampur BO", "Sitapur S.O.") loses the suffix and it sets the type; a record that only
+  had a sub post office becomes an SO record.
+
+### Added
+- **Fetch offices by PIN.** In the add/edit form, type the PIN and tap **Fetch**: the built-in
+  directory lists every office under that PIN (type, delivery status, account office). Tapping
+  one fills office type, name, account office, district and state, so office names are never
+  typed from memory.
+- **Account office in the built-in directory.** The bundled directory is now merged with the
+  India Post facility master (from the CSI SPM Help tool's `SPM.db`): 160,067 offices carry their
+  account office (e.g. Barbendia BO → Nirsa Chatti SO) and 6,984 offices missing from
+  data.gov.in were added. Snapshot version `2026-09.2`; the directory reloads once on first
+  launch of this version.
+- "Add to local" from an All-India result also fills the office type and account office.
+
 ## v0.9.1 — built-in directory actually loads
 
 ### Fixed

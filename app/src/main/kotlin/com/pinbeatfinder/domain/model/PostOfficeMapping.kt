@@ -1,23 +1,38 @@
 package com.pinbeatfinder.domain.model
 
-private val OFFICE_SUFFIX = Regex("""\s*\(?\b(B\.?O|S\.?O|H\.?O|G\.?P\.?O)\.?\)?\s*$""", RegexOption.IGNORE_CASE)
-
 /** Strips the trailing office-type marker: "Rampur B.O" -> "Rampur", "Sitapur S.O" -> "Sitapur". */
-fun PostOffice.plainName(): String = name.replace(OFFICE_SUFFIX, "").trim().ifEmpty { name }
+fun PostOffice.plainName(): String = OfficeType.stripSuffix(name)
 
 /**
- * Pre-fills a local directory draft from an online result. A branch office becomes the BO
- * column; a sub/head office becomes the SO column. The beat number is unknown online, so it
- * is left for the user.
+ * Pre-fills a local directory draft from a directory result. The office type and name come from
+ * the result; the account office is known when the result came from the bundled directory. The
+ * beat number is never known, so it is left for the user.
  */
-fun PostOffice.toBeatDraft(): BeatDraft {
-    val isBranch = branchType.contains("branch", ignoreCase = true)
-    return BeatDraft(
-        localityName = plainName(),
-        branchOffice = if (isBranch) name else "",
-        subPostOffice = if (isBranch) "" else name,
-        district = district,
-        state = state,
-        pincode = pincode,
-    )
+fun PostOffice.toBeatDraft(): BeatDraft = BeatDraft(localityName = plainName()).withOffice(this)
+
+/**
+ * Copies the office fields of [office] into this draft (type, name, account office, district,
+ * state, PIN) and keeps everything the user typed about the village itself.
+ */
+fun BeatDraft.withOffice(office: PostOffice): BeatDraft = copy(
+    officeType = office.officeType.code,
+    officeName = office.plainName(),
+    accountOffice = office.accountOffice.trim(),
+    district = tidyCase(office.district),
+    state = tidyCase(office.state),
+    pincode = office.pincode,
+)
+
+/**
+ * The government dataset shouts district and state names ("DHANBAD", "JHARKHAND"); the beat
+ * directory filters are case-sensitive on distinct values, so bring all-caps names to
+ * title case. Mixed-case input is returned untouched.
+ */
+fun tidyCase(raw: String): String {
+    val v = raw.trim()
+    if (v.isEmpty() || v.any { it.isLowerCase() }) return v
+    return v.split(' ').joinToString(" ") { word ->
+        if (word.length <= 2 && word.all { it.isLetter() }) word // keep "NW", "UP"-style tokens as typed
+        else word.lowercase().replaceFirstChar { it.uppercase() }
+    }
 }

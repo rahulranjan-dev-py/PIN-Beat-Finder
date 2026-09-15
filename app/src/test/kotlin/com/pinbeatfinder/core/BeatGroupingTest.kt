@@ -4,6 +4,7 @@ import com.pinbeatfinder.core.util.MatchHighlighter
 import com.pinbeatfinder.domain.model.BeatGrouping
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.MatchKind
+import com.pinbeatfinder.domain.model.OfficeType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -11,26 +12,27 @@ import org.junit.Test
 
 class BeatGroupingTest {
     private fun r(id: Long, name: String, bo: String, beat: String, so: String = "Sitapur SO", pin: String = "261001") =
-        BeatRecord(id, name, bo, so, beat, "Sitapur", "UP", pin)
+        BeatRecord(id, name, OfficeType.BO, bo, so, beat, "Sitapur", "UP", pin)
 
     @Test
     fun `groups by branch office and beat with natural beat ordering`() {
         val groups = BeatGrouping.group(
             listOf(
-                r(1, "Zeta", "Rampur BO", "10"),
-                r(2, "Alpha", "Rampur BO", "2"),
-                r(3, "Beta", "Rampur BO", "2"),
-                r(4, "Gamma", "rampur bo", "2A"),
-                r(5, "Delta", "Amethi BO", "1", pin = "261002"),
-                r(6, "Eps", "Rampur BO", "BO-3"),
+                r(1, "Zeta", "Rampur", "10"),
+                r(2, "Alpha", "Rampur", "2"),
+                r(3, "Beta", "Rampur", "2"),
+                r(4, "Gamma", "rampur", "2A"),
+                r(5, "Delta", "Amethi", "1", pin = "261002"),
+                r(6, "Eps", "Rampur", "BO-3"),
             ),
         )
-        assertEquals(listOf("Amethi BO|1", "Rampur BO|2", "rampur bo|2A", "Rampur BO|10", "Rampur BO|BO-3"), groups.map { it.key })
-        val beat2 = groups.first { it.key == "Rampur BO|2" }
+        assertEquals(listOf("Amethi|1", "Rampur|2", "rampur|2A", "Rampur|10", "Rampur|BO-3"), groups.map { it.key })
+        val beat2 = groups.first { it.key == "Rampur|2" }
         assertEquals(listOf("Alpha", "Beta"), beat2.records.map { it.localityName })
         assertEquals(2, beat2.villageCount)
         assertEquals(listOf("261001"), beat2.pincodes)
-        assertEquals("Sitapur SO", beat2.subPostOffice)
+        assertEquals("Sitapur SO", beat2.accountOffice)
+        assertEquals("Rampur BO", beat2.officeDisplay)
     }
 
     @Test

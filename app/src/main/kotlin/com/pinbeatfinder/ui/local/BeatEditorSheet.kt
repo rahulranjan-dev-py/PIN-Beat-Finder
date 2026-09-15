@@ -1,21 +1,27 @@
 package com.pinbeatfinder.ui.local
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -23,6 +29,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +50,8 @@ import androidx.compose.ui.res.stringResource
 import com.pinbeatfinder.R
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.domain.model.OfficeType
+import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.labelRes
 import com.pinbeatfinder.ui.components.message
 
@@ -60,9 +69,16 @@ fun BeatEditorSheet(
     onSave: () -> Unit,
     onDismiss: () -> Unit,
     onDuplicate: () -> Unit = {},
+    onFetchOffices: () -> Unit = {},
+    onOfficeSelected: (PostOffice) -> Unit = {},
+    onDismissOffices: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val draft = editor.draft
+
+    editor.fetchedOffices?.let { offices ->
+        OfficePickerDialog(pincode = draft.pincode, offices = offices, onSelect = onOfficeSelected, onDismiss = onDismissOffices)
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -87,15 +103,35 @@ fun BeatEditorSheet(
             }
 
             EditorField(BeatField.LOCALITY, draft.localityName, editor.errors, onFieldChange, capitalize = true)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                EditorField(BeatField.BEAT_NUMBER, draft.beatNumber, editor.errors, onFieldChange, modifier = Modifier.weight(1f))
+            EditorField(BeatField.BEAT_NUMBER, draft.beatNumber, editor.errors, onFieldChange)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 EditorField(
                     BeatField.PINCODE, draft.pincode, editor.errors, onFieldChange,
                     modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number,
                 )
+                // Aligns with the text field body (the label sits 8dp above the outline).
+                OutlinedButton(
+                    onClick = onFetchOffices,
+                    enabled = !editor.isFetching && !editor.isSaving,
+                    modifier = Modifier.padding(top = 8.dp).height(56.dp),
+                ) {
+                    if (editor.isFetching) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.action_fetch))
+                    }
+                }
             }
-            EditorField(BeatField.BRANCH_OFFICE, draft.branchOffice, editor.errors, onFieldChange, capitalize = true)
-            EditorField(BeatField.SUB_POST_OFFICE, draft.subPostOffice, editor.errors, onFieldChange, capitalize = true)
+            Text(
+                stringResource(R.string.editor_fetch_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                OfficeTypeField(draft.officeType, editor.errors, onFieldChange, modifier = Modifier.width(132.dp))
+                EditorField(BeatField.OFFICE_NAME, draft.officeName, editor.errors, onFieldChange, modifier = Modifier.weight(1f), capitalize = true)
+            }
+            EditorField(BeatField.ACCOUNT_OFFICE, draft.accountOffice, editor.errors, onFieldChange, capitalize = true)
             SuggestingField(BeatField.STATE, draft.state, knownStates, editor.errors, onFieldChange)
             SuggestingField(BeatField.DISTRICT, draft.district, knownDistricts, editor.errors, onFieldChange)
             EditorField(BeatField.REMARKS, draft.remarks, editor.errors, onFieldChange, singleLine = false, imeAction = ImeAction.Done)
@@ -150,6 +186,97 @@ private fun EditorField(
             capitalization = if (capitalize) KeyboardCapitalization.Words else KeyboardCapitalization.None,
             imeAction = imeAction,
         ),
+    )
+}
+
+/** Read-only dropdown of the five office kinds; the code is what gets stored and exported. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OfficeTypeField(
+    value: String,
+    errors: Map<BeatField, FieldError>,
+    onFieldChange: (BeatField, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val field = BeatField.OFFICE_TYPE
+    val label = stringResource(field.labelRes())
+    val error = errors[field]?.message(context, field)
+    var expanded by remember { mutableStateOf(false) }
+    val selected = OfficeType.parse(value)
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
+        OutlinedTextField(
+            value = selected?.code ?: value,
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            label = { Text("$label *") },
+            isError = error != null,
+            supportingText = { if (error != null) Text(error) },
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            OfficeType.entries.forEach { type ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(type.code, style = MaterialTheme.typography.bodyLarge)
+                            Text(type.fullName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    },
+                    onClick = {
+                        onFieldChange(field, type.code)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
+            }
+        }
+    }
+}
+
+/** Offices under the typed PIN from the built-in directory; one tap fills the office fields. */
+@Composable
+private fun OfficePickerDialog(
+    pincode: String,
+    offices: List<PostOffice>,
+    onSelect: (PostOffice) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.fetch_offices_title, pincode)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.fetch_offices_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.heightIn(max = 380.dp)) {
+                    items(offices) { office ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(office) }
+                                .padding(vertical = 10.dp),
+                        ) {
+                            Text(office.name, style = MaterialTheme.typography.bodyLarge)
+                            val account = if (office.accountOffice.isBlank()) "" else stringResource(R.string.fetch_account_office, office.accountOffice)
+                            val details = listOf(office.officeType.fullName, office.deliveryStatus, account).filter { it.isNotBlank() }
+                            Text(details.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 

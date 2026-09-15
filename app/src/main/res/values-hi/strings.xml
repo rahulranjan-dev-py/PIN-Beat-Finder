@@ -89,12 +89,12 @@
     <string name="local_loading">लोड हो रहा है…</string>
     <string name="local_beats_summary">%1$d बीट • %2$d गाँव</string>
     <string name="local_beat_title">बीट %1$s</string>
-    <string name="local_beat_subtitle_so">उप डाकघर %1$s</string>
+    <string name="local_beat_subtitle_account">लेखा डाकघर %1$s</string>
     <string name="local_beat_subtitle_pin">पिन %1$s</string>
     <string name="local_villages">गाँव</string>
     <string name="chip_beat">बीट %1$s</string>
-    <string name="chip_bo">शाखा डाकघर: %1$s</string>
-    <string name="chip_so">उप डाकघर: %1$s</string>
+    <string name="chip_office">डाकघर: %1$s</string>
+    <string name="chip_account">लेखा डाकघर: %1$s</string>
     <string name="chip_pin">पिन %1$s</string>
     <string name="match_exact">सटीक मिलान</string>
     <string name="match_sounds_like">“%1$s” जैसा सुनाई देता है</string>
@@ -160,8 +160,9 @@
     <string name="editor_add_title">बीट रिकॉर्ड जोड़ें</string>
     <string name="editor_edit_title">बीट रिकॉर्ड संपादित करें</string>
     <string name="field_locality">मोहल्ला/गाँव का नाम</string>
-    <string name="field_bo">शाखा डाकघर (BO)</string>
-    <string name="field_so">उप डाकघर (SO)</string>
+    <string name="field_office_type">डाकघर का प्रकार</string>
+    <string name="field_office_name">डाकघर का नाम</string>
+    <string name="field_account_office">लेखा डाकघर (SO/HO)</string>
     <string name="field_beat">बीट संख्या</string>
     <string name="field_district">ज़िला</string>
     <string name="field_state">राज्य</string>
@@ -170,6 +171,14 @@
     <string name="field_required">%1$s आवश्यक है</string>
     <string name="field_too_long">%1$s बहुत लंबा है</string>
     <string name="field_invalid_pin">पिन कोड 6 अंकों का होना चाहिए और 0 से शुरू नहीं हो सकता</string>
+    <string name="field_invalid_office_type">डाकघर का प्रकार GPO, HO, IDC, SO या BO होना चाहिए</string>
+    <string name="action_fetch">खोजें</string>
+    <string name="editor_fetch_hint">पिन कोड लिखें और अंतर्निहित निर्देशिका से डाकघर चुनने के लिए “खोजें” दबाएँ।</string>
+    <string name="fetch_offices_title">पिन %1$s के डाकघर</string>
+    <string name="fetch_offices_hint">प्रकार, नाम, लेखा डाकघर, ज़िला और राज्य भरने के लिए किसी डाकघर पर टैप करें।</string>
+    <string name="fetch_account_office">लेखा डाकघर: %1$s</string>
+    <string name="fetch_no_offices">अंतर्निहित निर्देशिका में पिन %1$s के लिए कोई डाकघर नहीं मिला।</string>
+    <string name="fetch_directory_not_ready">अंतर्निहित निर्देशिका अभी लोड हो रही है। थोड़ी देर बाद फिर कोशिश करें।</string>
 
     <string name="settings_title">सेटिंग</string>
     <string name="settings_default_tab">ऐप खुलने पर दिखाएँ</string>

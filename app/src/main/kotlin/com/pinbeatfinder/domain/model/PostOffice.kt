@@ -1,6 +1,6 @@
 package com.pinbeatfinder.domain.model
 
-/** A post office as returned by the All-India online lookup. */
+/** A post office as returned by the All-India lookup (bundled directory or online). */
 data class PostOffice(
     val name: String,
     val branchType: String,
@@ -16,4 +16,8 @@ data class PostOffice(
     val source: String = "",
     /** True when the answer came from the on-device HTTP cache rather than the network. */
     val fromCache: Boolean = false,
-)
+    /** Reporting/account office (a BO's SO or HO). Known for the bundled directory only. */
+    val accountOffice: String = "",
+) {
+    val officeType: OfficeType get() = OfficeType.fromDirectory(branchType, name)
+}

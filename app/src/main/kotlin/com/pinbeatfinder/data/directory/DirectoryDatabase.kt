@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase
  * Separate database for the bundled directory so the user's beat data (BeatFinderDatabase)
  * never needs a migration for it, and a re-seed can simply drop and recreate this file.
  */
-@Database(entities = [IndiaPostOfficeEntity::class], version = 1, exportSchema = true)
+@Database(entities = [IndiaPostOfficeEntity::class], version = 2, exportSchema = true)
 abstract class DirectoryDatabase : RoomDatabase() {
     abstract fun directoryDao(): DirectoryDao
 

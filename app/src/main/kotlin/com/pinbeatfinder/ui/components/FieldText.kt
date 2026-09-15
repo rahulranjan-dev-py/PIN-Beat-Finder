@@ -10,8 +10,9 @@ import com.pinbeatfinder.domain.model.FieldError
 @StringRes
 fun BeatField.labelRes(): Int = when (this) {
     BeatField.LOCALITY -> R.string.field_locality
-    BeatField.BRANCH_OFFICE -> R.string.field_bo
-    BeatField.SUB_POST_OFFICE -> R.string.field_so
+    BeatField.OFFICE_TYPE -> R.string.field_office_type
+    BeatField.OFFICE_NAME -> R.string.field_office_name
+    BeatField.ACCOUNT_OFFICE -> R.string.field_account_office
     BeatField.BEAT_NUMBER -> R.string.field_beat
     BeatField.DISTRICT -> R.string.field_district
     BeatField.STATE -> R.string.field_state
@@ -25,5 +26,6 @@ fun FieldError.message(context: Context, field: BeatField): String {
         FieldError.REQUIRED -> context.getString(R.string.field_required, label)
         FieldError.TOO_LONG -> context.getString(R.string.field_too_long, label)
         FieldError.INVALID_PINCODE -> context.getString(R.string.field_invalid_pin)
+        FieldError.INVALID_OFFICE_TYPE -> context.getString(R.string.field_invalid_office_type)
     }
 }

@@ -93,7 +93,7 @@ fun MainScreen() {
     )
     val localViewModel: LocalBeatsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { LocalBeatsViewModel(container.beatDirectoryRepository, container.excelSyncManager) }
+            initializer { LocalBeatsViewModel(container.beatDirectoryRepository, container.excelSyncManager, container.indiaPostDirectory) }
         },
     )
 
