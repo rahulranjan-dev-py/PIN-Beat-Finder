@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.9.0 — updates, crash reports, database tests
+
+### Added
+- **Update check.** The app asks this repository's GitHub Releases page (once every 6 hours when
+  online, or on demand from Settings → Updates) and shows a banner with a Download button when a
+  newer build exists. Dismissing hides the banner for that version.
+- **Crash reports.** If the app crashes, a plain-text report (version, device, stack trace) is
+  saved on the device only. Settings → Crash reports offers Share and Delete; a one-time message
+  appears on the next launch.
+- **Database tests on CI.** Robolectric tests now exercise the beat directory DAO (phonetic and
+  substring search, filters, import transaction) and the bundled directory seeder/DAO against a
+  real SQLite, so regressions in the queries are caught before release.
+
+### Changed
+- The local tab's "Look up online" action is now "Find in All-India".
+
 ## v0.8.0 — the whole of India, built in
 
 ### Added

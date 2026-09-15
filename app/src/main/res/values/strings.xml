@@ -24,7 +24,7 @@
     <string name="action_import_n">Import %1$d</string>
     <string name="action_duplicate">Duplicate</string>
     <string name="action_clear_filters">Clear filters</string>
-    <string name="action_look_up_online">Look up online</string>
+    <string name="action_look_up_online">Find in All-India</string>
     <string name="action_more_options">More options</string>
     <string name="action_settings">Settings</string>
     <string name="action_back">Back</string>
@@ -216,4 +216,23 @@
     <!-- v0.8.0 -->
     <string name="directory_preparing">Preparing the built-in All-India directory… %1$d%%</string>
     <string name="directory_failed">Built-in directory could not be loaded (%1$s). Online sources will be used.</string>
+
+    <!-- v0.9.0 -->
+    <string name="update_available">Update available: %1$s</string>
+    <string name="update_download">Download</string>
+    <string name="update_dismiss">Dismiss</string>
+    <string name="settings_updates">Updates</string>
+    <string name="settings_updates_desc">Installed: %1$s. Checked automatically once every 6 hours when online.</string>
+    <string name="update_check_now">Check for updates</string>
+    <string name="update_up_to_date">You have the latest version.</string>
+    <string name="update_check_failed">Could not check for updates (%1$s).</string>
+    <string name="update_last_checked">Last checked: %1$s</string>
+    <string name="settings_crash">Crash reports</string>
+    <string name="settings_crash_desc">If the app ever crashes, a report is saved on this device only. Share it with the developer to get it fixed.</string>
+    <string name="crash_none">No crash reports.</string>
+    <string name="crash_latest">Latest report: %1$s</string>
+    <string name="crash_share">Share report</string>
+    <string name="crash_delete">Delete reports</string>
+    <string name="crash_share_title">Share crash report</string>
+    <string name="crash_snackbar">The app crashed last time. You can share the report from Settings.</string>
 </resources>

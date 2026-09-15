@@ -107,6 +107,19 @@ rows are listed in the import report and skipped; valid rows are inserted in one
 not a secret). Without it every CI runner would generate its own debug key and Android would
 refuse to install one build over another. Release signing is unaffected.
 
+### Updates and crash reports
+
+Sideloaded builds cannot rely on a store, so `UpdateChecker` reads the public GitHub Releases
+feed (`BuildConfig.GITHUB_REPO`) and surfaces newer tags with a download link; checks are
+throttled to 6 hours and a dismissed tag stays hidden. `CrashReporter` installs an
+uncaught-exception handler that writes reports to `filesDir/crashes/` (last 5 kept) and shares
+them through the `FileProvider`; nothing leaves the device unless the user shares it.
+
+### Tests
+
+`./gradlew testDebugUnitTest` runs both the pure JVM tests and the Robolectric database tests
+(`app/src/test/.../robolectric/`), which open in-memory Room databases against Robolectric's SQLite.
+
 ## Building
 
 ```bash
