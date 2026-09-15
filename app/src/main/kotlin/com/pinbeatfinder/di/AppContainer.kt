@@ -5,6 +5,7 @@ import com.pinbeatfinder.BuildConfig
 import com.pinbeatfinder.core.phonetic.PhoneticSearchEngine
 import com.pinbeatfinder.data.excel.ExcelSyncManager
 import com.pinbeatfinder.data.local.BeatFinderDatabase
+import com.pinbeatfinder.data.prefs.AppSettingsRepository
 import com.pinbeatfinder.data.prefs.RecentSearchesRepository
 import com.pinbeatfinder.data.prefs.SharedPrefsStore
 import com.pinbeatfinder.data.remote.AndroidConnectivityChecker
@@ -12,6 +13,7 @@ import com.pinbeatfinder.data.remote.NetworkModule
 import com.pinbeatfinder.data.remote.PostalApiService
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.data.repository.PostalLookupRepository
+import okhttp3.OkHttpClient
 
 /**
  * Hand-rolled dependency graph. The app has one process-wide graph and no scopes beyond
@@ -31,17 +33,25 @@ class AppContainer(context: Context) {
 
     val connectivity: AndroidConnectivityChecker by lazy { AndroidConnectivityChecker(appContext) }
 
-    val postalApi: PostalApiService by lazy {
-        val client = NetworkModule.okHttpClient(appContext.cacheDir, connectivity)
-        NetworkModule.postalApi(NetworkModule.retrofit(client))
+    val appSettingsRepository: AppSettingsRepository by lazy {
+        AppSettingsRepository(SharedPrefsStore(appContext))
     }
+
+    val okHttpClient: OkHttpClient by lazy { NetworkModule.okHttpClient(appContext.cacheDir, connectivity) }
+
+    val postalApi: PostalApiService by lazy { NetworkModule.postalApi(NetworkModule.retrofit(okHttpClient)) }
 
     val postalLookupRepository: PostalLookupRepository by lazy {
         PostalLookupRepository(
-            providers = NetworkModule.postalProviders(postalApi, BuildConfig.DATA_GOV_IN_API_KEY),
+            providers = NetworkModule.postalProviders(postalApi) {
+                appSettingsRepository.settings.value.dataGovInApiKey.ifBlank { BuildConfig.DATA_GOV_IN_API_KEY }
+            },
             connectivity = connectivity,
         )
     }
+
+    /** Drops every cached online answer. Runs on the caller's dispatcher; call from IO. */
+    fun clearOnlineCache() { okHttpClient.cache?.evictAll() }
 
     val recentSearchesRepository: RecentSearchesRepository by lazy {
         RecentSearchesRepository(SharedPrefsStore(appContext))

@@ -1,6 +1,7 @@
 package com.pinbeatfinder.data.excel
 
 import com.pinbeatfinder.domain.model.BeatField
+import com.pinbeatfinder.domain.model.FieldError
 
 enum class ImportMode {
     /** Add rows; skip any that duplicate an existing (locality, BO, beat, PIN) tuple. */
@@ -12,9 +13,9 @@ enum class ImportMode {
 
 data class RowError(
     val rowNumber: Int,
-    val messages: Map<BeatField, String>,
+    val messages: Map<BeatField, FieldError>,
 ) {
-    fun describe(): String = "Row $rowNumber: " + messages.values.joinToString("; ")
+    fun describe(): String = "Row $rowNumber: " + messages.entries.joinToString("; ") { (field, err) -> err.describe(field) }
 }
 
 /** What an import *would* do; shown to the user before anything is written. */

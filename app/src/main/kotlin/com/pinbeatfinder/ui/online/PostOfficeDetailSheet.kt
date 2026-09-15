@@ -29,8 +29,10 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pinbeatfinder.R
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.LabeledValue
 
@@ -63,7 +65,7 @@ fun PostOfficeDetailSheet(
             Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "PIN ${office.pincode}",
+                    stringResource(R.string.detail_pin, office.pincode),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
@@ -79,15 +81,19 @@ fun PostOfficeDetailSheet(
             }
 
             Spacer(Modifier.height(16.dp))
-            LabeledValue("District", office.district)
-            LabeledValue("State", office.state)
-            LabeledValue("Block", office.block)
-            LabeledValue("Division", office.division)
-            LabeledValue("Region", office.region)
-            LabeledValue("Circle", office.circle)
+            LabeledValue(stringResource(R.string.label_district), office.district)
+            LabeledValue(stringResource(R.string.label_state), office.state)
+            LabeledValue(stringResource(R.string.label_block), office.block)
+            LabeledValue(stringResource(R.string.label_division), office.division)
+            LabeledValue(stringResource(R.string.label_region), office.region)
+            LabeledValue(stringResource(R.string.label_circle), office.circle)
             if (office.source.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                Text("Source: ${office.source}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.detail_source, office.source) + if (office.fromCache) " • ${stringResource(R.string.online_cached)}" else "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             Spacer(Modifier.height(16.dp))
@@ -98,12 +104,12 @@ fun PostOfficeDetailSheet(
                 OutlinedButton(onClick = onCopyPin, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
-                    Text("Copy PIN")
+                    Text(stringResource(R.string.action_copy_pin))
                 }
                 OutlinedButton(onClick = onShare, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Share, contentDescription = null)
                     Spacer(Modifier.width(6.dp))
-                    Text("Share")
+                    Text(stringResource(R.string.action_share))
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -111,14 +117,14 @@ fun PostOfficeDetailSheet(
                 FilledTonalButton(onClick = onShowLocalBeats, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Storage, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Show $localCount local beat record(s) for this PIN")
+                    Text(stringResource(R.string.detail_show_local, localCount))
                 }
                 Spacer(Modifier.height(10.dp))
             }
             Button(onClick = onAddToLocal, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Add to local directory")
+                Text(stringResource(R.string.detail_add_local))
             }
             Spacer(Modifier.height(24.dp))
         }

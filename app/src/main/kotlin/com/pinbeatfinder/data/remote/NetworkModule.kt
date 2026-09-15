@@ -2,8 +2,13 @@ package com.pinbeatfinder.data.remote
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
 import com.pinbeatfinder.BuildConfig
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.serialization.json.Json
 import okhttp3.Cache
 import okhttp3.CacheControl
@@ -18,6 +23,18 @@ import java.util.concurrent.TimeUnit
 
 class AndroidConnectivityChecker(context: Context) : ConnectivityChecker {
     private val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    /** Current state followed by every change of the default network. */
+    override fun observe(): Flow<Boolean> = callbackFlow {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { trySend(isOnline()) }
+            override fun onLost(network: Network) { trySend(isOnline()) }
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { trySend(isOnline()) }
+        }
+        trySend(isOnline())
+        cm.registerDefaultNetworkCallback(callback)
+        awaitClose { runCatching { cm.unregisterNetworkCallback(callback) } }
+    }.distinctUntilChanged()
 
     /**
      * "Online" means a network that claims internet access. `NET_CAPABILITY_VALIDATED` is
@@ -73,20 +90,23 @@ object NetworkModule {
 
     fun postalApi(retrofit: Retrofit): PostalApiService = retrofit.create(PostalApiService::class.java)
 
-    /** Ordered provider chain. Name searches are only served by providers that support them. */
-    fun postalProviders(api: PostalApiService, dataGovInApiKey: String): List<PostalProvider> = listOf(
+    /**
+     * Ordered provider chain. Name searches are only served by providers that support them.
+     * [dataGovInApiKey] is read on every call so a key changed in Settings applies immediately.
+     */
+    fun postalProviders(api: PostalApiService, dataGovInApiKey: () -> String): List<PostalProvider> = listOf(
         PostalProvider(
             id = PostalProviders.ID_DATA_GOV_IN,
             label = PostalProviders.LABEL_DATA_GOV_IN,
             supportsNameSearch = false,
-            fetch = { q, _ -> api.dataGovInByPincode(PostalApiService.DATA_GOV_IN_RESOURCE_ID, dataGovInApiKey, q) },
+            fetch = { q, _ -> api.dataGovInByPincode(PostalApiService.DATA_GOV_IN_RESOURCE_ID, dataGovInApiKey(), q).toFetchResult() },
             map = { root, _ -> PostalProviders.mapDataGovIn(root) },
         ),
         PostalProvider(
             id = PostalProviders.ID_GITHUB_MIRROR,
             label = PostalProviders.LABEL_GITHUB_MIRROR,
             supportsNameSearch = false,
-            fetch = { q, _ -> api.githubMirrorByPincode(q) },
+            fetch = { q, _ -> api.githubMirrorByPincode(q).toFetchResult() },
             // The mirror omits the pincode on each office; the mapper needs the requested one.
             map = { root, pin -> PostalProviders.mapGithubMirror(root, pin) },
         ),
@@ -94,7 +114,7 @@ object NetworkModule {
             id = PostalProviders.ID_POSTALPINCODE_IN,
             label = PostalProviders.LABEL_POSTALPINCODE_IN,
             supportsNameSearch = true,
-            fetch = { q, isPin -> if (isPin) api.postalPincodeInByPincode(q) else api.postalPincodeInByName(q) },
+            fetch = { q, isPin -> (if (isPin) api.postalPincodeInByPincode(q) else api.postalPincodeInByName(q)).toFetchResult() },
             map = { root, _ -> PostalProviders.mapPostalPincodeIn(root) },
         ),
     )

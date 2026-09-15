@@ -38,7 +38,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.pinbeatfinder.R
 import com.pinbeatfinder.domain.model.BeatField
+import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.ui.components.labelRes
+import com.pinbeatfinder.ui.components.message
 
 /**
  * Add/Edit form for one directory row. Validation errors come from the ViewModel (which
@@ -70,13 +76,13 @@ fun BeatEditorSheet(
         ) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (editor.isNew) "Add beat record" else "Edit beat record",
+                    stringResource(if (editor.isNew) R.string.editor_add_title else R.string.editor_edit_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                 )
                 if (!editor.isNew) {
                     // Entering neighbouring villages on the same beat: keep everything but the name.
-                    TextButton(onClick = onDuplicate, enabled = !editor.isSaving) { Text("Duplicate") }
+                    TextButton(onClick = onDuplicate, enabled = !editor.isSaving) { Text(stringResource(R.string.action_duplicate)) }
                 }
             }
 
@@ -100,14 +106,14 @@ fun BeatEditorSheet(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismiss, enabled = !editor.isSaving) { Text("Cancel") }
+                TextButton(onClick = onDismiss, enabled = !editor.isSaving) { Text(stringResource(R.string.action_cancel)) }
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = onSave, enabled = !editor.isSaving) {
                     if (editor.isSaving) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(if (editor.isNew) "Add" else "Save")
+                    Text(stringResource(if (editor.isNew) R.string.action_add else R.string.action_save))
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -119,7 +125,7 @@ fun BeatEditorSheet(
 private fun EditorField(
     field: BeatField,
     value: String,
-    errors: Map<BeatField, String>,
+    errors: Map<BeatField, FieldError>,
     onFieldChange: (BeatField, String) -> Unit,
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
@@ -127,12 +133,14 @@ private fun EditorField(
     singleLine: Boolean = true,
     imeAction: ImeAction = ImeAction.Next,
 ) {
-    val error = errors[field]
+    val context = LocalContext.current
+    val error = errors[field]?.message(context, field)
+    val label = stringResource(field.labelRes())
     OutlinedTextField(
         value = value,
         onValueChange = { onFieldChange(field, it) },
         modifier = modifier.fillMaxWidth(),
-        label = { Text(if (field.required) "${field.label} *" else field.label) },
+        label = { Text(if (field.required) "$label *" else label) },
         isError = error != null,
         supportingText = { if (error != null) Text(error) },
         singleLine = singleLine,
@@ -152,14 +160,16 @@ private fun SuggestingField(
     field: BeatField,
     value: String,
     suggestions: List<String>,
-    errors: Map<BeatField, String>,
+    errors: Map<BeatField, FieldError>,
     onFieldChange: (BeatField, String) -> Unit,
 ) {
+    val context = LocalContext.current
+    val label = stringResource(field.labelRes())
     var expanded by remember { mutableStateOf(false) }
     val filtered = remember(value, suggestions) {
         if (value.isBlank()) suggestions else suggestions.filter { it.contains(value, ignoreCase = true) && !it.equals(value, ignoreCase = true) }
     }
-    val error = errors[field]
+    val error = errors[field]?.message(context, field)
 
     ExposedDropdownMenuBox(expanded = expanded && filtered.isNotEmpty(), onExpandedChange = { expanded = it }) {
         OutlinedTextField(
@@ -171,7 +181,7 @@ private fun SuggestingField(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryEditable),
-            label = { Text("${field.label} *") },
+            label = { Text("$label *") },
             isError = error != null,
             supportingText = { if (error != null) Text(error) },
             singleLine = true,

@@ -3,6 +3,7 @@ package com.pinbeatfinder.data
 import com.pinbeatfinder.core.util.AppError
 import com.pinbeatfinder.core.util.AppResult
 import com.pinbeatfinder.data.remote.ConnectivityChecker
+import com.pinbeatfinder.data.remote.FetchResult
 import com.pinbeatfinder.data.remote.PostalProvider
 import com.pinbeatfinder.data.remote.ProviderFormatException
 import com.pinbeatfinder.data.remote.ProviderNoResultsException
@@ -22,7 +23,7 @@ class PostalLookupRepositoryTest {
         PostOffice(name, "Sub Post Office", "Delivery", "", "", "", "", "D", "S", "110001", source)
 
     private fun provider(id: String, supportsName: Boolean = false, behaviour: () -> List<PostOffice>) =
-        PostalProvider(id, id, supportsName, fetch = { _, _ -> JsonNull }, map = { _, _ -> behaviour() })
+        PostalProvider(id, id, supportsName, fetch = { _, _ -> FetchResult(JsonNull, false) }, map = { _, _ -> behaviour() })
 
     private fun repo(vararg p: PostalProvider) = PostalLookupRepository(p.toList(), online, Dispatchers.Unconfined)
 

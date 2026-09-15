@@ -55,8 +55,8 @@ android {
         applicationId = "com.pinbeatfinder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.5.0"
+        versionCode = 7
+        versionName = "0.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -158,6 +158,7 @@ dependencies {
 
     // AndroidX core / lifecycle
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat) // per-app language (AppCompatDelegate.setApplicationLocales)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

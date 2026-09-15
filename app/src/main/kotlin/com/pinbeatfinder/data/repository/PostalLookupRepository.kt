@@ -54,7 +54,9 @@ class PostalLookupRepository(
 
     private suspend fun tryProvider(provider: PostalProvider, query: String, isPincode: Boolean): AppResult<List<PostOffice>> =
         try {
-            AppResult.Success(provider.map(provider.fetch(query, isPincode), query))
+            val fetched = provider.fetch(query, isPincode)
+            val offices = provider.map(fetched.body, query)
+            AppResult.Success(if (fetched.fromCache) offices.map { it.copy(fromCache = true) } else offices)
         } catch (e: CancellationException) {
             throw e
         } catch (e: ProviderNoResultsException) {

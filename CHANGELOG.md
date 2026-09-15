@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.6.0 — settings, Hindi, offline awareness
+
+### Added
+- **Settings** (gear icon): which tab the app opens on, theme (system/light/dark), text size
+  (normal/large), language, vibration feedback, your own data.gov.in API key, and a button to
+  clear saved online results.
+- **Hindi (हिन्दी).** Every screen is translated; switch in Settings → Language or follow the
+  phone's language. English remains the default.
+- **Large text mode** for outdoor use, independent of the phone's font setting.
+- **Offline banner** on the online tab, and a "cached" marker on results served from the
+  on-device cache so a stale answer is never mistaken for a live one.
+- **Haptics and motion.** Short vibration on long-press select, save and copy (can be turned
+  off), and animated list changes when filters or deletes reorder results.
+
+### Changed
+- Validation and import messages are now localised.
+
 ## v0.5.0 — a friendlier offline directory
 
 ### Added

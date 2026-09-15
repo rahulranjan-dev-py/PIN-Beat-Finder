@@ -4,6 +4,7 @@ import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.DraftValidation
+import com.pinbeatfinder.domain.model.FieldError
 
 /**
  * Single source of truth for what a valid beat row looks like. Used by the manual editor and
@@ -14,13 +15,13 @@ object BeatDraftValidator {
     private const val MAX_REMARKS = 500
 
     fun validate(draft: BeatDraft, now: Long = System.currentTimeMillis()): DraftValidation {
-        val errors = linkedMapOf<BeatField, String>()
+        val errors = linkedMapOf<BeatField, FieldError>()
 
         fun requiredText(field: BeatField, raw: String): String {
             val v = raw.trim()
             when {
-                v.isEmpty() -> errors[field] = "${field.label} is required"
-                v.length > MAX_TEXT -> errors[field] = "${field.label} is too long (max $MAX_TEXT)"
+                v.isEmpty() -> errors[field] = FieldError.REQUIRED
+                v.length > MAX_TEXT -> errors[field] = FieldError.TOO_LONG
             }
             return v
         }
@@ -34,16 +35,12 @@ object BeatDraftValidator {
 
         val pincode = PinCodeValidator.normalize(draft.pincode)
         if (pincode == null) {
-            errors[BeatField.PINCODE] = if (draft.pincode.isBlank()) {
-                "Pincode is required"
-            } else {
-                "Pincode must be 6 digits and not start with 0"
-            }
+            errors[BeatField.PINCODE] = if (draft.pincode.isBlank()) FieldError.REQUIRED else FieldError.INVALID_PINCODE
         }
 
         val remarks = draft.remarks.trim()
         if (remarks.length > MAX_REMARKS) {
-            errors[BeatField.REMARKS] = "Remarks are too long (max $MAX_REMARKS)"
+            errors[BeatField.REMARKS] = FieldError.TOO_LONG
         }
 
         if (errors.isNotEmpty()) return DraftValidation.Invalid(errors)

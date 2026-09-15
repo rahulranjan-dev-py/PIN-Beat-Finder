@@ -69,6 +69,14 @@ which source answered.
 build with either `DATA_GOV_IN_API_KEY=<key>` in the environment or `dataGovInApiKey=<key>` in
 `gradle.properties` / `-PdataGovInApiKey=<key>`. The key is compiled into `BuildConfig`.
 
+### Settings, language and text size
+
+The gear icon opens Settings: default tab, theme, text size, language (English / Hindi / system),
+vibration feedback, an optional personal data.gov.in API key (applies immediately, no rebuild),
+and "Clear saved online results". Language uses AppCompat's per-app locale API, so it works on
+every supported Android version and is remembered across launches. All user-facing text lives in
+`res/values/strings.xml` with the Hindi translation in `res/values-hi/`.
+
 ### Excel template
 
 Sheet `Beat Directory`, header row (columns marked `*` are mandatory):
