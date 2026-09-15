@@ -7,8 +7,12 @@ package com.pinbeatfinder.domain.model
 data class BeatRecord(
     val id: Long = 0L,
     val localityName: String,
-    val branchOffice: String,
-    val subPostOffice: String,
+    /** Kind of office that serves the locality (BO, SO, HO, GPO, IDC). */
+    val officeType: OfficeType,
+    /** Name of that office, without the type suffix ("Barbendia", not "Barbendia BO"). */
+    val officeName: String,
+    /** The office it reports to for accounts (a BO's SO/HO, an SO's HO). Blank for HO/GPO. */
+    val accountOffice: String,
     val beatNumber: String,
     val district: String,
     val state: String,
@@ -18,8 +22,11 @@ data class BeatRecord(
 ) {
     /** Natural key used to detect duplicates on import. */
     val dedupeKey: String
-        get() = listOf(localityName, branchOffice, beatNumber, pincode)
+        get() = listOf(localityName, officeName, beatNumber, pincode)
             .joinToString("|") { it.trim().lowercase() }
+
+    /** "Barbendia BO" style display name. */
+    val officeDisplay: String get() = "$officeName ${officeType.code}"
 }
 
 /** Optional narrowing applied to a local directory search. */

@@ -34,6 +34,8 @@ data class IndiaPostOfficeEntity(
     @ColumnInfo(collate = ColumnInfo.NOCASE) val normalizedName: String,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val phoneticPrimary: String,
     @ColumnInfo(collate = ColumnInfo.NOCASE) val phoneticAlternate: String,
+    /** Reporting ("account") office from the India Post facility master, e.g. "Nirsa Chatti SO". Blank when unknown. */
+    @ColumnInfo(defaultValue = "") val accountOffice: String = "",
 ) {
     companion object {
         const val TABLE = "india_post_offices"

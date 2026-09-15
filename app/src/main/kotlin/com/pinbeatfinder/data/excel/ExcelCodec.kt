@@ -3,6 +3,7 @@ package com.pinbeatfinder.data.excel
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatRecord
+import com.pinbeatfinder.domain.model.OfficeType
 import org.dhatim.fastexcel.Workbook
 import org.dhatim.fastexcel.reader.Cell
 import org.dhatim.fastexcel.reader.CellType
@@ -40,7 +41,17 @@ object ExcelCodec {
     /** Column order of the template/export. The trailing `*` marks mandatory columns. */
     val HEADERS: List<String> = BeatField.entries.map { if (it.required) "${it.label}*" else it.label }
 
-    private val COLUMN_WIDTHS = doubleArrayOf(30.0, 24.0, 24.0, 14.0, 20.0, 20.0, 12.0, 36.0)
+    private val COLUMN_WIDTHS = doubleArrayOf(30.0, 12.0, 24.0, 24.0, 14.0, 20.0, 20.0, 12.0, 36.0)
+
+    /** Allowed values of the Office Type column, in dropdown order. */
+    val OFFICE_TYPE_CODES: List<String> = OfficeType.entries.map { it.code }
+
+    /**
+     * Headers of the pre-v0.10.0 template. Files that still use them import fine: the branch
+     * office becomes a BO record; a row with only a sub post office becomes an SO record.
+     */
+    private const val LEGACY_BRANCH_OFFICE = "Branch Office (BO)"
+    private const val LEGACY_SUB_POST_OFFICE = "Sub Post Office (SO)"
 
     /** Writes an empty template (headers + instructions sheet) to [out]. Closes the stream. */
     fun writeTemplate(out: OutputStream) = writeWorkbook(out, emptyList())
@@ -50,8 +61,10 @@ object ExcelCodec {
 
     /**
      * Reads the first sheet of [input] into drafts. Header matching is tolerant: case, spacing,
-     * punctuation and the `*` suffix are ignored, so "branch office" and "Branch Office (BO)*"
-     * are the same column. Throws [ExcelFormatException] when mandatory columns are missing.
+     * punctuation and the `*` suffix are ignored, so "office name" and "Office Name*" are the
+     * same column. Spreadsheets made with the older "Branch Office (BO)" / "Sub Post Office (SO)"
+     * template are converted on the fly. Throws [ExcelFormatException] when mandatory columns
+     * are missing.
      */
     fun read(input: InputStream): ExcelParseResult {
         ReadableWorkbook(input).use { workbook ->
@@ -60,34 +73,57 @@ object ExcelCodec {
             if (rows.isEmpty()) throw ExcelFormatException("The workbook is empty.")
 
             val headerRow = rows.first()
-            val columnIndex = resolveColumns(headerRow)
+            val layout = resolveColumns(headerRow)
 
             val drafts = ArrayList<ExcelRow>(rows.size - 1)
             var blank = 0
             for (row in rows.drop(1)) {
                 val values = BeatField.entries.associateWith { field ->
-                    columnIndex[field]?.let { cellText(row, it) }.orEmpty()
+                    layout.columns[field]?.let { cellText(row, it) }.orEmpty()
                 }
-                if (values.values.all { it.isBlank() }) {
+                val legacyBo = layout.legacyBranchOffice?.let { cellText(row, it) }.orEmpty()
+                val legacySo = layout.legacySubPostOffice?.let { cellText(row, it) }.orEmpty()
+                if (values.values.all { it.isBlank() } && legacyBo.isBlank() && legacySo.isBlank()) {
                     blank++
                     continue
                 }
-                drafts += ExcelRow(
-                    rowNumber = row.rowNum,
-                    draft = BeatDraft(
-                        localityName = values.getValue(BeatField.LOCALITY),
-                        branchOffice = values.getValue(BeatField.BRANCH_OFFICE),
-                        subPostOffice = values.getValue(BeatField.SUB_POST_OFFICE),
-                        beatNumber = values.getValue(BeatField.BEAT_NUMBER),
-                        district = values.getValue(BeatField.DISTRICT),
-                        state = values.getValue(BeatField.STATE),
-                        pincode = values.getValue(BeatField.PINCODE),
-                        remarks = values.getValue(BeatField.REMARKS),
-                    ),
-                )
+                drafts += ExcelRow(rowNumber = row.rowNum, draft = toDraft(values, legacyBo, legacySo))
             }
             return ExcelParseResult(drafts, blank)
         }
+    }
+
+    /** Builds the draft, folding the legacy BO/SO columns into type + name + account office. */
+    private fun toDraft(values: Map<BeatField, String>, legacyBo: String, legacySo: String): BeatDraft {
+        var type = values.getValue(BeatField.OFFICE_TYPE)
+        var name = values.getValue(BeatField.OFFICE_NAME)
+        var account = values.getValue(BeatField.ACCOUNT_OFFICE)
+        if (name.isBlank()) {
+            when {
+                legacyBo.isNotBlank() -> {
+                    name = OfficeType.stripSuffix(legacyBo)
+                    if (type.isBlank()) type = OfficeType.BO.code
+                    if (account.isBlank()) account = legacySo
+                }
+                legacySo.isNotBlank() -> {
+                    name = OfficeType.stripSuffix(legacySo)
+                    if (type.isBlank()) type = OfficeType.SO.code
+                }
+            }
+        } else if (account.isBlank()) {
+            account = legacySo
+        }
+        return BeatDraft(
+            localityName = values.getValue(BeatField.LOCALITY),
+            officeType = type,
+            officeName = name,
+            accountOffice = account,
+            beatNumber = values.getValue(BeatField.BEAT_NUMBER),
+            district = values.getValue(BeatField.DISTRICT),
+            state = values.getValue(BeatField.STATE),
+            pincode = values.getValue(BeatField.PINCODE),
+            remarks = values.getValue(BeatField.REMARKS),
+        )
     }
 
     fun backupFileName(now: Date = Date()): String {
@@ -112,14 +148,15 @@ object ExcelCodec {
             records.forEachIndexed { i, r ->
                 val row = i + 1
                 sheet.value(row, 0, r.localityName)
-                sheet.value(row, 1, r.branchOffice)
-                sheet.value(row, 2, r.subPostOffice)
-                sheet.value(row, 3, r.beatNumber)
-                sheet.value(row, 4, r.district)
-                sheet.value(row, 5, r.state)
+                sheet.value(row, 1, r.officeType.code)
+                sheet.value(row, 2, r.officeName)
+                sheet.value(row, 3, r.accountOffice)
+                sheet.value(row, 4, r.beatNumber)
+                sheet.value(row, 5, r.district)
+                sheet.value(row, 6, r.state)
                 // PIN codes are written as text so leading digits are never reformatted.
-                sheet.value(row, 6, r.pincode)
-                sheet.value(row, 7, r.remarks)
+                sheet.value(row, 7, r.pincode)
+                sheet.value(row, 8, r.remarks)
             }
 
             val help = workbook.newWorksheet("Instructions")
@@ -127,6 +164,9 @@ object ExcelCodec {
                 "How to fill the Beat Directory sheet",
                 "",
                 "• Columns marked with * are mandatory.",
+                "• Office Type must be one of: ${OFFICE_TYPE_CODES.joinToString(", ")}.",
+                "• Office Name is the serving office without the type suffix (e.g. Rampur, not Rampur BO).",
+                "• Account Office is the SO/HO the office reports to (optional, e.g. Sitapur SO).",
                 "• Pincode must be exactly 6 digits and cannot start with 0 (e.g. 110001).",
                 "• Beat Number is free text (e.g. 1, 2A, BO-3) but should match the beat register.",
                 "• One locality/village per row. Delete nothing from the header row.",
@@ -141,25 +181,37 @@ object ExcelCodec {
 
     // ------------------------------------------------------------------ reading
 
-    private fun resolveColumns(headerRow: Row): Map<BeatField, Int> {
+    private class ColumnLayout(
+        val columns: Map<BeatField, Int>,
+        val legacyBranchOffice: Int?,
+        val legacySubPostOffice: Int?,
+    )
+
+    private fun resolveColumns(headerRow: Row): ColumnLayout {
         val normalisedHeaders = (0 until headerRow.cellCount).associateBy { idx ->
             normaliseHeader(cellText(headerRow, idx))
         }
-        val mapping = BeatField.entries.mapNotNull { field ->
-            val key = normaliseHeader(field.label)
-            val idx = normalisedHeaders[key]
+        fun find(label: String): Int? {
+            val key = normaliseHeader(label)
+            return normalisedHeaders[key]
                 ?: normalisedHeaders.entries.firstOrNull { (h, _) -> h.isNotEmpty() && (h.startsWith(key) || key.startsWith(h)) }?.value
-            idx?.let { field to it }
-        }.toMap()
+        }
+        val mapping = BeatField.entries.mapNotNull { field -> find(field.label)?.let { field to it } }.toMap()
+        val legacyBo = find(LEGACY_BRANCH_OFFICE)
+        val legacySo = find(LEGACY_SUB_POST_OFFICE)
+        val legacyCoversOffice = legacyBo != null || legacySo != null
 
-        val missing = BeatField.entries.filter { it.required && it !in mapping }
+        val missing = BeatField.entries.filter { field ->
+            field.required && field !in mapping &&
+                !(legacyCoversOffice && (field == BeatField.OFFICE_TYPE || field == BeatField.OFFICE_NAME))
+        }
         if (missing.isNotEmpty()) {
             throw ExcelFormatException(
                 "Missing required column(s): ${missing.joinToString { it.label }}. " +
                     "Download the template and keep its header row.",
             )
         }
-        return mapping
+        return ColumnLayout(mapping, legacyBo, legacySo)
     }
 
     private fun normaliseHeader(raw: String): String =

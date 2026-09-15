@@ -200,6 +200,9 @@ fun LocalBeatsScreen(
             onSave = { onIntent(LocalBeatsIntent.SaveEditor) },
             onDismiss = { onIntent(LocalBeatsIntent.DismissEditor) },
             onDuplicate = { onIntent(LocalBeatsIntent.DuplicateInEditor) },
+            onFetchOffices = { onIntent(LocalBeatsIntent.FetchOfficesForPin) },
+            onOfficeSelected = { onIntent(LocalBeatsIntent.OfficeSelected(it)) },
+            onDismissOffices = { onIntent(LocalBeatsIntent.DismissFetchedOffices) },
         )
     }
 
@@ -208,7 +211,7 @@ fun LocalBeatsScreen(
             onDismissRequest = { onIntent(LocalBeatsIntent.CancelDelete) },
             icon = { Icon(Icons.Default.Delete, contentDescription = null) },
             title = { Text(stringResource(R.string.delete_title)) },
-            text = { Text(stringResource(R.string.delete_message, record.localityName, record.beatNumber, record.branchOffice)) },
+            text = { Text(stringResource(R.string.delete_message, record.localityName, record.beatNumber, record.officeDisplay)) },
             confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmDelete) }) { Text(stringResource(R.string.action_delete)) } },
             dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelDelete) }) { Text(stringResource(R.string.action_cancel)) } },
         )
@@ -529,8 +532,10 @@ private fun BeatRecordCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_beat, record.beatNumber)) })
-                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_bo, record.branchOffice)) })
-                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_so, record.subPostOffice)) })
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_office, record.officeDisplay)) })
+                if (record.accountOffice.isNotBlank()) {
+                    SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_account, record.accountOffice)) })
+                }
                 SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_pin, record.pincode)) })
             }
             if (record.remarks.isNotBlank()) {
@@ -611,10 +616,10 @@ private fun BeatGroupCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.local_beat_title, group.beatNumber), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    val soText = if (group.subPostOffice.isNotBlank()) " • " + stringResource(R.string.local_beat_subtitle_so, group.subPostOffice) else ""
+                    val accountText = if (group.accountOffice.isNotBlank()) " • " + stringResource(R.string.local_beat_subtitle_account, group.accountOffice) else ""
                     val pinText = if (group.pincodes.isNotEmpty()) " • " + stringResource(R.string.local_beat_subtitle_pin, group.pincodes.joinToString(", ")) else ""
                     Text(
-                        group.branchOffice + soText + pinText,
+                        group.officeDisplay + accountText + pinText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

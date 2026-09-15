@@ -2,15 +2,15 @@
 
 Offline-first Android app for India Post mail-branch operations. Staff can look up any PIN code or
 post office across India when online, and — with or without a network — find which **Beat** and
-**Branch Office (BO)** serve a village even when the name is misspelled.
+**post office (BO/SO/HO/GPO/IDC)** serve a village even when the name is misspelled.
 
 ## Features
 
 | Area | What it does |
 | --- | --- |
 | **Online All-India** | Live lookup by PIN or post-office name with automatic failover across the official Department of Posts directory on data.gov.in, a key-free mirror of it, and `api.postalpincode.in`; 10 MB OkHttp cache so recent answers work offline. |
-| **Local Beats (offline)** | Room-backed directory of localities → Beat / BO / SO / PIN. Debounced (250 ms) search combines substring, exact beat/PIN and **phonetic** matching (Double Metaphone with an Indian-transliteration pre-normaliser). State and District filter chips. |
-| **CRUD** | Add/edit via a modal bottom sheet, delete with confirmation. Validation is shared with the importer. |
+| **Local Beats (offline)** | Room-backed directory of localities → Beat / office (type + name) / account office / PIN. Debounced (250 ms) search combines substring, exact beat/PIN and **phonetic** matching (Double Metaphone with an Indian-transliteration pre-normaliser). State and District filter chips. |
+| **CRUD** | Add/edit via a modal bottom sheet: office type dropdown (GPO/HO/IDC/SO/BO), and a **Fetch** button that lists every office under the typed PIN from the built-in directory so one tap fills type, name, account office, district and state. Delete with confirmation. Validation is shared with the importer. |
 | **Excel** | Download/share a blank `.xlsx` template, bulk-import via the Storage Access Framework (append or replace-all, row-level validation report), and export/share a backup through the Android share sheet via `FileProvider`. |
 
 ## Tech stack
@@ -53,14 +53,24 @@ app/src/main/kotlin/com/pinbeatfinder/
 
 ### Bundled All-India directory
 
-`app/src/main/assets/india_post_directory.bin` (gzip TSV, ≈2.9 MB; not named `.gz` because AGP would decompress and rename it at packaging) is the Department of Posts
+`app/src/main/assets/india_post_directory.bin` (gzip TSV, ≈3.3 MB; not named `.gz` because AGP would decompress and rename it at packaging) is the Department of Posts
 *All India Pincode Directory* from data.gov.in, reduced to the columns the app shows plus
-precomputed phonetic keys. `DirectorySeeder` loads it into a separate Room database
+precomputed phonetic keys, merged with the India Post **facility master** (the `OfficeMaster`
+table of the CSI *SPM Help* tool's `SPM.db`) which contributes each office's **account
+office** (the SO/HO it reports to) and ~7,000 offices missing from data.gov.in. The join is on
+(PIN, normalised office name); 95.6 % of data.gov.in rows get an account office.
+`DirectorySeeder` loads it into a separate Room database
 (`india_post_directory.db`) once per asset version; `IndiaPostDirectoryRepository` answers PIN
 and name lookups from it, and `PostalLookupRepository` only races the online providers when the
-bundle has no match. To refresh the snapshot, download the latest CSV from data.gov.in and rerun
-the generator (a small Kotlin tool that applies `PhoneticSearchEngine` to every office name),
-then bump `version` in `india_post_directory.json`.
+bundle has no match. To refresh the snapshot, download the latest CSV from data.gov.in, export
+`OfficeMaster` (fid, facilitydesc, pincode, ftype, postatus, repofficename) as TSV, and rerun
+the generator (a small Kotlin tool that applies `PhoneticSearchEngine` to every office name and
+does the merge), then bump `version` in `india_post_directory.json`.
+
+Data attribution: the pincode directory is published by the Department of Posts on data.gov.in
+under the Government Open Data License – India (GODL); the facility master is India Post's own
+operational reference data. Neither source carries district/state for offices absent from
+data.gov.in, so those rows take the majority district/state of their PIN.
 
 ### Online lookup providers
 
@@ -94,8 +104,14 @@ every supported Android version and is remembered across launches. All user-faci
 
 Sheet `Beat Directory`, header row (columns marked `*` are mandatory):
 
-`Locality/Village Name*` · `Branch Office (BO)*` · `Sub Post Office (SO)*` · `Beat Number*` ·
-`District*` · `State*` · `Pincode*` · `Remarks`
+`Locality/Village Name*` · `Office Type*` · `Office Name*` · `Account Office (SO/HO)` ·
+`Beat Number*` · `District*` · `State*` · `Pincode*` · `Remarks`
+
+`Office Type` is one of `GPO`, `HO`, `IDC`, `SO`, `BO` (spellings such as "Branch Office" or
+"B.O" are accepted). `Office Name` is the serving office without its type suffix. Files made
+with the pre-0.10 template (`Branch Office (BO)` / `Sub Post Office (SO)` columns) still import:
+the BO becomes a `BO` record with the SO as account office, and an SO-only row becomes an `SO`
+record.
 
 Header matching on import is tolerant (case, punctuation, `*`, and `(BO)`-style hints are ignored).
 PINs must match `^[1-9][0-9]{5}$`; numeric cells such as `110001` or `3.0` are normalised. Invalid
@@ -119,6 +135,8 @@ them through the `FileProvider`; nothing leaves the device unless the user share
 
 `./gradlew testDebugUnitTest` runs both the pure JVM tests and the Robolectric database tests
 (`app/src/test/.../robolectric/`), which open in-memory Room databases against Robolectric's SQLite.
+`BeatFinderDatabaseMigrationTest` builds a v1 database file by hand and opens it through the
+current schema, so a broken migration fails on CI rather than on a phone.
 
 ## Building
 
@@ -180,7 +198,7 @@ and `KEY_PASSWORD`.
 ## Verification status
 
 - The pure-Kotlin layers (phonetic engine, validators, `ExcelCodec`, API DTO parsing) were
-  compiled with Kotlin 2.2.21 against the real library versions and all 25 unit tests pass on the JVM.
+  compiled with Kotlin 2.2.21 against the real library versions and the unit tests pass on the JVM.
 - The Android build itself (AGP, Room/KSP, Compose) has **not** been run in the authoring
   environment because Google's Maven repository was unreachable there; run the Gradle commands
   above (or let CI do it) before shipping.

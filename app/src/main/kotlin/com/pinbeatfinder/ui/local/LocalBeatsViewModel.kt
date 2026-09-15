@@ -5,9 +5,11 @@ import com.pinbeatfinder.R
 import com.pinbeatfinder.ui.components.UiText
 import androidx.lifecycle.viewModelScope
 import com.pinbeatfinder.core.util.BeatDraftValidator
+import com.pinbeatfinder.core.util.PinCodeValidator
 import com.pinbeatfinder.data.excel.ExcelFormatException
 import com.pinbeatfinder.data.excel.ExcelSyncManager
 import com.pinbeatfinder.data.excel.ImportMode
+import com.pinbeatfinder.data.remote.LocalDirectorySource
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
@@ -15,6 +17,9 @@ import com.pinbeatfinder.domain.model.BeatGrouping
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.DraftValidation
+import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.domain.model.PostOffice
+import com.pinbeatfinder.domain.model.withOffice
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -44,6 +49,8 @@ import kotlinx.coroutines.launch
 class LocalBeatsViewModel(
     private val repository: BeatDirectoryRepository,
     private val excel: ExcelSyncManager,
+    /** Built-in All-India directory, used by the editor's "Fetch offices for this PIN" action. */
+    private val directory: LocalDirectorySource,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LocalBeatsState())
@@ -122,6 +129,9 @@ class LocalBeatsViewModel(
                 it.copy(query = intent.pincode, selectedState = null, selectedDistrict = null, viewMode = LocalViewMode.SEARCH)
             }
             is LocalBeatsIntent.EditorFieldChanged -> updateEditorField(intent.field, intent.value)
+            LocalBeatsIntent.FetchOfficesForPin -> fetchOfficesForPin()
+            is LocalBeatsIntent.OfficeSelected -> selectOffice(intent.office)
+            LocalBeatsIntent.DismissFetchedOffices -> updateEditor { it.copy(fetchedOffices = null) }
             LocalBeatsIntent.SaveEditor -> saveEditor()
             LocalBeatsIntent.DismissEditor -> _state.update { it.copy(editor = null) }
             LocalBeatsIntent.DuplicateInEditor -> _state.update { s ->
@@ -174,8 +184,9 @@ class LocalBeatsViewModel(
             val d = editor.draft
             val draft = when (field) {
                 BeatField.LOCALITY -> d.copy(localityName = value)
-                BeatField.BRANCH_OFFICE -> d.copy(branchOffice = value)
-                BeatField.SUB_POST_OFFICE -> d.copy(subPostOffice = value)
+                BeatField.OFFICE_TYPE -> d.copy(officeType = value)
+                BeatField.OFFICE_NAME -> d.copy(officeName = value)
+                BeatField.ACCOUNT_OFFICE -> d.copy(accountOffice = value)
                 BeatField.BEAT_NUMBER -> d.copy(beatNumber = value)
                 BeatField.DISTRICT -> d.copy(district = value)
                 BeatField.STATE -> d.copy(state = value)
@@ -183,6 +194,61 @@ class LocalBeatsViewModel(
                 BeatField.REMARKS -> d.copy(remarks = value)
             }
             s.copy(editor = editor.copy(draft = draft, errors = editor.errors - field))
+        }
+    }
+
+    private inline fun updateEditor(crossinline transform: (EditorState) -> EditorState) {
+        _state.update { s -> s.editor?.let { s.copy(editor = transform(it)) } ?: s }
+    }
+
+    /**
+     * Asks the bundled directory for every office under the PIN typed in the editor. The result
+     * is shown as a picker; choosing an entry fills office type/name, account office, district
+     * and state in one tap, so staff never have to type an office name from memory.
+     */
+    private fun fetchOfficesForPin() {
+        val editor = _state.value.editor ?: return
+        if (editor.isFetching) return
+        val pin = PinCodeValidator.normalize(editor.draft.pincode)
+        if (pin == null) {
+            val error = if (editor.draft.pincode.isBlank()) FieldError.REQUIRED else FieldError.INVALID_PINCODE
+            updateEditor { it.copy(errors = it.errors + (BeatField.PINCODE to error)) }
+            return
+        }
+        viewModelScope.launch {
+            updateEditor { it.copy(isFetching = true) }
+            try {
+                if (!directory.isReady()) {
+                    _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.fetch_directory_not_ready)))
+                    return@launch
+                }
+                val offices = directory.search(pin, isPincode = true)
+                    .sortedWith(compareBy<PostOffice> { it.officeType.ordinal }.thenBy { it.name.lowercase() })
+                if (offices.isEmpty()) {
+                    _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.fetch_no_offices, pin)))
+                } else {
+                    updateEditor { it.copy(fetchedOffices = offices, draft = it.draft.copy(pincode = pin), errors = it.errors - BeatField.PINCODE) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_file_failed, e.message ?: e::class.simpleName.orEmpty())))
+            } finally {
+                updateEditor { it.copy(isFetching = false) }
+            }
+        }
+    }
+
+    private fun selectOffice(office: PostOffice) {
+        updateEditor { editor ->
+            editor.copy(
+                draft = editor.draft.withOffice(office),
+                errors = editor.errors - setOf(
+                    BeatField.OFFICE_TYPE, BeatField.OFFICE_NAME, BeatField.ACCOUNT_OFFICE,
+                    BeatField.DISTRICT, BeatField.STATE, BeatField.PINCODE,
+                ),
+                fetchedOffices = null,
+            )
         }
     }
 

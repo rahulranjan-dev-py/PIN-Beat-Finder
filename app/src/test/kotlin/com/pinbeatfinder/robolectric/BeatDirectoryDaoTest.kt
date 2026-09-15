@@ -9,6 +9,7 @@ import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.MatchKind
+import com.pinbeatfinder.domain.model.OfficeType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -28,7 +29,7 @@ class BeatDirectoryDaoTest {
     private lateinit var repo: BeatDirectoryRepository
 
     private fun r(name: String, bo: String, beat: String, district: String, state: String, pin: String) =
-        BeatRecord(0, name, bo, "Sitapur SO", beat, district, state, pin)
+        BeatRecord(0, name, OfficeType.BO, bo, "Sitapur SO", beat, district, state, pin)
 
     @Before
     fun setUp() {

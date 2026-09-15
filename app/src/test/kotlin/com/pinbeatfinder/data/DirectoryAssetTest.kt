@@ -18,6 +18,8 @@ class DirectoryAssetTest {
         assertEquals("PO", e.officeType)
         assertEquals("DELHI", e.state)
         assertEquals("KNKT PLS", e.phoneticPrimary)
+        assertEquals("", e.accountOffice) // 12-column line from an older snapshot
+        assertEquals("New Delhi GPO", DirectoryAsset.parseLine("$line\tNew Delhi GPO")!!.accountOffice)
         assertNull(DirectoryAsset.parseLine("too\tfew\tcolumns"))
     }
 

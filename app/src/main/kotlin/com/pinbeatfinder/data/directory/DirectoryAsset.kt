@@ -12,8 +12,8 @@ import java.util.zip.GZIPInputStream
 data class DirectoryMeta(val version: String, val rows: Int, val source: String = "")
 
 /**
- * Pure parser for the bundled `india_post_directory.tsv.gz` (12 tab-separated columns, see the
- * generator in the repo's scratch tooling). Kept Android-free so it is unit-testable.
+ * Pure parser for the bundled `india_post_directory.tsv.gz` (13 tab-separated columns, the last —
+ * account office — optional for older snapshots; see the generator in the repo's scratch tooling). Kept Android-free so it is unit-testable.
  */
 object DirectoryAsset {
     /**
@@ -24,6 +24,7 @@ object DirectoryAsset {
     const val TSV_NAME = "india_post_directory.bin"
     const val META_NAME = "india_post_directory.json"
     private const val COLUMNS = 12
+    private const val ACCOUNT_OFFICE_COLUMN = 12
 
     fun parseMeta(text: String): DirectoryMeta = Json { ignoreUnknownKeys = true }.decodeFromString(DirectoryMeta.serializer(), text)
 
@@ -34,6 +35,7 @@ object DirectoryAsset {
         return IndiaPostOfficeEntity(
             name = f[0], pincode = f[1], officeType = f[2], delivery = f[3], district = f[4], state = f[5],
             division = f[6], region = f[7], circle = f[8], normalizedName = f[9], phoneticPrimary = f[10], phoneticAlternate = f[11],
+            accountOffice = f.getOrNull(ACCOUNT_OFFICE_COLUMN).orEmpty(),
         )
     }
 
