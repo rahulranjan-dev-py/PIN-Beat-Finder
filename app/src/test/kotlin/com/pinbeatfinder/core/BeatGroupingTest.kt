@@ -36,6 +36,28 @@ class BeatGroupingTest {
     }
 
     @Test
+    fun `office summaries merge case and beats, keep PIN sets apart, flag mixed types`() {
+        val summaries = BeatGrouping.summarizeOffices(
+            listOf(
+                r(1, "Alpha", "Rampur", "2"),
+                r(2, "Beta", "rampur", "3"),
+                r(3, "Gamma", "Rampur", "3").copy(officeType = OfficeType.SO),
+                r(4, "Delta", "Rampur", "1", pin = "261002"),   // same name, other PIN: separate office
+                r(5, "Eps", "Amethi", "1", pin = "261002"),
+            ),
+        )
+        assertEquals(listOf("Amethi", "Rampur", "Rampur"), summaries.map { it.officeName })
+        val rampur = summaries.first { it.officeName == "Rampur" && it.pincodes == listOf("261001") }
+        assertEquals(3, rampur.recordCount)
+        assertEquals(2, rampur.beatCount)
+        assertEquals(OfficeType.BO, rampur.officeType)
+        assertTrue(rampur.isMixed)
+        val other = summaries.first { it.officeName == "Rampur" && it.pincodes == listOf("261002") }
+        assertEquals(1, other.recordCount)
+        assertTrue(!other.isMixed)
+    }
+
+    @Test
     fun `natural compare`() {
         assertTrue(BeatGrouping.naturalCompare("2", "10") < 0)
         assertTrue(BeatGrouping.naturalCompare("2", "2A") < 0)

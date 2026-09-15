@@ -10,7 +10,7 @@ post office across India when online, and — with or without a network — find
 | --- | --- |
 | **Online All-India** | Live lookup by PIN or post-office name with automatic failover across the official Department of Posts directory on data.gov.in, a key-free mirror of it, and `api.postalpincode.in`; 10 MB OkHttp cache so recent answers work offline. |
 | **Local Beats (offline)** | Room-backed directory of localities → Beat / office (type + name) / account office / PIN. Debounced (250 ms) search combines substring, exact beat/PIN and **phonetic** matching (Double Metaphone with an Indian-transliteration pre-normaliser). State and District filter chips. |
-| **CRUD** | Add/edit via a modal bottom sheet: office type dropdown (GPO/HO/IDC/SO/BO), and a **Fetch** button that lists every office under the typed PIN from the built-in directory so one tap fills type, name, account office, district and state. Delete with confirmation. Validation is shared with the importer. |
+| **CRUD** | Add/edit via a modal bottom sheet: office type dropdown (GPO/HO/IDC/SO/BO), Office Name suggestions from the built-in directory as you type, and a **Fetch** button that lists every office under the typed PIN (with how many local beats/villages each already has) so one tap fills type, name, account office, district and state. The By-beat view's **Office types** chip re-types every record of an office in one go and flags offices with mixed types. Delete with confirmation. Validation is shared with the importer. |
 | **Excel** | Download/share a blank `.xlsx` template, bulk-import via the Storage Access Framework (append or replace-all, row-level validation report), and export/share a backup through the Android share sheet via `FileProvider`. |
 
 ## Tech stack

@@ -179,6 +179,15 @@
     <string name="fetch_account_office">लेखा डाकघर: %1$s</string>
     <string name="fetch_no_offices">अंतर्निहित निर्देशिका में पिन %1$s के लिए कोई डाकघर नहीं मिला।</string>
     <string name="fetch_directory_not_ready">अंतर्निहित निर्देशिका अभी लोड हो रही है। थोड़ी देर बाद फिर कोशिश करें।</string>
+    <string name="office_suggestion_subtitle">पिन %1$s • %2$s, %3$s</string>
+    <string name="picker_local_stats">स्थानीय बीट में पहले से: %1$d बीट, %2$d गाँव</string>
+    <string name="action_fix_office_types">डाकघर प्रकार</string>
+    <string name="action_done">हो गया</string>
+    <string name="office_types_title">डाकघर प्रकार सुधारें</string>
+    <string name="office_types_hint">यहाँ प्रकार बदलने से उस डाकघर के सभी रिकॉर्ड बदल जाते हैं। जिन डाकघरों के रिकॉर्ड में प्रकार अलग-अलग हैं, वे चिह्नित हैं।</string>
+    <string name="office_summary_line">%1$d गाँव • %2$d बीट • पिन %3$s</string>
+    <string name="office_summary_mixed">मिश्रित प्रकार — सही प्रकार चुनें</string>
+    <string name="msg_office_type_updated">%2$d रिकॉर्ड के लिए डाकघर प्रकार %1$s किया गया।</string>
 
     <string name="settings_title">सेटिंग</string>
     <string name="settings_default_tab">ऐप खुलने पर दिखाएँ</string>

@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.Flow
 /** Projection for [BeatDirectoryDao.observePincodeCounts]. */
 data class PincodeCount(val pincode: String, val count: Int)
 
+/** Projection for [BeatDirectoryDao.officeStats]: how much local data an office already has. */
+data class OfficeStats(val officeName: String, val villages: Int, val beats: Int)
+
 @Dao
 interface BeatDirectoryDao {
 
@@ -101,6 +104,27 @@ interface BeatDirectoryDao {
     /** How many directory rows exist per PIN; drives the "N local beats for this PIN" bridge on online results. */
     @Query("SELECT pincode AS pincode, COUNT(*) AS count FROM local_beat_directory GROUP BY pincode")
     fun observePincodeCounts(): Flow<List<PincodeCount>>
+
+    /**
+     * Per-office record and beat counts under one PIN. `branchOffice` is NOCASE-collated, so the
+     * grouping is case-insensitive.
+     */
+    @Query(
+        """
+        SELECT branchOffice AS officeName, COUNT(*) AS villages, COUNT(DISTINCT beatNumber) AS beats
+        FROM local_beat_directory WHERE pincode = :pincode GROUP BY branchOffice
+        """,
+    )
+    suspend fun officeStats(pincode: String): List<OfficeStats>
+
+    /** Bulk office-type fix for one office (name + its PINs); returns the number of rows changed. */
+    @Query(
+        """
+        UPDATE local_beat_directory SET officeType = :officeType, updatedAt = :now
+        WHERE branchOffice = :officeName AND pincode IN (:pincodes)
+        """,
+    )
+    suspend fun updateOfficeType(officeName: String, pincodes: List<String>, officeType: String, now: Long): Int
 
     /** Natural keys already present, used for duplicate detection during import. */
     @Query("SELECT localityName || '|' || branchOffice || '|' || beatNumber || '|' || pincode FROM local_beat_directory")

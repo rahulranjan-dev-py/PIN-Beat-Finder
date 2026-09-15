@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.11.0 — office suggestions, local counts in the PIN picker, bulk type fix
+
+### Added
+- **Office Name suggestions.** Typing two or more letters in Office Name searches the built-in
+  directory (same phonetic engine as All-India) and offers matching offices with their PIN,
+  district and state; offices under the PIN already typed come first. Picking one fills type,
+  name, account office, district, state and PIN — no need to know the PIN first.
+- **Local counts in the Fetch picker.** Each office listed for a PIN now shows how many beats and
+  villages are already filed under it locally, so staff can see at a glance which offices have
+  data and which are still empty.
+- **Fix office types in bulk.** The By-beat view has an "Office types" chip that opens a list of
+  every office (villages, beats, PINs) with a type dropdown. Changing it re-types every record of
+  that office at once. Offices whose records disagree on the type are flagged "Mixed types".
+
 ## v0.10.0 — office type dropdown, fetch offices by PIN
 
 ### Changed

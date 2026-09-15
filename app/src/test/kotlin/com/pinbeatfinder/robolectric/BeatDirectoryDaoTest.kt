@@ -95,6 +95,21 @@ class BeatDirectoryDaoTest {
     }
 
     @Test
+    fun `office stats per pin and bulk office type update`() = runBlocking {
+        val stats = repo.officeStats("261001")
+        assertEquals(setOf("rampur bo"), stats.keys)
+        assertEquals(2, stats.getValue("rampur bo").villages)
+        assertEquals(1, stats.getValue("rampur bo").beats)
+        assertTrue(repo.officeStats("999999").isEmpty())
+
+        val changed = repo.setOfficeType("RAMPUR bo", listOf("261001"), OfficeType.SO)   // case-insensitive name
+        assertEquals(2, changed)
+        assertEquals(setOf(OfficeType.SO), repo.getAll().filter { it.pincode == "261001" }.map { it.officeType }.toSet())
+        assertEquals(OfficeType.BO, repo.getAll().first { it.localityName == "Bhilwara" }.officeType)
+        assertEquals(0, repo.setOfficeType("Rampur BO", emptyList(), OfficeType.HO))
+    }
+
+    @Test
     fun `save recomputes phonetic keys and delete many works`() = runBlocking {
         val id = repo.save(r("Sitapur", "S BO", "4", "Sitapur", "Uttar Pradesh", "261001"))
         assertEquals("Sitapur", repo.search("Seetapoor").first().record.localityName)
