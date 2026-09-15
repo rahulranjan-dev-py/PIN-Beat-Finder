@@ -17,6 +17,22 @@ data class RowError(
     fun describe(): String = "Row $rowNumber: " + messages.values.joinToString("; ")
 }
 
+/** What an import *would* do; shown to the user before anything is written. */
+data class ImportPreview(
+    val mode: ImportMode,
+    /** Rows that will be inserted (already de-duplicated). */
+    val records: List<com.pinbeatfinder.domain.model.BeatRecord>,
+    val duplicatesSkipped: Int,
+    val blankRowsSkipped: Int,
+    val errors: List<RowError>,
+    /** Rows that will be deleted first when [mode] is REPLACE_ALL. */
+    val existingCount: Int,
+) {
+    val willInsert: Int get() = records.size
+    val hasErrors: Boolean get() = errors.isNotEmpty()
+    val isEmpty: Boolean get() = records.isEmpty()
+}
+
 data class ImportReport(
     val inserted: Int,
     val duplicatesSkipped: Int,

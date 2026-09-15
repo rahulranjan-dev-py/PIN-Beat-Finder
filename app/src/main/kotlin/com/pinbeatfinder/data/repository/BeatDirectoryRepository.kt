@@ -6,6 +6,7 @@ import com.pinbeatfinder.data.local.BeatDirectoryEntity
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.BeatSearchHit
+import com.pinbeatfinder.domain.model.MatchKind
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -61,7 +62,7 @@ class BeatDirectoryRepository(
                     record.pincode == q || record.beatNumber.equals(q, ignoreCase = true) -> 1.0
                     else -> phonetic.score(q, record.localityName)
                 }
-                BeatSearchHit(record, score)
+                BeatSearchHit(record, score, MatchKind.fromScore(score, hasQuery = true))
             }
             .sortedWith(compareByDescending<BeatSearchHit> { it.score }.thenBy { it.record.localityName })
             .take(limit)
@@ -77,6 +78,31 @@ class BeatDirectoryRepository(
     fun observeDistricts(state: String?): Flow<List<String>> = dao.observeDistricts(state?.takeIf { it.isNotBlank() })
 
     suspend fun getAll(): List<BeatRecord> = withContext(ioDispatcher) { dao.getAll().map { it.toDomain() } }
+
+    /** Unbounded filtered listing for the "By beat" view. */
+    suspend fun listAll(filters: BeatSearchFilters = BeatSearchFilters()): List<BeatRecord> = withContext(ioDispatcher) {
+        dao.listAll(filters.state?.takeIf { it.isNotBlank() }, filters.district?.takeIf { it.isNotBlank() }).map { it.toDomain() }
+    }
+
+    suspend fun deleteMany(ids: Collection<Long>) = withContext(ioDispatcher) {
+        ids.chunked(BeatDirectoryDao.IMPORT_CHUNK).forEach { dao.deleteByIds(it) }
+    }
+
+    /**
+     * Splits [records] into rows that would be inserted and the count that would be skipped as
+     * duplicates of existing rows (or of each other). Used for the import preview so the numbers
+     * shown before confirming are exactly what [importRecords] will do.
+     */
+    suspend fun partitionForImport(records: List<BeatRecord>, replaceExisting: Boolean): Pair<List<BeatRecord>, Int> =
+        withContext(ioDispatcher) {
+            val existing: MutableSet<String> = if (replaceExisting) HashSet() else HashSet(dao.naturalKeys().map { it.lowercase() })
+            val fresh = ArrayList<BeatRecord>(records.size)
+            var duplicates = 0
+            for (record in records) {
+                if (!existing.add(record.dedupeKey)) duplicates++ else fresh += record
+            }
+            fresh to duplicates
+        }
 
     suspend fun getById(id: Long): BeatRecord? = withContext(ioDispatcher) { dao.getById(id)?.toDomain() }
 
