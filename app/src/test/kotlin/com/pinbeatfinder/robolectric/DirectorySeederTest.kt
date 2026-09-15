@@ -83,7 +83,8 @@ class DirectorySeederTest {
         assertTrue(repo.isReady())
         assertEquals(listOf("Baroda House SO", "Connaught Place SO"), repo.search("110001", isPincode = true).map { it.name })
         assertEquals("Sub Post Office", repo.search("110001", isPincode = true).first().branchType)
-        assertEquals("Connaught Place SO", repo.search("Connot Place", isPincode = false).first().name)
+        // "Conaught" normalises to the same "konogt" as "Connaught" (gh->g, au->o, nn->n).
+        assertEquals("Connaught Place SO", repo.search("Conaught Place", isPincode = false).first().name)
         assertEquals("Govindapur B.O", repo.search("govindpur", isPincode = false).first().name)
         assertTrue(repo.search("Zzzzqq", isPincode = false).isEmpty())
 

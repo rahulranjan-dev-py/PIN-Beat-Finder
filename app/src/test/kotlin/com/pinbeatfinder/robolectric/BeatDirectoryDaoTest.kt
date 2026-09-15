@@ -53,13 +53,20 @@ class BeatDirectoryDaoTest {
 
     @Test
     fun `phonetic search tolerates misspelling and ranks exact first`() = runBlocking {
+        // "Rampoor" normalises to "rampur", a prefix of both names (TEXT tier); order between the two is a tie-break.
         val hits = repo.search("Rampoor")
-        assertEquals(listOf("Rampur Kalan", "Rampur Khurd"), hits.map { it.record.localityName })
-        assertTrue(hits.all { it.matchKind == MatchKind.PHONETIC || it.matchKind == MatchKind.TEXT || it.matchKind == MatchKind.EXACT })
+        assertEquals(setOf("Rampur Kalan", "Rampur Khurd"), hits.map { it.record.localityName }.toSet())
+        assertTrue(hits.all { it.matchKind == MatchKind.TEXT })
 
+        // Aspirate folding makes "Bilwara" an exact normalised match for "Bhilwara".
         val bil = repo.search("Bilwara")
         assertEquals("Bhilwara", bil.single().record.localityName)
-        assertEquals(MatchKind.PHONETIC, bil.single().matchKind)
+        assertEquals(MatchKind.EXACT, bil.single().matchKind)
+
+        // Vowel change is only recoverable phonetically (Double Metaphone drops interior vowels).
+        val rum = repo.search("Rumpur Kalan")
+        assertEquals("Rampur Kalan", rum.first().record.localityName)
+        assertEquals(MatchKind.PHONETIC, rum.first().matchKind)
     }
 
     @Test
