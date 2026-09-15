@@ -14,7 +14,41 @@ data class BeatGroup(
     val officeDisplay: String get() = "$officeName ${officeType.code}"
 }
 
+/** One office as seen across the whole local directory, for the bulk office-type fixer. */
+data class OfficeSummary(
+    val officeName: String,
+    /** Majority type across the office's records; a mixed office is the thing the fixer exists to repair. */
+    val officeType: OfficeType,
+    val isMixed: Boolean,
+    val pincodes: List<String>,
+    val recordCount: Int,
+    val beatCount: Int,
+) {
+    val key: String get() = officeName.lowercase() + "|" + pincodes.joinToString(",")
+    val officeDisplay: String get() = "$officeName ${officeType.code}"
+}
+
 object BeatGrouping {
+    /**
+     * One summary per (office name, PIN), ordered by name. The PIN is part of the identity so two
+     * "Rampur" offices in different districts are never merged into one row.
+     */
+    fun summarizeOffices(records: List<BeatRecord>): List<OfficeSummary> =
+        records.groupBy { it.officeName.trim().lowercase() to it.pincode }
+            .values
+            .map { rows ->
+                val types = rows.groupingBy { it.officeType }.eachCount()
+                OfficeSummary(
+                    officeName = rows.first().officeName.trim(),
+                    officeType = types.maxByOrNull { it.value }!!.key,
+                    isMixed = types.size > 1,
+                    pincodes = rows.map { it.pincode }.distinct().sorted(),
+                    recordCount = rows.size,
+                    beatCount = rows.map { it.beatNumber.trim().lowercase() }.distinct().size,
+                )
+            }
+            .sortedWith(compareBy<OfficeSummary> { it.officeName.lowercase() }.thenBy { it.pincodes.first() })
+
     /**
      * Groups rows by (office name, beat number). Groups are ordered by office then by beat
      * number using natural ordering, so "Beat 2" comes before "Beat 10" and "2A" after "2".

@@ -13,11 +13,13 @@ import com.pinbeatfinder.data.remote.LocalDirectorySource
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
+import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatGrouping
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.DraftValidation
 import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.domain.model.OfficeSummary
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.domain.model.withOffice
 import kotlinx.coroutines.CancellationException
@@ -80,10 +82,25 @@ class LocalBeatsViewModel(
             dataVersion,
         ) { (s, d, active), v -> GroupKey(s, d, v, active) }
             .mapLatest { key ->
-                if (!key.active) emptyList()
-                else BeatGrouping.group(repository.listAll(BeatSearchFilters(key.state, key.district)))
+                if (!key.active) emptyList<BeatGroup>() to emptyList<OfficeSummary>()
+                else repository.listAll(BeatSearchFilters(key.state, key.district)).let { BeatGrouping.group(it) to BeatGrouping.summarizeOffices(it) }
             }
-            .onEach { groups -> _state.update { it.copy(beatGroups = groups) } }
+            .onEach { (groups, offices) -> _state.update { it.copy(beatGroups = groups, officeSummaries = offices) } }
+            .launchIn(viewModelScope)
+
+        // Office Name suggestions: what is typed -> directory name search -> short list, PIN matches first.
+        _state.map { s -> s.editor?.let { it.draft.officeName.trim() to it.draft.pincode } }
+            .distinctUntilChanged()
+            .debounce { if (it == null || it.first.length < SUGGEST_MIN_CHARS) 0L else SEARCH_DEBOUNCE_MS }
+            .mapLatest { key ->
+                if (key == null || key.first.length < SUGGEST_MIN_CHARS) return@mapLatest emptyList<PostOffice>()
+                runCatching {
+                    directory.search(key.first, isPincode = false)
+                        .sortedBy { if (it.pincode == key.second) 0 else 1 }
+                        .take(SUGGEST_LIMIT)
+                }.getOrDefault(emptyList())
+            }
+            .onEach { suggestions -> updateEditor { it.copy(officeSuggestions = suggestions) } }
             .launchIn(viewModelScope)
 
         repository.observeStates()
@@ -132,6 +149,9 @@ class LocalBeatsViewModel(
             LocalBeatsIntent.FetchOfficesForPin -> fetchOfficesForPin()
             is LocalBeatsIntent.OfficeSelected -> selectOffice(intent.office)
             LocalBeatsIntent.DismissFetchedOffices -> updateEditor { it.copy(fetchedOffices = null) }
+            LocalBeatsIntent.ShowOfficeTypes -> _state.update { it.copy(showOfficeTypes = true) }
+            LocalBeatsIntent.HideOfficeTypes -> _state.update { it.copy(showOfficeTypes = false) }
+            is LocalBeatsIntent.SetOfficeType -> setOfficeType(intent)
             LocalBeatsIntent.SaveEditor -> saveEditor()
             LocalBeatsIntent.DismissEditor -> _state.update { it.copy(editor = null) }
             LocalBeatsIntent.DuplicateInEditor -> _state.update { s ->
@@ -227,7 +247,15 @@ class LocalBeatsViewModel(
                 if (offices.isEmpty()) {
                     _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.fetch_no_offices, pin)))
                 } else {
-                    updateEditor { it.copy(fetchedOffices = offices, draft = it.draft.copy(pincode = pin), errors = it.errors - BeatField.PINCODE) }
+                    val stats = repository.officeStats(pin)
+                    updateEditor {
+                        it.copy(
+                            fetchedOffices = offices,
+                            officeStats = stats,
+                            draft = it.draft.copy(pincode = pin),
+                            errors = it.errors - BeatField.PINCODE,
+                        )
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -248,7 +276,22 @@ class LocalBeatsViewModel(
                     BeatField.DISTRICT, BeatField.STATE, BeatField.PINCODE,
                 ),
                 fetchedOffices = null,
+                officeSuggestions = emptyList(),
             )
+        }
+    }
+
+    private fun setOfficeType(intent: LocalBeatsIntent.SetOfficeType) {
+        viewModelScope.launch {
+            try {
+                val changed = repository.setOfficeType(intent.office.officeName, intent.office.pincodes, intent.type)
+                dataVersion.update { it + 1 }
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_office_type_updated, intent.type.code, changed)))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_save_failed, e.message.orEmpty())))
+            }
         }
     }
 
@@ -368,5 +411,7 @@ class LocalBeatsViewModel(
 
     companion object {
         const val SEARCH_DEBOUNCE_MS = 250L
+        const val SUGGEST_MIN_CHARS = 2
+        const val SUGGEST_LIMIT = 8
     }
 }

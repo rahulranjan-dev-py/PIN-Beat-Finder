@@ -184,6 +184,15 @@
     <string name="fetch_account_office">Account office: %1$s</string>
     <string name="fetch_no_offices">No offices found for PIN %1$s in the built-in directory.</string>
     <string name="fetch_directory_not_ready">The built-in directory is still loading. Try again in a moment.</string>
+    <string name="office_suggestion_subtitle">PIN %1$s • %2$s, %3$s</string>
+    <string name="picker_local_stats">Already in local beats: %1$d beat(s), %2$d village(s)</string>
+    <string name="action_fix_office_types">Office types</string>
+    <string name="action_done">Done</string>
+    <string name="office_types_title">Fix office types</string>
+    <string name="office_types_hint">Changing a type here updates every record of that office. Offices whose records disagree on the type are marked.</string>
+    <string name="office_summary_line">%1$d village(s) • %2$d beat(s) • PIN %3$s</string>
+    <string name="office_summary_mixed">Mixed types — pick the right one</string>
+    <string name="msg_office_type_updated">Office type set to %1$s for %2$d record(s).</string>
 
     <!-- settings -->
     <string name="settings_title">Settings</string>

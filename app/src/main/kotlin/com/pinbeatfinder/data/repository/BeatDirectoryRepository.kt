@@ -3,10 +3,12 @@ package com.pinbeatfinder.data.repository
 import com.pinbeatfinder.core.phonetic.PhoneticSearchEngine
 import com.pinbeatfinder.data.local.BeatDirectoryDao
 import com.pinbeatfinder.data.local.BeatDirectoryEntity
+import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.domain.model.MatchKind
+import com.pinbeatfinder.domain.model.OfficeType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -82,6 +84,17 @@ class BeatDirectoryRepository(
     /** Unbounded filtered listing for the "By beat" view. */
     suspend fun listAll(filters: BeatSearchFilters = BeatSearchFilters()): List<BeatRecord> = withContext(ioDispatcher) {
         dao.listAll(filters.state?.takeIf { it.isNotBlank() }, filters.district?.takeIf { it.isNotBlank() }).map { it.toDomain() }
+    }
+
+    /** Local data per office under [pincode], keyed by lower-cased office name. */
+    suspend fun officeStats(pincode: String): Map<String, OfficeStats> = withContext(ioDispatcher) {
+        dao.officeStats(pincode).associateBy { it.officeName.trim().lowercase() }
+    }
+
+    /** Sets the type of every record of one office (name, case-insensitive, within [pincodes]). */
+    suspend fun setOfficeType(officeName: String, pincodes: List<String>, type: OfficeType): Int = withContext(ioDispatcher) {
+        if (pincodes.isEmpty()) 0
+        else dao.updateOfficeType(officeName.trim(), pincodes, type.code, System.currentTimeMillis())
     }
 
     suspend fun deleteMany(ids: Collection<Long>) = withContext(ioDispatcher) {

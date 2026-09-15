@@ -50,8 +50,10 @@ import androidx.compose.ui.res.stringResource
 import com.pinbeatfinder.R
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.FieldError
-import com.pinbeatfinder.domain.model.OfficeType
+import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.PostOffice
+import com.pinbeatfinder.domain.model.plainName
+import com.pinbeatfinder.ui.components.OfficeTypeDropdown
 import com.pinbeatfinder.ui.components.labelRes
 import com.pinbeatfinder.ui.components.message
 
@@ -77,7 +79,7 @@ fun BeatEditorSheet(
     val draft = editor.draft
 
     editor.fetchedOffices?.let { offices ->
-        OfficePickerDialog(pincode = draft.pincode, offices = offices, onSelect = onOfficeSelected, onDismiss = onDismissOffices)
+        OfficePickerDialog(pincode = draft.pincode, offices = offices, stats = editor.officeStats, onSelect = onOfficeSelected, onDismiss = onDismissOffices)
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -128,8 +130,21 @@ fun BeatEditorSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-                OfficeTypeField(draft.officeType, editor.errors, onFieldChange, modifier = Modifier.width(132.dp))
-                EditorField(BeatField.OFFICE_NAME, draft.officeName, editor.errors, onFieldChange, modifier = Modifier.weight(1f), capitalize = true)
+                OfficeTypeDropdown(
+                    value = draft.officeType,
+                    onSelect = { onFieldChange(BeatField.OFFICE_TYPE, it.code) },
+                    modifier = Modifier.width(132.dp),
+                    label = stringResource(BeatField.OFFICE_TYPE.labelRes()) + " *",
+                    error = editor.errors[BeatField.OFFICE_TYPE]?.message(LocalContext.current, BeatField.OFFICE_TYPE),
+                )
+                OfficeNameField(
+                    value = draft.officeName,
+                    suggestions = editor.officeSuggestions,
+                    errors = editor.errors,
+                    onFieldChange = onFieldChange,
+                    onOfficeSelected = onOfficeSelected,
+                    modifier = Modifier.weight(1f),
+                )
             }
             EditorField(BeatField.ACCOUNT_OFFICE, draft.accountOffice, editor.errors, onFieldChange, capitalize = true)
             SuggestingField(BeatField.STATE, draft.state, knownStates, editor.errors, onFieldChange)
@@ -189,47 +204,56 @@ private fun EditorField(
     )
 }
 
-/** Read-only dropdown of the five office kinds; the code is what gets stored and exported. */
+/** Office Name with live suggestions from the built-in directory; picking one fills every office field. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OfficeTypeField(
+private fun OfficeNameField(
     value: String,
+    suggestions: List<PostOffice>,
     errors: Map<BeatField, FieldError>,
     onFieldChange: (BeatField, String) -> Unit,
+    onOfficeSelected: (PostOffice) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val field = BeatField.OFFICE_TYPE
+    val field = BeatField.OFFICE_NAME
     val label = stringResource(field.labelRes())
     val error = errors[field]?.message(context, field)
     var expanded by remember { mutableStateOf(false) }
-    val selected = OfficeType.parse(value)
+    val open = expanded && suggestions.isNotEmpty()
 
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
+    ExposedDropdownMenuBox(expanded = open, onExpandedChange = { expanded = it }, modifier = modifier) {
         OutlinedTextField(
-            value = selected?.code ?: value,
-            onValueChange = {},
-            readOnly = true,
+            value = value,
+            onValueChange = {
+                onFieldChange(field, it)
+                expanded = true
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                .menuAnchor(MenuAnchorType.PrimaryEditable),
             label = { Text("$label *") },
             isError = error != null,
             supportingText = { if (error != null) Text(error) },
             singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            trailingIcon = { if (suggestions.isNotEmpty()) ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            OfficeType.entries.forEach { type ->
+        ExposedDropdownMenu(expanded = open, onDismissRequest = { expanded = false }) {
+            suggestions.forEach { office ->
                 DropdownMenuItem(
                     text = {
                         Column {
-                            Text(type.code, style = MaterialTheme.typography.bodyLarge)
-                            Text(type.fullName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(office.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                stringResource(R.string.office_suggestion_subtitle, office.pincode, office.district, office.state),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     },
                     onClick = {
-                        onFieldChange(field, type.code)
+                        onOfficeSelected(office)
                         expanded = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
@@ -244,6 +268,7 @@ private fun OfficeTypeField(
 private fun OfficePickerDialog(
     pincode: String,
     offices: List<PostOffice>,
+    stats: Map<String, OfficeStats>,
     onSelect: (PostOffice) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -270,6 +295,13 @@ private fun OfficePickerDialog(
                             val account = if (office.accountOffice.isBlank()) "" else stringResource(R.string.fetch_account_office, office.accountOffice)
                             val details = listOf(office.officeType.fullName, office.deliveryStatus, account).filter { it.isNotBlank() }
                             Text(details.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            stats[office.plainName().lowercase()]?.let { local ->
+                                Text(
+                                    stringResource(R.string.picker_local_stats, local.beats, local.villages),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                         HorizontalDivider()
                     }

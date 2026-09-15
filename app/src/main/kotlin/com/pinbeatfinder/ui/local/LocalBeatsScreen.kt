@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,7 +44,9 @@ import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.TravelExplore
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -100,6 +103,9 @@ import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.domain.model.MatchKind
+import com.pinbeatfinder.domain.model.OfficeSummary
+import com.pinbeatfinder.domain.model.OfficeType
+import com.pinbeatfinder.ui.components.OfficeTypeDropdown
 import com.pinbeatfinder.ui.components.EmptyState
 import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.message
@@ -225,6 +231,14 @@ fun LocalBeatsScreen(
             text = { Text(stringResource(R.string.bulk_delete_message)) },
             confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmBulkDelete) }) { Text(stringResource(R.string.action_delete)) } },
             dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelBulkDelete) }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+
+    if (state.showOfficeTypes) {
+        OfficeTypesDialog(
+            offices = state.officeSummaries,
+            onSet = { office, type -> onIntent(LocalBeatsIntent.SetOfficeType(office, type)) },
+            onDismiss = { onIntent(LocalBeatsIntent.HideOfficeTypes) },
         )
     }
 
@@ -561,6 +575,69 @@ private fun MatchLabel(text: String, color: androidx.compose.ui.graphics.Color) 
 
 // ------------------------------------------------------------------ by-beat mode
 
+/**
+ * Every office in the (filtered) directory with its record/beat counts and a type dropdown.
+ * Changing the dropdown re-types all of that office's records at once; mixed offices (records
+ * disagreeing on the type) are flagged so they are the first thing to fix.
+ */
+@Composable
+private fun OfficeTypesDialog(
+    offices: List<OfficeSummary>,
+    onSet: (OfficeSummary, OfficeType) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Tune, contentDescription = null) },
+        title = { Text(stringResource(R.string.office_types_title)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.office_types_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                    items(offices, key = { it.key }) { office ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(office.officeName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    stringResource(R.string.office_summary_line, office.recordCount, office.beatCount, office.pincodes.joinToString(", ")),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (office.isMixed) {
+                                    Text(
+                                        stringResource(R.string.office_summary_mixed),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            OfficeTypeDropdown(
+                                value = office.officeType.code,
+                                onSelect = { type -> if (type != office.officeType || office.isMixed) onSet(office, type) },
+                                modifier = Modifier.width(104.dp),
+                                compact = true,
+                            )
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) } },
+    )
+}
+
 @Composable
 private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> Unit, onLookupOnline: (String) -> Unit) {
     if (state.beatGroups.isEmpty()) {
@@ -579,11 +656,19 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Text(
-                stringResource(R.string.local_beats_summary, state.beatGroups.size, state.beatGroups.sumOf { it.villageCount }),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.local_beats_summary, state.beatGroups.size, state.beatGroups.sumOf { it.villageCount }),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                AssistChip(
+                    onClick = { onIntent(LocalBeatsIntent.ShowOfficeTypes) },
+                    label = { Text(stringResource(R.string.action_fix_office_types)) },
+                    leadingIcon = { Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                )
+            }
         }
         items(state.beatGroups, key = { it.key }) { group ->
             BeatGroupCard(

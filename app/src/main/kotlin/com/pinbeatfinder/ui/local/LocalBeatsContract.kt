@@ -5,12 +5,15 @@ import android.net.Uri
 import com.pinbeatfinder.data.excel.ImportMode
 import com.pinbeatfinder.data.excel.ImportPreview
 import com.pinbeatfinder.data.excel.ImportReport
+import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.domain.model.OfficeSummary
+import com.pinbeatfinder.domain.model.OfficeType
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.UiText
 
@@ -24,6 +27,10 @@ data class EditorState(
     val isFetching: Boolean = false,
     /** Offices under the draft's PIN, shown in a picker; null when the picker is closed. */
     val fetchedOffices: List<PostOffice>? = null,
+    /** Local records already filed under each fetched office (key: lower-cased office name). */
+    val officeStats: Map<String, OfficeStats> = emptyMap(),
+    /** Directory offices whose name matches what is being typed in Office Name. */
+    val officeSuggestions: List<PostOffice> = emptyList(),
 ) {
     val isNew: Boolean get() = draft.id == 0L
 }
@@ -47,6 +54,9 @@ data class LocalBeatsState(
     val viewMode: LocalViewMode = LocalViewMode.SEARCH,
     val beatGroups: List<BeatGroup> = emptyList(),
     val expandedBeats: Set<String> = emptySet(),
+    /** One row per office for the bulk type fixer; derived with [beatGroups]. */
+    val officeSummaries: List<OfficeSummary> = emptyList(),
+    val showOfficeTypes: Boolean = false,
 
     /** Long-press multi-select; non-empty means selection mode is active. */
     val selectedIds: Set<Long> = emptySet(),
@@ -76,6 +86,11 @@ sealed interface LocalBeatsIntent {
     /** The user picked one of the fetched offices; fill the office fields from it. */
     data class OfficeSelected(val office: PostOffice) : LocalBeatsIntent
     data object DismissFetchedOffices : LocalBeatsIntent
+
+    data object ShowOfficeTypes : LocalBeatsIntent
+    data object HideOfficeTypes : LocalBeatsIntent
+    /** Change the type of every record of one office at once. */
+    data class SetOfficeType(val office: OfficeSummary, val type: OfficeType) : LocalBeatsIntent
     data object SaveEditor : LocalBeatsIntent
     data object DismissEditor : LocalBeatsIntent
     /** Turn the record being edited into a new one on the same beat with a blank locality. */
