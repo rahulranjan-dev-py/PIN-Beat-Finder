@@ -36,8 +36,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -68,6 +66,7 @@ import com.pinbeatfinder.data.excel.ImportReport
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.ui.components.EmptyState
+import com.pinbeatfinder.ui.components.FilterChipsRow
 
 /** Overflow-menu actions surfaced by the host screen's top bar. Order = menu order. */
 enum class LocalBeatsMenuAction(val label: String, val icon: ImageVector) {
@@ -263,42 +262,6 @@ fun LocalBeatsContent(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> Un
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun FilterChipsRow(
-    label: String,
-    options: List<String>,
-    selected: String?,
-    onSelect: (String?) -> Unit,
-) {
-    if (options.isEmpty()) return
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FilterChip(
-            selected = selected == null,
-            onClick = { onSelect(null) },
-            label = { Text("All") },
-        )
-        options.forEach { option ->
-            val isSelected = option == selected
-            FilterChip(
-                selected = isSelected,
-                onClick = { onSelect(if (isSelected) null else option) },
-                label = { Text(option) },
-                leadingIcon = if (isSelected) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.width(FilterChipDefaults.IconSize)) }
-                } else null,
-            )
         }
     }
 }

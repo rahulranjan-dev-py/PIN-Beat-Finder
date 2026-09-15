@@ -44,6 +44,7 @@ import com.pinbeatfinder.R
 import com.pinbeatfinder.core.util.AppError
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.EmptyState
+import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.LabeledValue
 
 @Composable
@@ -87,6 +88,26 @@ fun OnlineSearchContent(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
 
         if (state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
 
+        // Post-office names repeat across India ("Govindapur" exists in five states); let the
+        // user narrow the fetched list without another network call.
+        if (state.results.isNotEmpty()) {
+            FilterChipsRow(
+                label = "State",
+                options = state.states,
+                selected = state.stateFilter,
+                onSelect = { onIntent(OnlineSearchIntent.StateFilterSelected(it)) },
+                hideWhenSingle = true,
+            )
+            FilterChipsRow(
+                label = "District",
+                options = state.districts,
+                selected = state.districtFilter,
+                onSelect = { onIntent(OnlineSearchIntent.DistrictFilterSelected(it)) },
+                modifier = Modifier.padding(top = 4.dp),
+                hideWhenSingle = true,
+            )
+        }
+
         when {
             state.error != null -> EmptyState(
                 icon = if (state.error is AppError.Offline) Icons.Default.CloudOff else Icons.Default.SearchOff,
@@ -105,14 +126,23 @@ fun OnlineSearchContent(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
                 title = "No results",
                 message = "Nothing matched \"${state.submittedQuery}\".",
             )
+            state.visibleResults.isEmpty() -> EmptyState(
+                icon = Icons.Default.SearchOff,
+                title = "No results match the filters",
+                message = "Clear the State/District filters to see all ${state.results.size} result(s).",
+                actionLabel = "Clear filters",
+                onAction = { onIntent(OnlineSearchIntent.ClearFilters) },
+            )
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item {
+                    val shown = state.visibleResults.size
                     Text(
-                        "${state.results.size} post office(s) for \"${state.submittedQuery}\"",
+                        if (state.hasFilters) "$shown of ${state.results.size} post office(s) for \"${state.submittedQuery}\""
+                        else "$shown post office(s) for \"${state.submittedQuery}\"",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -124,7 +154,7 @@ fun OnlineSearchContent(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
                         )
                     }
                 }
-                items(state.results, key = { "${it.name}|${it.pincode}|${it.branchType}" }) { office ->
+                items(state.visibleResults, key = { "${it.name}|${it.pincode}|${it.branchType}|${it.district}" }) { office ->
                     PostOfficeCard(office)
                 }
             }

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.1 — online filters, Online tab first
+
+### Changed
+- The app now opens on the **Online All-India** tab.
+- Online results get **State** and **District** filter chips (same style as the local tab), so a
+  common office name that exists in several states can be narrowed without a new search. The
+  header shows "N of M post office(s)" while a filter is active.
+
 ## v0.3.0 — reliable online lookups
 
 ### Fixed

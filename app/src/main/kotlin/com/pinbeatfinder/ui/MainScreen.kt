@@ -65,7 +65,7 @@ fun MainScreen() {
         },
     )
 
-    var selectedTab by rememberSaveable { mutableIntStateOf(MainTab.LOCAL.ordinal) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(MainTab.ONLINE.ordinal) }
     val tab = MainTab.entries[selectedTab]
     val snackbarHostState = remember { SnackbarHostState() }
     var menuExpanded by remember { mutableStateOf(false) }
