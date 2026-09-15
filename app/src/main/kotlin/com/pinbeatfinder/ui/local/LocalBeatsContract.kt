@@ -43,6 +43,10 @@ sealed interface LocalBeatsIntent {
     data object ClearFilters : LocalBeatsIntent
 
     data class OpenEditor(val record: BeatRecord? = null) : LocalBeatsIntent
+    /** Open the editor pre-filled from another source (e.g. an online result). */
+    data class OpenEditorWithDraft(val draft: BeatDraft) : LocalBeatsIntent
+    /** Show every local record for a PIN (bridge from the online tab). */
+    data class ShowPincode(val pincode: String) : LocalBeatsIntent
     data class EditorFieldChanged(val field: BeatField, val value: String) : LocalBeatsIntent
     data object SaveEditor : LocalBeatsIntent
     data object DismissEditor : LocalBeatsIntent

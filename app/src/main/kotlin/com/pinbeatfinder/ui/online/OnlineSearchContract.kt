@@ -1,6 +1,7 @@
 package com.pinbeatfinder.ui.online
 
 import com.pinbeatfinder.core.util.AppError
+import com.pinbeatfinder.data.prefs.RecentSearch
 import com.pinbeatfinder.domain.model.PostOffice
 
 data class OnlineSearchState(
@@ -12,6 +13,12 @@ data class OnlineSearchState(
     val error: AppError? = null,
     val stateFilter: String? = null,
     val districtFilter: String? = null,
+    /** Pinned first, then most recent; shown before a search is made. */
+    val recents: List<RecentSearch> = emptyList(),
+    /** PIN -> number of rows in the offline directory, for the "N local beats" bridge. */
+    val localCountsByPin: Map<String, Int> = emptyMap(),
+    /** Result whose detail sheet is open, if any. */
+    val selectedOffice: PostOffice? = null,
 ) {
     val hasSearched: Boolean get() = submittedQuery.isNotEmpty()
     val hasFilters: Boolean get() = stateFilter != null || districtFilter != null
@@ -32,6 +39,8 @@ data class OnlineSearchState(
             (stateFilter == null || it.state == stateFilter) &&
                 (districtFilter == null || it.district == districtFilter)
         }
+
+    fun localCountFor(office: PostOffice): Int = localCountsByPin[office.pincode] ?: 0
 }
 
 sealed interface OnlineSearchIntent {
@@ -42,6 +51,15 @@ sealed interface OnlineSearchIntent {
     data class StateFilterSelected(val state: String?) : OnlineSearchIntent
     data class DistrictFilterSelected(val district: String?) : OnlineSearchIntent
     data object ClearFilters : OnlineSearchIntent
+
+    /** Re-run a recent/pinned query. */
+    data class SearchRecent(val query: String) : OnlineSearchIntent
+    data class TogglePinRecent(val query: String) : OnlineSearchIntent
+    data class RemoveRecent(val query: String) : OnlineSearchIntent
+    data object ClearRecents : OnlineSearchIntent
+
+    data class SelectOffice(val office: PostOffice) : OnlineSearchIntent
+    data object DismissDetail : OnlineSearchIntent
 }
 
 /** Human-readable message for an [AppError]; lives here so both tabs phrase errors the same way. */

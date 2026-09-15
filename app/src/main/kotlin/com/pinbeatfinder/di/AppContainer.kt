@@ -5,6 +5,8 @@ import com.pinbeatfinder.BuildConfig
 import com.pinbeatfinder.core.phonetic.PhoneticSearchEngine
 import com.pinbeatfinder.data.excel.ExcelSyncManager
 import com.pinbeatfinder.data.local.BeatFinderDatabase
+import com.pinbeatfinder.data.prefs.RecentSearchesRepository
+import com.pinbeatfinder.data.prefs.SharedPrefsStore
 import com.pinbeatfinder.data.remote.AndroidConnectivityChecker
 import com.pinbeatfinder.data.remote.NetworkModule
 import com.pinbeatfinder.data.remote.PostalApiService
@@ -39,6 +41,10 @@ class AppContainer(context: Context) {
             providers = NetworkModule.postalProviders(postalApi, BuildConfig.DATA_GOV_IN_API_KEY),
             connectivity = connectivity,
         )
+    }
+
+    val recentSearchesRepository: RecentSearchesRepository by lazy {
+        RecentSearchesRepository(SharedPrefsStore(appContext))
     }
 
     val excelSyncManager: ExcelSyncManager by lazy {

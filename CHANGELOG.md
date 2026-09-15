@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.4.0 — bridged tabs, recents, detail sheet, India Post palette
+
+### Added
+- **Online ⇄ Local bridge.** Online result cards show "N local beat record(s) for this PIN" when
+  the offline directory already has rows for that PIN; tapping jumps to the local tab filtered to
+  it. Local cards gain a "Look up online" action that runs the PIN through the online lookup.
+- **Recent & pinned searches.** Successful online searches are remembered (last 20) and listed
+  under the search box; tap to re-run, pin to keep at the top, remove or clear. Stored on-device
+  only.
+- **Detail sheet.** Tap an online result for the full record with Copy PIN, Share (WhatsApp,
+  Gmail…), Show local beats, and **Add to local directory** — which opens the local editor
+  pre-filled with locality, BO/SO, district, state and PIN so only the beat number is left to type.
+
+### Changed
+- **India Post palette.** Fixed post-box red primary with the logo yellow as accent, a red app bar
+  in both light and dark themes, and Material You dynamic colour switched off by default so the
+  app looks the same on every device.
+
 ## v0.3.1 — online filters, Online tab first
 
 ### Changed

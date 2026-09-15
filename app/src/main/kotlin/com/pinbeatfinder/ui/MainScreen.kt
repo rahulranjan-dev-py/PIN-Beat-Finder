@@ -44,8 +44,11 @@ import com.pinbeatfinder.ui.local.LocalBeatsIntent
 import com.pinbeatfinder.ui.local.LocalBeatsMenuAction
 import com.pinbeatfinder.ui.local.LocalBeatsScreen
 import com.pinbeatfinder.ui.local.LocalBeatsViewModel
+import com.pinbeatfinder.ui.online.OnlineBridge
 import com.pinbeatfinder.ui.online.OnlineSearchScreen
 import com.pinbeatfinder.ui.online.OnlineSearchViewModel
+import com.pinbeatfinder.ui.theme.OnPostBoxRed
+import com.pinbeatfinder.ui.theme.PostBoxRed
 
 private enum class MainTab(val labelRes: Int) {
     ONLINE(R.string.tab_online),
@@ -57,7 +60,15 @@ private enum class MainTab(val labelRes: Int) {
 fun MainScreen() {
     val container = LocalContext.current.appContainer
     val onlineViewModel: OnlineSearchViewModel = viewModel(
-        factory = viewModelFactory { initializer { OnlineSearchViewModel(container.postalLookupRepository) } },
+        factory = viewModelFactory {
+            initializer {
+                OnlineSearchViewModel(
+                    container.postalLookupRepository,
+                    container.recentSearchesRepository,
+                    container.beatDirectoryRepository,
+                )
+            }
+        },
     )
     val localViewModel: LocalBeatsViewModel = viewModel(
         factory = viewModelFactory {
@@ -72,13 +83,32 @@ fun MainScreen() {
     // The menu lives in the top bar but its actions belong to the local tab; bridge via callback.
     var menuActionHandler by remember { mutableStateOf<(LocalBeatsMenuAction) -> Unit>({}) }
 
+    // Cross-tab bridge: each side asks the host to switch tabs and hand over a query/draft.
+    val onlineBridge = remember(onlineViewModel, localViewModel) {
+        OnlineBridge(
+            showLocalBeatsFor = { pin ->
+                localViewModel.onIntent(LocalBeatsIntent.ShowPincode(pin))
+                selectedTab = MainTab.LOCAL.ordinal
+            },
+            addToLocal = { draft ->
+                localViewModel.onIntent(LocalBeatsIntent.OpenEditorWithDraft(draft))
+                selectedTab = MainTab.LOCAL.ordinal
+            },
+        )
+    }
+    val lookupOnline: (String) -> Unit = { query ->
+        onlineViewModel.searchFor(query)
+        selectedTab = MainTab.ONLINE.ordinal
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = PostBoxRed,
+                    titleContentColor = OnPostBoxRed,
+                    actionIconContentColor = OnPostBoxRed,
                 ),
                 actions = {
                     if (tab == MainTab.LOCAL) {
@@ -130,7 +160,11 @@ fun MainScreen() {
                 }
             }
             when (tab) {
-                MainTab.ONLINE -> OnlineSearchScreen(viewModel = onlineViewModel)
+                MainTab.ONLINE -> OnlineSearchScreen(
+                    viewModel = onlineViewModel,
+                    snackbarHostState = snackbarHostState,
+                    bridge = onlineBridge,
+                )
                 MainTab.LOCAL -> {
                     val activity = LocalActivity.current
                     LocalBeatsScreen(
@@ -138,6 +172,7 @@ fun MainScreen() {
                         snackbarHostState = snackbarHostState,
                         registerMenuHandler = { handler -> menuActionHandler = handler },
                         launchIntent = { intent -> activity?.startActivity(intent) },
+                        onLookupOnline = lookupOnline,
                     )
                 }
             }
