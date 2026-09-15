@@ -53,7 +53,7 @@ app/src/main/kotlin/com/pinbeatfinder/
 
 ### Bundled All-India directory
 
-`app/src/main/assets/india_post_directory.tsv.gz` (≈2.9 MB) is the Department of Posts
+`app/src/main/assets/india_post_directory.bin` (gzip TSV, ≈2.9 MB; not named `.gz` because AGP would decompress and rename it at packaging) is the Department of Posts
 *All India Pincode Directory* from data.gov.in, reduced to the columns the app shows plus
 precomputed phonetic keys. `DirectorySeeder` loads it into a separate Room database
 (`india_post_directory.db`) once per asset version; `IndiaPostDirectoryRepository` answers PIN

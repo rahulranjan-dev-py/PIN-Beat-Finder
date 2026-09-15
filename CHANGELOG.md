@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.9.1 — built-in directory actually loads
+
+### Fixed
+- **"Built-in directory could not be loaded (india_post_directory.tsv.gz)"** on v0.8.0 and
+  v0.9.0. The Android build tooling silently decompresses assets ending in `.gz` and drops the
+  extension, so the file the app looked for was never in the APK. The asset is now shipped under
+  a neutral name and the loader detects gzip by content, so it works either way. The one-time
+  load runs on first launch of this version.
+
 ## v0.9.0 — updates, crash reports, database tests
 
 ### Added

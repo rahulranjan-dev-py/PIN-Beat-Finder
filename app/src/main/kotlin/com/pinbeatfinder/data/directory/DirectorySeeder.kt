@@ -12,7 +12,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.InputStream
-import java.util.zip.GZIPInputStream
 
 sealed interface SeedState {
     data object NotStarted : SeedState
@@ -54,7 +53,7 @@ class DirectorySeeder(
                 _state.value = SeedState.Seeding(0f)
                 dao.deleteAll()
                 var inserted = 0
-                GZIPInputStream(openAsset(DirectoryAsset.TSV_NAME), 1 shl 16).bufferedReader(Charsets.UTF_8).use { reader ->
+                DirectoryAsset.openMaybeGzip(openAsset(DirectoryAsset.TSV_NAME)).bufferedReader(Charsets.UTF_8).use { reader ->
                     DirectoryAsset.readBatches(reader, BATCH) { batch ->
                         // readBatches is inline, so this suspends the seeding coroutine itself.
                         database.withTransaction { dao.insertAll(batch) }
@@ -65,7 +64,8 @@ class DirectorySeeder(
                 store.write(KEY_VERSION, meta.version)
                 _state.value = SeedState.Ready(inserted, meta.version)
             } catch (e: Exception) {
-                _state.value = SeedState.Failed(e.message ?: e::class.simpleName.orEmpty())
+                // FileNotFoundException's message is just the file name; include the type.
+                _state.value = SeedState.Failed("${e::class.simpleName}: ${e.message}")
             }
         }
     }

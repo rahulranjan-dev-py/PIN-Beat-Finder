@@ -31,6 +31,14 @@ class DirectoryAssetTest {
     }
 
     @Test
+    fun `gzip is detected by magic bytes, plain text passes through`() {
+        val plain = line.toByteArray()
+        val gz = java.io.ByteArrayOutputStream().also { java.util.zip.GZIPOutputStream(it).use { g -> g.write(plain) } }.toByteArray()
+        assertEquals(line, DirectoryAsset.openMaybeGzip(java.io.ByteArrayInputStream(gz)).bufferedReader().readText())
+        assertEquals(line, DirectoryAsset.openMaybeGzip(java.io.ByteArrayInputStream(plain)).bufferedReader().readText())
+    }
+
+    @Test
     fun `labels and meta`() {
         assertEquals("Sub Post Office", DirectoryAsset.officeTypeLabel("PO"))
         assertEquals("Branch Office", DirectoryAsset.officeTypeLabel("bo"))
