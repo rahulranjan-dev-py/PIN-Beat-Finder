@@ -52,6 +52,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -209,6 +211,9 @@ fun LocalBeatsScreen(
             onFetchOffices = { onIntent(LocalBeatsIntent.FetchOfficesForPin) },
             onOfficeSelected = { onIntent(LocalBeatsIntent.OfficeSelected(it)) },
             onDismissOffices = { onIntent(LocalBeatsIntent.DismissFetchedOffices) },
+            onTogglePickerOffice = { onIntent(LocalBeatsIntent.TogglePickerOffice(it)) },
+            onConfirmPickerSelection = { onIntent(LocalBeatsIntent.ConfirmPickerSelection) },
+            onSkipQueued = { onIntent(LocalBeatsIntent.SkipQueued) },
         )
     }
 
@@ -678,6 +683,8 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
                 onToggle = { onIntent(LocalBeatsIntent.ToggleBeatExpanded(group.key)) },
                 onEdit = { onIntent(LocalBeatsIntent.OpenEditor(it)) },
                 onLookupOnline = onLookupOnline,
+                onShareBeat = { onIntent(LocalBeatsIntent.ShareBeat(group)) },
+                onShareOffice = { onIntent(LocalBeatsIntent.ShareOffice(group)) },
             )
         }
     }
@@ -691,7 +698,10 @@ private fun BeatGroupCard(
     onToggle: () -> Unit,
     onEdit: (BeatRecord) -> Unit,
     onLookupOnline: (String) -> Unit,
+    onShareBeat: () -> Unit,
+    onShareOffice: () -> Unit,
 ) {
+    var shareMenu by remember { mutableStateOf(false) }
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = onToggle,
@@ -716,6 +726,21 @@ private fun BeatGroupCard(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(" " + stringResource(R.string.local_villages), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Box {
+                    IconButton(onClick = { shareMenu = true }) {
+                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
+                    }
+                    DropdownMenu(expanded = shareMenu, onDismissRequest = { shareMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.share_this_beat, group.villageCount)) },
+                            onClick = { shareMenu = false; onShareBeat() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.share_whole_office, group.officeDisplay)) },
+                            onClick = { shareMenu = false; onShareOffice() },
+                        )
+                    }
+                }
                 IconButton(onClick = onToggle) {
                     Icon(
                         if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,

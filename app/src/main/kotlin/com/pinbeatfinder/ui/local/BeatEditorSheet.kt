@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenuItem
@@ -74,12 +75,24 @@ fun BeatEditorSheet(
     onFetchOffices: () -> Unit = {},
     onOfficeSelected: (PostOffice) -> Unit = {},
     onDismissOffices: () -> Unit = {},
+    onTogglePickerOffice: (PostOffice) -> Unit = {},
+    onConfirmPickerSelection: () -> Unit = {},
+    onSkipQueued: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val draft = editor.draft
 
     editor.fetchedOffices?.let { offices ->
-        OfficePickerDialog(pincode = draft.pincode, offices = offices, stats = editor.officeStats, onSelect = onOfficeSelected, onDismiss = onDismissOffices)
+        OfficePickerDialog(
+            pincode = draft.pincode,
+            offices = offices,
+            stats = editor.officeStats,
+            selection = editor.pickerSelection,
+            onSelect = onOfficeSelected,
+            onToggle = onTogglePickerOffice,
+            onConfirmSelection = onConfirmPickerSelection,
+            onDismiss = onDismissOffices,
+        )
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -93,11 +106,23 @@ fun BeatEditorSheet(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(if (editor.isNew) R.string.editor_add_title else R.string.editor_edit_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(if (editor.isNew) R.string.editor_add_title else R.string.editor_edit_title),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    if (editor.isBatch) {
+                        Text(
+                            stringResource(R.string.editor_batch_progress, editor.queuePosition, editor.queueTotal),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                if (editor.isBatch) {
+                    // Drop this office (nothing to file under it) and move on to the next queued one.
+                    TextButton(onClick = onSkipQueued, enabled = !editor.isSaving) { Text(stringResource(R.string.action_skip)) }
+                }
                 if (!editor.isNew) {
                     // Entering neighbouring villages on the same beat: keep everything but the name.
                     TextButton(onClick = onDuplicate, enabled = !editor.isSaving) { Text(stringResource(R.string.action_duplicate)) }
@@ -137,16 +162,24 @@ fun BeatEditorSheet(
                     label = stringResource(BeatField.OFFICE_TYPE.labelRes()) + " *",
                     error = editor.errors[BeatField.OFFICE_TYPE]?.message(LocalContext.current, BeatField.OFFICE_TYPE),
                 )
-                OfficeNameField(
+                DirectorySuggestField(
+                    field = BeatField.OFFICE_NAME,
                     value = draft.officeName,
                     suggestions = editor.officeSuggestions,
                     errors = editor.errors,
                     onFieldChange = onFieldChange,
-                    onOfficeSelected = onOfficeSelected,
+                    onPick = onOfficeSelected,
                     modifier = Modifier.weight(1f),
                 )
             }
-            EditorField(BeatField.ACCOUNT_OFFICE, draft.accountOffice, editor.errors, onFieldChange, capitalize = true)
+            DirectorySuggestField(
+                field = BeatField.ACCOUNT_OFFICE,
+                value = draft.accountOffice,
+                suggestions = editor.accountSuggestions,
+                errors = editor.errors,
+                onFieldChange = onFieldChange,
+                onPick = { onFieldChange(BeatField.ACCOUNT_OFFICE, it.name) },
+            )
             SuggestingField(BeatField.STATE, draft.state, knownStates, editor.errors, onFieldChange)
             SuggestingField(BeatField.DISTRICT, draft.district, knownDistricts, editor.errors, onFieldChange)
             EditorField(BeatField.REMARKS, draft.remarks, editor.errors, onFieldChange, singleLine = false, imeAction = ImeAction.Done)
@@ -164,7 +197,15 @@ fun BeatEditorSheet(
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(stringResource(if (editor.isNew) R.string.action_add else R.string.action_save))
+                    Text(
+                        stringResource(
+                            when {
+                                editor.isBatch && editor.queue.isNotEmpty() -> R.string.action_save_next
+                                editor.isNew -> R.string.action_add
+                                else -> R.string.action_save
+                            },
+                        ),
+                    )
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -204,19 +245,22 @@ private fun EditorField(
     )
 }
 
-/** Office Name with live suggestions from the built-in directory; picking one fills every office field. */
+/**
+ * Text field with live suggestions from the built-in directory. Used for Office Name (picking
+ * fills every office field) and Account Office (picking inserts the office's full name).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OfficeNameField(
+private fun DirectorySuggestField(
+    field: BeatField,
     value: String,
     suggestions: List<PostOffice>,
     errors: Map<BeatField, FieldError>,
     onFieldChange: (BeatField, String) -> Unit,
-    onOfficeSelected: (PostOffice) -> Unit,
+    onPick: (PostOffice) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val field = BeatField.OFFICE_NAME
     val label = stringResource(field.labelRes())
     val error = errors[field]?.message(context, field)
     var expanded by remember { mutableStateOf(false) }
@@ -232,7 +276,7 @@ private fun OfficeNameField(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryEditable),
-            label = { Text("$label *") },
+            label = { Text(if (field.required) "$label *" else label) },
             isError = error != null,
             supportingText = { if (error != null) Text(error) },
             singleLine = true,
@@ -253,7 +297,7 @@ private fun OfficeNameField(
                         }
                     },
                     onClick = {
-                        onOfficeSelected(office)
+                        onPick(office)
                         expanded = false
                     },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
@@ -269,46 +313,61 @@ private fun OfficePickerDialog(
     pincode: String,
     offices: List<PostOffice>,
     stats: Map<String, OfficeStats>,
+    selection: Set<String>,
     onSelect: (PostOffice) -> Unit,
+    onToggle: (PostOffice) -> Unit,
+    onConfirmSelection: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val batch = selection.isNotEmpty()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.fetch_offices_title, pincode)) },
         text = {
             Column {
                 Text(
-                    stringResource(R.string.fetch_offices_hint),
+                    stringResource(if (batch) R.string.fetch_offices_batch_hint else R.string.fetch_offices_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.heightIn(max = 380.dp)) {
                     items(offices) { office ->
-                        Column(
+                        val ticked = office.name in selection
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSelect(office) }
-                                .padding(vertical = 10.dp),
+                                // With boxes ticked, a tap on the row toggles it too; otherwise it is the one-shot pick.
+                                .clickable { if (batch) onToggle(office) else onSelect(office) }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(office.name, style = MaterialTheme.typography.bodyLarge)
-                            val account = if (office.accountOffice.isBlank()) "" else stringResource(R.string.fetch_account_office, office.accountOffice)
-                            val details = listOf(office.officeType.fullName, office.deliveryStatus, account).filter { it.isNotBlank() }
-                            Text(details.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            stats[office.plainName().lowercase()]?.let { local ->
-                                Text(
-                                    stringResource(R.string.picker_local_stats, local.beats, local.villages),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
+                            Column(Modifier.weight(1f)) {
+                                Text(office.name, style = MaterialTheme.typography.bodyLarge)
+                                val account = if (office.accountOffice.isBlank()) "" else stringResource(R.string.fetch_account_office, office.accountOffice)
+                                val details = listOf(office.officeType.fullName, office.deliveryStatus, account).filter { it.isNotBlank() }
+                                Text(details.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                stats[office.plainName().lowercase()]?.let { local ->
+                                    Text(
+                                        stringResource(R.string.picker_local_stats, local.beats, local.villages),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                             }
+                            Checkbox(checked = ticked, onCheckedChange = { onToggle(office) })
                         }
                         HorizontalDivider()
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        confirmButton = {
+            if (batch) {
+                Button(onClick = onConfirmSelection) { Text(stringResource(R.string.action_add_n_offices, selection.size)) }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 

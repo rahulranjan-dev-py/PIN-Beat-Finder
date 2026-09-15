@@ -31,8 +31,19 @@ data class EditorState(
     val officeStats: Map<String, OfficeStats> = emptyMap(),
     /** Directory offices whose name matches what is being typed in Office Name. */
     val officeSuggestions: List<PostOffice> = emptyList(),
+    /** SO/HO/GPO offices matching what is being typed in Account Office. */
+    val accountSuggestions: List<PostOffice> = emptyList(),
+    /** Offices ticked in the picker (by directory name); empty means single-tap mode. */
+    val pickerSelection: Set<String> = emptySet(),
+    /** Offices still to be entered after this one when several were ticked in the picker. */
+    val queue: List<PostOffice> = emptyList(),
+    /** How many offices the current batch started with (0 when not in batch mode). */
+    val queueTotal: Int = 0,
 ) {
     val isNew: Boolean get() = draft.id == 0L
+    val isBatch: Boolean get() = queueTotal > 0
+    /** 1-based position of the record being entered within the batch. */
+    val queuePosition: Int get() = queueTotal - queue.size
 }
 
 data class LocalBeatsState(
@@ -86,11 +97,22 @@ sealed interface LocalBeatsIntent {
     /** The user picked one of the fetched offices; fill the office fields from it. */
     data class OfficeSelected(val office: PostOffice) : LocalBeatsIntent
     data object DismissFetchedOffices : LocalBeatsIntent
+    /** Tick/untick an office in the picker for batch entry. */
+    data class TogglePickerOffice(val office: PostOffice) : LocalBeatsIntent
+    /** Start batch entry with the ticked offices: first one fills the form, the rest queue up. */
+    data object ConfirmPickerSelection : LocalBeatsIntent
+    /** Batch entry: drop the current office without saving and move to the next queued one. */
+    data object SkipQueued : LocalBeatsIntent
 
     data object ShowOfficeTypes : LocalBeatsIntent
     data object HideOfficeTypes : LocalBeatsIntent
     /** Change the type of every record of one office at once. */
     data class SetOfficeType(val office: OfficeSummary, val type: OfficeType) : LocalBeatsIntent
+
+    /** Share one beat (the group's records) as a spreadsheet. */
+    data class ShareBeat(val group: BeatGroup) : LocalBeatsIntent
+    /** Share every beat of the group's office (same name and PINs) as a spreadsheet. */
+    data class ShareOffice(val group: BeatGroup) : LocalBeatsIntent
     data object SaveEditor : LocalBeatsIntent
     data object DismissEditor : LocalBeatsIntent
     /** Turn the record being edited into a new one on the same beat with a blank locality. */

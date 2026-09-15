@@ -193,6 +193,17 @@
     <string name="office_summary_line">%1$d village(s) • %2$d beat(s) • PIN %3$s</string>
     <string name="office_summary_mixed">Mixed types — pick the right one</string>
     <string name="msg_office_type_updated">Office type set to %1$s for %2$d record(s).</string>
+    <string name="fetch_offices_batch_hint">Tick the offices you want to enter one after another, then tap Add.</string>
+    <string name="action_add_n_offices">Add %1$d office(s)</string>
+    <string name="editor_batch_progress">Office %1$d of %2$d</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_save_next">Save &amp; next</string>
+    <string name="share_this_beat">This beat (%1$d village(s))</string>
+    <string name="share_whole_office">All beats of %1$s</string>
+    <string name="share_export_title">Share beat list</string>
+    <string name="msg_nothing_to_share">Nothing to share.</string>
+    <string name="settings_data_sources">Data sources</string>
+    <string name="settings_data_sources_text">Built-in directory: Department of Posts “All India Pincode Directory” from data.gov.in (Government Open Data License – India), merged with the India Post facility master (CSI SPM Help, OfficeMaster) for account offices. Snapshot %1$s.\n\nOnline lookup: api.data.gov.in, a community mirror of the same dataset, and api.postalpincode.in.\n\nThe local beat directory is your own data and never leaves the device unless you share a backup.</string>
 
     <!-- settings -->
     <string name="settings_title">Settings</string>

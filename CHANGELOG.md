@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.12.0 — batch entry from the PIN picker, account office suggestions, per-beat export
+
+### Added
+- **Batch entry from the Fetch picker.** Tick several offices under a PIN and tap "Add N
+  offices": the form opens for the first office, "Save & next" files it and moves to the next,
+  "Skip" drops one without saving. The header shows "Office 2 of 5". Only the office fields
+  carry over; locality, beat and remarks start blank for each office.
+- **Account Office suggestions.** Typing in Account Office searches the built-in directory for
+  SO/HO/GPO offices (same PIN first, then same district) and inserts the full office name.
+- **Share one beat or one office.** Each card in the By-beat view has a share button with two
+  choices: this beat, or every beat of the office. Both produce the same `.xlsx` format as the
+  full backup, named after the office and beat.
+- **Data sources in Settings.** Names the data.gov.in directory (GODL licence), the India Post
+  facility master and the online providers, and shows the loaded snapshot version.
+
 ## v0.11.0 — office suggestions, local counts in the PIN picker, bulk type fix
 
 ### Added

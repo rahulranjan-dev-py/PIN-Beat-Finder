@@ -128,4 +128,12 @@ class ExcelCodecTest {
         assertTrue(name.startsWith("beat_directory_backup_"))
         assertTrue(name.endsWith(".xlsx"))
     }
+
+    @Test
+    fun `export file name is sanitised from the label`() {
+        val name = ExcelCodec.exportFileName("Nirsa Chatti SO beat 2/A")
+        assertTrue(name, name.startsWith("beats_Nirsa_Chatti_SO_beat_2_A_"))
+        assertTrue(name.endsWith(".xlsx"))
+        assertTrue(ExcelCodec.exportFileName("   ").startsWith("beats_export_"))
+    }
 }

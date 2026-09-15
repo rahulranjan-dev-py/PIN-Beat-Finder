@@ -188,6 +188,17 @@
     <string name="office_summary_line">%1$d गाँव • %2$d बीट • पिन %3$s</string>
     <string name="office_summary_mixed">मिश्रित प्रकार — सही प्रकार चुनें</string>
     <string name="msg_office_type_updated">%2$d रिकॉर्ड के लिए डाकघर प्रकार %1$s किया गया।</string>
+    <string name="fetch_offices_batch_hint">जिन डाकघरों को एक के बाद एक भरना है उन्हें टिक करें, फिर “जोड़ें” दबाएँ।</string>
+    <string name="action_add_n_offices">%1$d डाकघर जोड़ें</string>
+    <string name="editor_batch_progress">डाकघर %1$d / %2$d</string>
+    <string name="action_skip">छोड़ें</string>
+    <string name="action_save_next">सहेजें और अगला</string>
+    <string name="share_this_beat">यह बीट (%1$d गाँव)</string>
+    <string name="share_whole_office">%1$s की सभी बीट</string>
+    <string name="share_export_title">बीट सूची साझा करें</string>
+    <string name="msg_nothing_to_share">साझा करने के लिए कुछ नहीं है।</string>
+    <string name="settings_data_sources">डेटा स्रोत</string>
+    <string name="settings_data_sources_text">अंतर्निहित निर्देशिका: डाक विभाग की “All India Pincode Directory” (data.gov.in, Government Open Data License – India), जिसमें लेखा डाकघरों के लिए India Post facility master (CSI SPM Help, OfficeMaster) जोड़ा गया है। स्नैपशॉट %1$s।\n\nऑनलाइन खोज: api.data.gov.in, उसी डेटा का एक सामुदायिक मिरर, और api.postalpincode.in।\n\nस्थानीय बीट निर्देशिका आपका अपना डेटा है और बैकअप साझा किए बिना डिवाइस से बाहर नहीं जाता।</string>
 
     <string name="settings_title">सेटिंग</string>
     <string name="settings_default_tab">ऐप खुलने पर दिखाएँ</string>

@@ -62,6 +62,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pinbeatfinder.BuildConfig
 import com.pinbeatfinder.R
+import com.pinbeatfinder.data.directory.SeedState
 import com.pinbeatfinder.appContainer
 import com.pinbeatfinder.data.prefs.DefaultTab
 import com.pinbeatfinder.data.prefs.TextScale
@@ -356,6 +357,18 @@ fun SettingsScreen(onBack: () -> Unit) {
             SettingGroup(stringResource(R.string.settings_about)) {
                 Text(
                     stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            HorizontalDivider()
+
+            val seedState by container.directorySeeder.state.collectAsStateWithLifecycle()
+            val snapshot = (seedState as? SeedState.Ready)?.version ?: "—"
+            SettingGroup(stringResource(R.string.settings_data_sources)) {
+                Text(
+                    stringResource(R.string.settings_data_sources_text, snapshot),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

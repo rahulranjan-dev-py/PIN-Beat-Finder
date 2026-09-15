@@ -131,6 +131,13 @@ object ExcelCodec {
         return "beat_directory_backup_$stamp.xlsx"
     }
 
+    /** File name for a partial export, e.g. `beats_Rampur_BO_beat_2_20260915_1830.xlsx`. */
+    fun exportFileName(label: String, now: Date = Date()): String {
+        val stamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(now)
+        val safe = label.trim().replace(Regex("[^A-Za-z0-9]+"), "_").trim('_').take(40).ifEmpty { "export" }
+        return "beats_${safe}_$stamp.xlsx"
+    }
+
     // ------------------------------------------------------------------ writing
 
     private fun writeWorkbook(out: OutputStream, records: List<BeatRecord>) {
