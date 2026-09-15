@@ -1,5 +1,7 @@
 package com.pinbeatfinder.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.NetworkCheck
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -282,6 +286,68 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Icon(Icons.Default.DeleteSweep, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.settings_clear_cache))
+                }
+            }
+
+            HorizontalDivider()
+
+            SettingGroup(stringResource(R.string.settings_updates), description = stringResource(R.string.settings_updates_desc, BuildConfig.VERSION_NAME)) {
+                val update by container.updateChecker.state.collectAsStateWithLifecycle()
+                var checkedOnce by remember { mutableStateOf(false) }
+                update.available?.let { rel ->
+                    Text(stringResource(R.string.update_available, rel.tag), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rel.apkUrl ?: rel.pageUrl))) }) {
+                        Text(stringResource(R.string.update_download))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+                if (checkedOnce && update.available == null && update.error == null && !update.checking) {
+                    Text(stringResource(R.string.update_up_to_date), style = MaterialTheme.typography.bodySmall)
+                }
+                update.error?.let { Text(stringResource(R.string.update_check_failed, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                update.lastCheckedAt?.let {
+                    Text(
+                        stringResource(R.string.update_last_checked, java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(it))),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(
+                    enabled = !update.checking,
+                    onClick = { scope.launch { container.updateChecker.check(force = true); checkedOnce = true } },
+                ) {
+                    if (update.checking) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Icon(Icons.Default.SystemUpdate, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.update_check_now))
+                }
+            }
+
+            SettingGroup(stringResource(R.string.settings_crash), description = stringResource(R.string.settings_crash_desc)) {
+                var latest by remember { mutableStateOf(container.crashReporter.latest()) }
+                if (latest == null) {
+                    Text(stringResource(R.string.crash_none), style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Text(stringResource(R.string.crash_latest, latest!!.nameWithoutExtension.removePrefix("crash_")), style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            context.startActivity(container.crashReporter.shareIntent(latest!!, context.getString(R.string.crash_share_title)))
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.crash_share))
+                        }
+                        OutlinedButton(onClick = {
+                            container.crashReporter.deleteAll()
+                            latest = null
+                        }) { Text(stringResource(R.string.crash_delete)) }
+                    }
                 }
             }
 

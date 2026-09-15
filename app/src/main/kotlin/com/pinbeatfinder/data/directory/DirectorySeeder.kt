@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
 sealed interface SeedState {
@@ -29,6 +30,8 @@ class DirectorySeeder(
     private val database: DirectoryDatabase,
     private val store: KeyValueStore,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /** Opens a named asset; overridable so tests can feed a small directory. */
+    private val openAsset: (String) -> InputStream = { name -> context.applicationContext.assets.open(name) },
 ) {
     private val appContext = context.applicationContext
     private val mutex = Mutex()
@@ -41,7 +44,7 @@ class DirectorySeeder(
         mutex.withLock {
             if (_state.value is SeedState.Ready) return@withLock
             try {
-                val meta = DirectoryAsset.parseMeta(appContext.assets.open(DirectoryAsset.META_NAME).bufferedReader().readText())
+                val meta = DirectoryAsset.parseMeta(openAsset(DirectoryAsset.META_NAME).bufferedReader().readText())
                 val dao = database.directoryDao()
                 val seededVersion = store.read(KEY_VERSION)
                 if (seededVersion == meta.version && dao.count() >= meta.rows) {
@@ -51,7 +54,7 @@ class DirectorySeeder(
                 _state.value = SeedState.Seeding(0f)
                 dao.deleteAll()
                 var inserted = 0
-                GZIPInputStream(appContext.assets.open(DirectoryAsset.TSV_NAME), 1 shl 16).bufferedReader(Charsets.UTF_8).use { reader ->
+                GZIPInputStream(openAsset(DirectoryAsset.TSV_NAME), 1 shl 16).bufferedReader(Charsets.UTF_8).use { reader ->
                     DirectoryAsset.readBatches(reader, BATCH) { batch ->
                         // readBatches is inline, so this suspends the seeding coroutine itself.
                         database.withTransaction { dao.insertAll(batch) }

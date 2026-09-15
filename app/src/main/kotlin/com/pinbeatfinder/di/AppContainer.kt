@@ -6,7 +6,10 @@ import com.pinbeatfinder.core.phonetic.PhoneticSearchEngine
 import com.pinbeatfinder.data.directory.DirectoryDatabase
 import com.pinbeatfinder.data.directory.DirectorySeeder
 import com.pinbeatfinder.data.directory.IndiaPostDirectoryRepository
+import com.pinbeatfinder.data.crash.CrashReporter
 import com.pinbeatfinder.data.excel.ExcelSyncManager
+import com.pinbeatfinder.data.update.GithubReleasesService
+import com.pinbeatfinder.data.update.UpdateChecker
 import com.pinbeatfinder.data.local.BeatFinderDatabase
 import com.pinbeatfinder.data.prefs.AppSettingsRepository
 import com.pinbeatfinder.data.prefs.RecentSearchesRepository
@@ -63,6 +66,17 @@ class AppContainer(context: Context) {
             local = indiaPostDirectory,
         )
     }
+
+    val updateChecker: UpdateChecker by lazy {
+        val service = NetworkModule.retrofit(okHttpClient).create(GithubReleasesService::class.java)
+        UpdateChecker(
+            currentVersion = BuildConfig.VERSION_NAME,
+            store = SharedPrefsStore(appContext),
+            fetchReleases = { service.releases(BuildConfig.GITHUB_REPO) },
+        )
+    }
+
+    val crashReporter: CrashReporter by lazy { CrashReporter(appContext, SharedPrefsStore(appContext), BuildConfig.VERSION_NAME) }
 
     /** Drops every cached online answer. Runs on the caller's dispatcher; call from IO. */
     fun clearOnlineCache() { okHttpClient.cache?.evictAll() }

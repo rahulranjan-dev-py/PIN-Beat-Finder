@@ -55,8 +55,8 @@ android {
         applicationId = "com.pinbeatfinder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.8.0"
+        versionCode = 10
+        versionName = "0.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -68,6 +68,8 @@ android {
             ?: (project.findProperty("dataGovInApiKey") as String?)?.takeIf { it.isNotBlank() }
             ?: "579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b"
         buildConfigField("String", "DATA_GOV_IN_API_KEY", "\"$dataGovInApiKey\"")
+        // Where the in-app update check looks for releases.
+        buildConfigField("String", "GITHUB_REPO", "\"rahulranjan-dev-py/PIN-Beat-Finder\"")
     }
 
     signingConfigs {
@@ -144,6 +146,8 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric: Room DAO / seeder tests run on the JVM against a real SQLite.
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -211,6 +215,8 @@ dependencies {
     // Tests
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
