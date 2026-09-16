@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.pinbeatfinder.core.util.BeatDraftValidator
+import com.pinbeatfinder.data.print.BeatSheetPdf
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.DraftValidation
@@ -95,6 +96,13 @@ class ExcelSyncManager(
         file
     }
 
+    /** Renders [records] as a printable PDF (see [BeatSheetPdf]) into the app cache. */
+    suspend fun exportPdf(records: List<BeatRecord>, label: String, title: String, subtitle: String): File = withContext(ioDispatcher) {
+        val file = File(exportDir, ExcelCodec.exportFileName(label).removeSuffix(".xlsx") + ".pdf")
+        BeatSheetPdf.write(title, subtitle, records, file.outputStream().buffered())
+        file
+    }
+
     /** Writes the blank template into the app cache and returns the file. */
     suspend fun exportTemplate(): File = withContext(ioDispatcher) {
         val file = File(exportDir, ExcelCodec.TEMPLATE_FILE_NAME)
@@ -122,10 +130,10 @@ class ExcelSyncManager(
      * [exportBackup] or [exportTemplate]. The URI is served by `FileProvider`, so no storage
      * permission is required on any supported API level.
      */
-    fun shareIntent(file: File, title: String = "Share beat directory"): Intent {
+    fun shareIntent(file: File, title: String = "Share beat directory", mimeType: String = ExcelCodec.MIME_TYPE): Intent {
         val uri = FileProvider.getUriForFile(appContext, authority, file)
         val send = Intent(Intent.ACTION_SEND).apply {
-            type = ExcelCodec.MIME_TYPE
+            type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_SUBJECT, file.nameWithoutExtension)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

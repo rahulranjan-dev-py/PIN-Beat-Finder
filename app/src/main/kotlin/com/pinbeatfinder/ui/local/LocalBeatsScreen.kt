@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.FindReplace
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Save
@@ -101,6 +103,7 @@ import com.pinbeatfinder.data.excel.ImportMode
 import com.pinbeatfinder.data.excel.ImportPreview
 import com.pinbeatfinder.data.excel.ImportReport
 import com.pinbeatfinder.data.excel.RowError
+import com.pinbeatfinder.core.dedupe.DuplicatePair
 import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
@@ -121,6 +124,7 @@ enum class LocalBeatsMenuAction(val labelRes: Int, val icon: ImageVector) {
     SAVE_BACKUP(R.string.menu_save_backup, Icons.Default.Save),
     SHARE_TEMPLATE(R.string.menu_share_template, Icons.Default.Share),
     SAVE_TEMPLATE(R.string.menu_save_template, Icons.Default.Download),
+    FIND_DUPLICATES(R.string.menu_find_duplicates, Icons.Default.FindReplace),
 }
 
 private val XLSX_MIME_TYPES = arrayOf(
@@ -168,6 +172,7 @@ fun LocalBeatsScreen(
                 LocalBeatsMenuAction.SAVE_BACKUP -> backupSaver.launch(ExcelCodec.backupFileName())
                 LocalBeatsMenuAction.SHARE_TEMPLATE -> onIntent(LocalBeatsIntent.ShareTemplate)
                 LocalBeatsMenuAction.SAVE_TEMPLATE -> templateSaver.launch(ExcelCodec.TEMPLATE_FILE_NAME)
+                LocalBeatsMenuAction.FIND_DUPLICATES -> onIntent(LocalBeatsIntent.FindDuplicates)
             }
         }
     }
@@ -214,6 +219,7 @@ fun LocalBeatsScreen(
             onTogglePickerOffice = { onIntent(LocalBeatsIntent.TogglePickerOffice(it)) },
             onConfirmPickerSelection = { onIntent(LocalBeatsIntent.ConfirmPickerSelection) },
             onSkipQueued = { onIntent(LocalBeatsIntent.SkipQueued) },
+            onOpenExisting = { onIntent(LocalBeatsIntent.OpenEditor(it)) },
         )
     }
 
@@ -236,6 +242,15 @@ fun LocalBeatsScreen(
             text = { Text(stringResource(R.string.bulk_delete_message)) },
             confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmBulkDelete) }) { Text(stringResource(R.string.action_delete)) } },
             dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelBulkDelete) }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+
+    state.duplicates?.let { pairs ->
+        DuplicatesDialog(
+            pairs = pairs,
+            onKeep = { pair, keep -> onIntent(LocalBeatsIntent.ResolveDuplicate(pair, keep)) },
+            onEdit = { onIntent(LocalBeatsIntent.OpenEditor(it)) },
+            onDismiss = { onIntent(LocalBeatsIntent.DismissDuplicates) },
         )
     }
 
@@ -578,6 +593,73 @@ private fun MatchLabel(text: String, color: androidx.compose.ui.graphics.Color) 
     Text(text, style = MaterialTheme.typography.labelSmall, color = color)
 }
 
+// ------------------------------------------------------------------ duplicates
+
+/** Probable duplicate pairs with "Keep this one" on each side; tapping a name opens it for editing. */
+@Composable
+private fun DuplicatesDialog(
+    pairs: List<DuplicatePair>,
+    onKeep: (DuplicatePair, BeatRecord) -> Unit,
+    onEdit: (BeatRecord) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.FindReplace, contentDescription = null) },
+        title = { Text(stringResource(R.string.duplicates_title)) },
+        text = {
+            if (pairs.isEmpty()) {
+                Text(stringResource(R.string.duplicates_none))
+            } else {
+                Column {
+                    Text(
+                        stringResource(R.string.duplicates_hint, pairs.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                        items(pairs, key = { it.key }) { pair ->
+                            Column(Modifier.padding(vertical = 6.dp)) {
+                                Text(
+                                    stringResource(R.string.duplicates_context, pair.first.beatNumber, pair.first.officeDisplay, pair.first.pincode) +
+                                        " • " + stringResource(
+                                        when (pair.reason) {
+                                            DuplicatePair.Reason.SAME_NAME -> R.string.duplicates_reason_same
+                                            DuplicatePair.Reason.SOUNDS_ALIKE -> R.string.duplicates_reason_sounds
+                                            DuplicatePair.Reason.NEAR_SPELLING -> R.string.duplicates_reason_spelling
+                                        },
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                listOf(pair.first, pair.second).forEach { record ->
+                                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Column(
+                                            Modifier
+                                                .weight(1f)
+                                                .combinedClickableCompat(onClick = { onEdit(record) })
+                                                .padding(vertical = 4.dp),
+                                        ) {
+                                            Text(record.localityName, style = MaterialTheme.typography.bodyLarge)
+                                            if (record.remarks.isNotBlank()) {
+                                                Text(record.remarks, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                        TextButton(onClick = { onKeep(pair, record) }) { Text(stringResource(R.string.action_keep_this)) }
+                                    }
+                                }
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) } },
+    )
+}
+
 // ------------------------------------------------------------------ by-beat mode
 
 /**
@@ -685,6 +767,8 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
                 onLookupOnline = onLookupOnline,
                 onShareBeat = { onIntent(LocalBeatsIntent.ShareBeat(group)) },
                 onShareOffice = { onIntent(LocalBeatsIntent.ShareOffice(group)) },
+                onPrintBeat = { onIntent(LocalBeatsIntent.PrintBeat(group)) },
+                onPrintOffice = { onIntent(LocalBeatsIntent.PrintOffice(group)) },
             )
         }
     }
@@ -700,6 +784,8 @@ private fun BeatGroupCard(
     onLookupOnline: (String) -> Unit,
     onShareBeat: () -> Unit,
     onShareOffice: () -> Unit,
+    onPrintBeat: () -> Unit,
+    onPrintOffice: () -> Unit,
 ) {
     var shareMenu by remember { mutableStateOf(false) }
     Card(
@@ -738,6 +824,17 @@ private fun BeatGroupCard(
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.share_whole_office, group.officeDisplay)) },
                             onClick = { shareMenu = false; onShareOffice() },
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.print_this_beat)) },
+                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                            onClick = { shareMenu = false; onPrintBeat() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.print_whole_office, group.officeDisplay)) },
+                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                            onClick = { shareMenu = false; onPrintOffice() },
                         )
                     }
                 }

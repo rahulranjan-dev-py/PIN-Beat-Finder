@@ -145,6 +145,7 @@
     <string name="menu_save_backup">Save backup to device…</string>
     <string name="menu_share_template">Share blank template</string>
     <string name="menu_save_template">Save blank template to device…</string>
+    <string name="menu_find_duplicates">Find duplicate villages</string>
     <string name="share_backup_title">Share beat directory backup</string>
     <string name="share_template_title">Share import template</string>
 
@@ -202,6 +203,21 @@
     <string name="share_whole_office">All beats of %1$s</string>
     <string name="share_export_title">Share beat list</string>
     <string name="msg_nothing_to_share">Nothing to share.</string>
+    <string name="busy_pdf">Preparing PDF…</string>
+    <string name="share_pdf_title">Share beat sheet (PDF)</string>
+    <string name="print_this_beat">This beat as PDF</string>
+    <string name="print_whole_office">All beats of %1$s as PDF</string>
+    <string name="editor_similar_title">Already in the directory — tap to open instead of adding again</string>
+    <string name="editor_similar_row">%1$s • Beat %2$s • %3$s • %4$s</string>
+    <string name="duplicates_title">Duplicate villages</string>
+    <string name="duplicates_none">No probable duplicates found. Only villages on the same beat, office and PIN are compared.</string>
+    <string name="duplicates_hint">%1$d pair(s) look like the same village entered twice. Keeping one deletes the other; its remarks are carried over if the kept one has none. Tap a name to edit it instead.</string>
+    <string name="duplicates_context">Beat %1$s • %2$s • %3$s</string>
+    <string name="duplicates_reason_same">same name</string>
+    <string name="duplicates_reason_sounds">sounds alike</string>
+    <string name="duplicates_reason_spelling">near spelling</string>
+    <string name="action_keep_this">Keep this</string>
+    <string name="msg_duplicate_resolved">Kept “%1$s” and removed its duplicate.</string>
     <string name="settings_data_sources">Data sources</string>
     <string name="settings_data_sources_text">Built-in directory: Department of Posts “All India Pincode Directory” from data.gov.in (Government Open Data License – India), merged with the India Post facility master (CSI SPM Help, OfficeMaster) for account offices. Snapshot %1$s.\n\nOnline lookup: api.data.gov.in, a community mirror of the same dataset, and api.postalpincode.in.\n\nThe local beat directory is your own data and never leaves the device unless you share a backup.</string>
 

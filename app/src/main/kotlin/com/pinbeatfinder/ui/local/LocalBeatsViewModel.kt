@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.pinbeatfinder.R
 import com.pinbeatfinder.ui.components.UiText
 import androidx.lifecycle.viewModelScope
+import com.pinbeatfinder.core.dedupe.DuplicateFinder
 import com.pinbeatfinder.core.util.BeatDraftValidator
 import com.pinbeatfinder.core.util.PinCodeValidator
 import com.pinbeatfinder.data.excel.ExcelFormatException
@@ -17,6 +18,8 @@ import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatGrouping
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
+import com.pinbeatfinder.domain.model.BeatSearchHit
+import com.pinbeatfinder.domain.model.MatchKind
 import com.pinbeatfinder.domain.model.DraftValidation
 import com.pinbeatfinder.domain.model.FieldError
 import com.pinbeatfinder.domain.model.OfficeSummary
@@ -54,6 +57,7 @@ class LocalBeatsViewModel(
     private val excel: ExcelSyncManager,
     /** Built-in All-India directory, used by the editor's "Fetch offices for this PIN" action. */
     private val directory: LocalDirectorySource,
+    private val duplicateFinder: DuplicateFinder = DuplicateFinder(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LocalBeatsState())
@@ -120,6 +124,21 @@ class LocalBeatsViewModel(
             .onEach { suggestions -> updateEditor { it.copy(accountSuggestions = suggestions) } }
             .launchIn(viewModelScope)
 
+        // Near-duplicate warning: what is typed as the locality vs. what the local directory already has.
+        _state.map { s -> s.editor?.let { it.draft.localityName.trim() to it.draft.id } }
+            .distinctUntilChanged()
+            .debounce { if (it == null || it.first.length < SIMILAR_MIN_CHARS) 0L else SEARCH_DEBOUNCE_MS }
+            .mapLatest { key ->
+                if (key == null || key.first.length < SIMILAR_MIN_CHARS) return@mapLatest emptyList<BeatSearchHit>()
+                runCatching {
+                    repository.search(key.first, limit = SIMILAR_LIMIT * 2)
+                        .filter { it.record.id != key.second && it.matchKind != MatchKind.NONE && it.score >= SIMILAR_MIN_SCORE }
+                        .take(SIMILAR_LIMIT)
+                }.getOrDefault(emptyList())
+            }
+            .onEach { hits -> updateEditor { it.copy(similarExisting = hits) } }
+            .launchIn(viewModelScope)
+
         repository.observeStates()
             .onEach { states ->
                 _state.update { s -> s.copy(states = states, selectedState = s.selectedState?.takeIf { it in states }) }
@@ -174,12 +193,20 @@ class LocalBeatsViewModel(
             LocalBeatsIntent.SkipQueued -> advanceQueue()
             is LocalBeatsIntent.ShareBeat -> shareRecords(intent.group.records, "${intent.group.officeDisplay} beat ${intent.group.beatNumber}")
             is LocalBeatsIntent.ShareOffice -> fileOperation(UiText.Res(R.string.busy_backup)) {
-                val pins = intent.group.pincodes.toSet()
-                val records = repository.listAll().filter {
-                    it.officeName.equals(intent.group.officeName, ignoreCase = true) && it.pincode in pins
-                }
-                shareNow(records, intent.group.officeDisplay)
+                shareNow(officeRecords(intent.group), intent.group.officeDisplay)
             }
+            is LocalBeatsIntent.PrintBeat -> fileOperation(UiText.Res(R.string.busy_pdf)) {
+                val g = intent.group
+                printNow(g.records, "${g.officeDisplay} beat ${g.beatNumber}", "${g.officeDisplay} • Beat ${g.beatNumber}", subtitleFor(g))
+            }
+            is LocalBeatsIntent.PrintOffice -> fileOperation(UiText.Res(R.string.busy_pdf)) {
+                val g = intent.group
+                val records = officeRecords(g).sortedWith(compareBy<BeatRecord> { it.beatNumber.length }.thenBy { it.beatNumber }.thenBy { it.localityName.lowercase() })
+                printNow(records, g.officeDisplay, "${g.officeDisplay} • all beats", subtitleFor(g))
+            }
+            LocalBeatsIntent.FindDuplicates -> findDuplicates()
+            LocalBeatsIntent.DismissDuplicates -> _state.update { it.copy(duplicates = null) }
+            is LocalBeatsIntent.ResolveDuplicate -> resolveDuplicate(intent)
             LocalBeatsIntent.ShowOfficeTypes -> _state.update { it.copy(showOfficeTypes = true) }
             LocalBeatsIntent.HideOfficeTypes -> _state.update { it.copy(showOfficeTypes = false) }
             is LocalBeatsIntent.SetOfficeType -> setOfficeType(intent)
@@ -329,6 +356,66 @@ class LocalBeatsViewModel(
         val base = BeatDraft().withOffice(next)
         _state.update {
             it.copy(editor = EditorState(draft = base, queue = editor.queue.drop(1), queueTotal = editor.queueTotal))
+        }
+    }
+
+    private suspend fun officeRecords(group: BeatGroup): List<BeatRecord> {
+        val pins = group.pincodes.toSet()
+        return repository.listAll().filter { it.officeName.equals(group.officeName, ignoreCase = true) && it.pincode in pins }
+    }
+
+    private fun subtitleFor(group: BeatGroup): String {
+        val sample = group.records.firstOrNull()
+        return listOfNotNull(
+            group.accountOffice.takeIf { it.isNotBlank() }?.let { "Account office $it" },
+            "PIN ${group.pincodes.joinToString(", ")}",
+            sample?.let { listOf(it.district, it.state).filter { s -> s.isNotBlank() }.joinToString(", ") }?.takeIf { it.isNotBlank() },
+        ).joinToString(" • ")
+    }
+
+    private suspend fun printNow(records: List<BeatRecord>, label: String, title: String, subtitle: String) {
+        if (records.isEmpty()) {
+            _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_nothing_to_share)))
+            return
+        }
+        val file = excel.exportPdf(records, label, title, subtitle)
+        _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_pdf_title), com.pinbeatfinder.data.print.BeatSheetPdf.MIME_TYPE)))
+    }
+
+    private fun findDuplicates() {
+        if (_state.value.isScanningDuplicates) return
+        viewModelScope.launch {
+            _state.update { it.copy(isScanningDuplicates = true) }
+            try {
+                val pairs = duplicateFinder.find(repository.listAll())
+                _state.update { it.copy(duplicates = pairs) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_file_failed, e.message ?: e::class.simpleName.orEmpty())))
+            } finally {
+                _state.update { it.copy(isScanningDuplicates = false) }
+            }
+        }
+    }
+
+    private fun resolveDuplicate(intent: LocalBeatsIntent.ResolveDuplicate) {
+        val drop = if (intent.keep.id == intent.pair.first.id) intent.pair.second else intent.pair.first
+        viewModelScope.launch {
+            try {
+                repository.save(DuplicateFinder.merged(intent.keep, drop))
+                repository.delete(drop.id)
+                dataVersion.update { it + 1 }
+                _state.update { s ->
+                    // Drop every pair that involved the deleted record; the kept one may still pair with others.
+                    s.copy(duplicates = s.duplicates?.filter { it.first.id != drop.id && it.second.id != drop.id })
+                }
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_duplicate_resolved, intent.keep.localityName)))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_delete_failed, e.message.orEmpty())))
+            }
         }
     }
 
@@ -491,6 +578,10 @@ class LocalBeatsViewModel(
         const val SEARCH_DEBOUNCE_MS = 250L
         const val SUGGEST_MIN_CHARS = 2
         const val SUGGEST_LIMIT = 8
+        const val SIMILAR_MIN_CHARS = 3
+        const val SIMILAR_LIMIT = 4
+        /** TEXT tier or better: exact, prefix, contains, or phonetically identical. */
+        const val SIMILAR_MIN_SCORE = 0.70
         val ACCOUNT_OFFICE_TYPES = setOf(OfficeType.SO, OfficeType.HO, OfficeType.GPO)
     }
 }

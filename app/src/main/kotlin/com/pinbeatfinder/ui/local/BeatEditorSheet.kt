@@ -1,5 +1,6 @@
 package com.pinbeatfinder.ui.local
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -50,6 +52,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.pinbeatfinder.R
 import com.pinbeatfinder.domain.model.BeatField
+import com.pinbeatfinder.domain.model.BeatRecord
+import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.domain.model.FieldError
 import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.PostOffice
@@ -78,6 +82,7 @@ fun BeatEditorSheet(
     onTogglePickerOffice: (PostOffice) -> Unit = {},
     onConfirmPickerSelection: () -> Unit = {},
     onSkipQueued: () -> Unit = {},
+    onOpenExisting: (BeatRecord) -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val draft = editor.draft
@@ -130,6 +135,9 @@ fun BeatEditorSheet(
             }
 
             EditorField(BeatField.LOCALITY, draft.localityName, editor.errors, onFieldChange, capitalize = true)
+            if (editor.similarExisting.isNotEmpty()) {
+                SimilarExistingList(editor.similarExisting, onOpenExisting)
+            }
             EditorField(BeatField.BEAT_NUMBER, draft.beatNumber, editor.errors, onFieldChange)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 EditorField(
@@ -243,6 +251,38 @@ private fun EditorField(
             imeAction = imeAction,
         ),
     )
+}
+
+/**
+ * Warns that a locality like the one being typed is already in the directory. Tapping a row
+ * abandons the new draft and opens that record instead — the usual fix for a near-duplicate.
+ */
+@Composable
+private fun SimilarExistingList(hits: List<BeatSearchHit>, onOpen: (BeatRecord) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(8.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            stringResource(R.string.editor_similar_title),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+        hits.forEach { hit ->
+            val r = hit.record
+            Text(
+                stringResource(R.string.editor_similar_row, r.localityName, r.beatNumber, r.officeDisplay, r.pincode),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpen(r) }
+                    .padding(vertical = 4.dp),
+            )
+        }
+    }
 }
 
 /**

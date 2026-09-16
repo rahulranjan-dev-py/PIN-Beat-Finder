@@ -141,6 +141,7 @@
     <string name="menu_save_backup">बैकअप डिवाइस में सहेजें…</string>
     <string name="menu_share_template">खाली टेम्पलेट साझा करें</string>
     <string name="menu_save_template">खाली टेम्पलेट डिवाइस में सहेजें…</string>
+    <string name="menu_find_duplicates">दोहराए गए गाँव खोजें</string>
     <string name="share_backup_title">बीट निर्देशिका बैकअप साझा करें</string>
     <string name="share_template_title">आयात टेम्पलेट साझा करें</string>
 
@@ -197,6 +198,21 @@
     <string name="share_whole_office">%1$s की सभी बीट</string>
     <string name="share_export_title">बीट सूची साझा करें</string>
     <string name="msg_nothing_to_share">साझा करने के लिए कुछ नहीं है।</string>
+    <string name="busy_pdf">PDF तैयार हो रही है…</string>
+    <string name="share_pdf_title">बीट शीट (PDF) साझा करें</string>
+    <string name="print_this_beat">यह बीट PDF के रूप में</string>
+    <string name="print_whole_office">%1$s की सभी बीट PDF के रूप में</string>
+    <string name="editor_similar_title">निर्देशिका में पहले से है — दोबारा जोड़ने के बजाय खोलने के लिए टैप करें</string>
+    <string name="editor_similar_row">%1$s • बीट %2$s • %3$s • %4$s</string>
+    <string name="duplicates_title">दोहराए गए गाँव</string>
+    <string name="duplicates_none">कोई संभावित दोहराव नहीं मिला। केवल एक ही बीट, डाकघर और पिन के गाँवों की तुलना की जाती है।</string>
+    <string name="duplicates_hint">%1$d जोड़ी एक ही गाँव दो बार दर्ज लगती है। एक को रखने पर दूसरा हट जाता है; रखे गए में टिप्पणी न हो तो दूसरे की टिप्पणी ले ली जाती है। संपादित करने के लिए नाम पर टैप करें।</string>
+    <string name="duplicates_context">बीट %1$s • %2$s • %3$s</string>
+    <string name="duplicates_reason_same">एक ही नाम</string>
+    <string name="duplicates_reason_sounds">एक जैसा उच्चारण</string>
+    <string name="duplicates_reason_spelling">मिलती-जुलती वर्तनी</string>
+    <string name="action_keep_this">इसे रखें</string>
+    <string name="msg_duplicate_resolved">“%1$s” रखा गया और उसका दोहराव हटा दिया गया।</string>
     <string name="settings_data_sources">डेटा स्रोत</string>
     <string name="settings_data_sources_text">अंतर्निहित निर्देशिका: डाक विभाग की “All India Pincode Directory” (data.gov.in, Government Open Data License – India), जिसमें लेखा डाकघरों के लिए India Post facility master (CSI SPM Help, OfficeMaster) जोड़ा गया है। स्नैपशॉट %1$s।\n\nऑनलाइन खोज: api.data.gov.in, उसी डेटा का एक सामुदायिक मिरर, और api.postalpincode.in।\n\nस्थानीय बीट निर्देशिका आपका अपना डेटा है और बैकअप साझा किए बिना डिवाइस से बाहर नहीं जाता।</string>
 
