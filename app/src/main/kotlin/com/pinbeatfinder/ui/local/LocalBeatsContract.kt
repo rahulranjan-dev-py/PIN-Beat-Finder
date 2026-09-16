@@ -5,6 +5,7 @@ import android.net.Uri
 import com.pinbeatfinder.data.excel.ImportMode
 import com.pinbeatfinder.data.excel.ImportPreview
 import com.pinbeatfinder.data.excel.ImportReport
+import com.pinbeatfinder.core.dedupe.DuplicatePair
 import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
@@ -33,6 +34,8 @@ data class EditorState(
     val officeSuggestions: List<PostOffice> = emptyList(),
     /** SO/HO/GPO offices matching what is being typed in Account Office. */
     val accountSuggestions: List<PostOffice> = emptyList(),
+    /** Existing local records whose locality sounds like what is being typed (near-duplicate warning). */
+    val similarExisting: List<BeatSearchHit> = emptyList(),
     /** Offices ticked in the picker (by directory name); empty means single-tap mode. */
     val pickerSelection: Set<String> = emptySet(),
     /** Offices still to be entered after this one when several were ticked in the picker. */
@@ -68,6 +71,9 @@ data class LocalBeatsState(
     /** One row per office for the bulk type fixer; derived with [beatGroups]. */
     val officeSummaries: List<OfficeSummary> = emptyList(),
     val showOfficeTypes: Boolean = false,
+    /** Result of the duplicate scan; null while the dialog is closed. */
+    val duplicates: List<DuplicatePair>? = null,
+    val isScanningDuplicates: Boolean = false,
 
     /** Long-press multi-select; non-empty means selection mode is active. */
     val selectedIds: Set<Long> = emptySet(),
@@ -113,6 +119,15 @@ sealed interface LocalBeatsIntent {
     data class ShareBeat(val group: BeatGroup) : LocalBeatsIntent
     /** Share every beat of the group's office (same name and PINs) as a spreadsheet. */
     data class ShareOffice(val group: BeatGroup) : LocalBeatsIntent
+    /** Same two scopes as printable PDFs. */
+    data class PrintBeat(val group: BeatGroup) : LocalBeatsIntent
+    data class PrintOffice(val group: BeatGroup) : LocalBeatsIntent
+
+    /** Scan the whole directory for probable duplicate localities. */
+    data object FindDuplicates : LocalBeatsIntent
+    data object DismissDuplicates : LocalBeatsIntent
+    /** Keep [keep] (with the other's remarks merged in when it has none) and delete its twin. */
+    data class ResolveDuplicate(val pair: DuplicatePair, val keep: BeatRecord) : LocalBeatsIntent
     data object SaveEditor : LocalBeatsIntent
     data object DismissEditor : LocalBeatsIntent
     /** Turn the record being edited into a new one on the same beat with a blank locality. */

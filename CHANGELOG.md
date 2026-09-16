@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.13.0 — printable beat sheets, near-duplicate warnings, duplicate finder
+
+### Added
+- **Print-friendly PDF.** The share menu on every By-beat card now also offers "This beat as
+  PDF" and "All beats of … as PDF": an A4 sheet with a title block (office, beat, account
+  office, PIN, district) and a numbered Locality / Beat / PIN / Remarks table that runs over as
+  many pages as needed, with page numbers and print date. Rendered on the device, no library.
+- **Near-duplicate warning while typing.** In the add/edit form, once three letters of the
+  locality are typed, records that already exist with the same or a similar-sounding name are
+  listed under the field. Tapping one opens that record instead of adding a second copy.
+- **Duplicate finder.** Overflow menu → "Find duplicate villages" scans the directory for
+  records on the same beat, office and PIN whose localities are the same after normalisation,
+  sound alike, or are within a small spelling distance. Each pair shows both records with
+  "Keep this": the other is deleted and its remarks carried over if the kept one has none.
+
 ## v0.12.0 — batch entry from the PIN picker, account office suggestions, per-beat export
 
 ### Added
