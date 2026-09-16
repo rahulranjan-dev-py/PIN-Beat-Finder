@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -141,6 +143,21 @@ fun MainScreen() {
         BackHandler { showSettings = false }
         SettingsScreen(onBack = { showSettings = false })
         return
+    }
+
+    // Back on the main screen asks before closing; a stray back press mid-entry should not lose the app.
+    val activity = LocalActivity.current
+    var confirmExit by remember { mutableStateOf(false) }
+    BackHandler(enabled = !confirmExit) { confirmExit = true }
+    if (confirmExit) {
+        AlertDialog(
+            onDismissRequest = { confirmExit = false },
+            icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
+            title = { Text(stringResource(R.string.exit_title)) },
+            text = { Text(stringResource(R.string.exit_message)) },
+            confirmButton = { TextButton(onClick = { confirmExit = false; activity?.finish() }) { Text(stringResource(R.string.action_exit)) } },
+            dismissButton = { TextButton(onClick = { confirmExit = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
     }
 
     Scaffold(

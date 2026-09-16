@@ -253,6 +253,12 @@
     <string name="settings_cache_cleared">Saved online results cleared.</string>
     <string name="settings_about">About</string>
     <string name="settings_version">PIN Beat Finder %1$s • offline-first directory for India Post mail branches</string>
+    <string name="settings_developer_title">Developer</string>
+    <string name="settings_developer_name">Rahul Ranjan</string>
+    <string name="settings_developer_details">Postal Assistant, India Post • Bokaro Steel City, Jharkhand</string>
+    <string name="exit_title">Exit PIN Beat Finder?</string>
+    <string name="exit_message">Your local beat directory is saved on the device and will be here when you come back.</string>
+    <string name="action_exit">Exit</string>
 
     <!-- v0.7.0 -->
     <string name="online_group_header">%1$s • %2$d</string>

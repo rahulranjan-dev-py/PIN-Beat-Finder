@@ -466,7 +466,7 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
         items(state.hits, key = { it.record.id }) { hit ->
             SwipeToDeleteRow(
                 enabled = !state.isSelecting,
-                onDelete = { onIntent(LocalBeatsIntent.SwipeDelete(hit.record)) },
+                onDelete = { onIntent(LocalBeatsIntent.RequestDelete(hit.record)) },
                 modifier = Modifier.animateItem(),
             ) {
                 BeatRecordCard(
@@ -487,14 +487,12 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeToDeleteRow(enabled: Boolean, onDelete: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    // A full swipe only asks; the row springs back and the confirm dialog decides. Returning
+    // false keeps the card in place so a "Cancel" needs no undo.
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
-            } else {
-                false
-            }
+            if (value == SwipeToDismissBoxValue.EndToStart) onDelete()
+            false
         },
     )
     SwipeToDismissBox(

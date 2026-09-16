@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.14.1 — confirmations and credits
+
+### Fixed
+- **Swipe to delete asks first.** Swiping a record left now opens the "Delete record?" dialog
+  instead of deleting at once; Cancel leaves the card in place.
+- **Back button asks before closing.** Pressing back on the main screen shows "Exit PIN Beat
+  Finder?" with Cancel / Exit instead of closing the app.
+
+### Added
+- **Developer credit** in Settings → About: Rahul Ranjan, Postal Assistant, India Post,
+  Bokaro Steel City, Jharkhand.
+
 ## v0.14.0 — filter sheet
 
 ### Changed

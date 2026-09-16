@@ -360,6 +360,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.settings_developer_title), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.settings_developer_name), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.settings_developer_details),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             HorizontalDivider()
