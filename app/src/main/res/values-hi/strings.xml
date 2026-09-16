@@ -2,9 +2,9 @@
 <resources>
     <string name="app_name">PIN Beat Finder</string>
     <string name="tab_online">अखिल भारत</string>
-    <string name="tab_local">स्थानीय बीट (ऑफ़लाइन)</string>
+    <string name="tab_local">स्थानीय बीट</string>
     <string name="search_online_hint">पिन कोड या डाकघर का नाम</string>
-    <string name="search_local_hint">गाँव / मोहल्ला (वर्तनी गलत हो तो भी चलेगा)</string>
+    <string name="search_local_hint">गाँव या मोहल्ला खोजें</string>
     <string name="add_beat">बीट रिकॉर्ड जोड़ें</string>
 
     <string name="action_cancel">रद्द करें</string>
@@ -38,7 +38,7 @@
     <string name="filter_district">ज़िला</string>
     <string name="please_wait">कृपया प्रतीक्षा करें…</string>
 
-    <string name="online_supporting">6 अंकों का पिन या डाकघर का नाम लिखें, फिर खोजें दबाएँ।</string>
+    <string name="online_supporting">6 अंकों का पिन या डाकघर का नाम, फिर खोजें</string>
     <string name="online_intro_title">अखिल भारतीय डाकघर खोज</string>
     <string name="online_intro_message">भारत के किसी भी पिन कोड या डाकघर का नाम खोजें। पूरी निर्देशिका ऐप में शामिल है और ऑफ़लाइन काम करती है; नई प्रविष्टियाँ ऑनलाइन स्रोतों से आती हैं। आपकी खोजें यहाँ दोबारा उपयोग के लिए दिखती हैं।</string>
     <string name="online_no_results_title">कोई परिणाम नहीं</string>
@@ -78,7 +78,7 @@
 
     <string name="local_view_search">खोज</string>
     <string name="local_view_by_beat">बीट के अनुसार</string>
-    <string name="local_supporting">%1$d रिकॉर्ड ऑफ़लाइन • बीट संख्या या पिन से भी मिलान • चुनने के लिए देर तक दबाएँ</string>
+    <string name="local_supporting">%1$d रिकॉर्ड ऑफ़लाइन • गलत वर्तनी भी चलेगी • बीट या पिन से भी • चुनने के लिए दबाए रखें</string>
     <string name="local_selected">%1$d चुने गए</string>
     <string name="local_cancel_selection">चयन रद्द करें</string>
     <string name="local_no_matches_title">कोई मिलान नहीं</string>

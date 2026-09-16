@@ -92,6 +92,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -111,6 +112,7 @@ import com.pinbeatfinder.domain.model.MatchKind
 import com.pinbeatfinder.domain.model.OfficeSummary
 import com.pinbeatfinder.domain.model.OfficeType
 import com.pinbeatfinder.ui.components.OfficeTypeDropdown
+import com.pinbeatfinder.ui.components.CollapsingHeader
 import com.pinbeatfinder.ui.components.EmptyState
 import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.message
@@ -323,7 +325,22 @@ fun LocalBeatsContent(
         return
     }
 
-    Column(Modifier.fillMaxSize()) {
+    CollapsingHeader(modifier = Modifier.fillMaxSize(), header = { LocalHeader(state, onIntent) }) {
+        Column(Modifier.fillMaxSize()) {
+            if (state.isSearching && state.viewMode == LocalViewMode.SEARCH) LinearProgressIndicator(Modifier.fillMaxWidth()) else Spacer(Modifier.height(2.dp))
+            when (state.viewMode) {
+                LocalViewMode.SEARCH -> SearchResults(state, onIntent, onLookupOnline)
+                LocalViewMode.BY_BEAT -> BeatGroupsList(state, onIntent, onLookupOnline)
+            }
+        }
+    }
+}
+
+/** Selection bar, view-mode toggle, search box and filter chips; slides away as the list scrolls. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
         // ---- selection bar (long-press) ----------------------------------------------
         AnimatedVisibility(visible = state.isSelecting) {
             Row(
@@ -353,7 +370,7 @@ fun LocalBeatsContent(
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
         ) {
             LocalViewMode.entries.forEachIndexed { index, mode ->
                 SegmentedButton(
@@ -385,8 +402,8 @@ fun LocalBeatsContent(
                 onValueChange = { onIntent(LocalBeatsIntent.QueryChanged(it)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                placeholder = { Text(stringResource(R.string.search_local_hint)) },
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                placeholder = { Text(stringResource(R.string.search_local_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon = {
                     if (state.query.isNotEmpty()) {
@@ -397,29 +414,32 @@ fun LocalBeatsContent(
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                supportingText = { Text(stringResource(R.string.local_supporting, state.totalRecords)) },
+            )
+            Text(
+                stringResource(R.string.local_supporting, state.totalRecords),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
             )
         }
 
+        // One state or one district is not a choice; the rows only appear once there is something to filter.
         FilterChipsRow(
             label = stringResource(R.string.filter_state),
             options = state.states,
             selected = state.selectedState,
             onSelect = { onIntent(LocalBeatsIntent.StateSelected(it)) },
+            hideWhenSingle = true,
         )
         FilterChipsRow(
             label = stringResource(R.string.filter_district),
             options = state.districts,
             selected = state.selectedDistrict,
             onSelect = { onIntent(LocalBeatsIntent.DistrictSelected(it)) },
+            hideWhenSingle = true,
         )
-
-        if (state.isSearching && state.viewMode == LocalViewMode.SEARCH) LinearProgressIndicator(Modifier.fillMaxWidth()) else Spacer(Modifier.height(4.dp))
-
-        when (state.viewMode) {
-            LocalViewMode.SEARCH -> SearchResults(state, onIntent, onLookupOnline)
-            LocalViewMode.BY_BEAT -> BeatGroupsList(state, onIntent, onLookupOnline)
-        }
     }
 }
 
