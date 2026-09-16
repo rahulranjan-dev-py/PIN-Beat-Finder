@@ -102,6 +102,7 @@
     <string name="local_villages">गाँव</string>
     <string name="chip_beat">बीट %1$s</string>
     <string name="chip_office">डाकघर: %1$s</string>
+    <string name="card_account">लेखा %1$s</string>
     <string name="chip_account">लेखा डाकघर: %1$s</string>
     <string name="chip_pin">पिन %1$s</string>
     <string name="match_exact">सटीक मिलान</string>
