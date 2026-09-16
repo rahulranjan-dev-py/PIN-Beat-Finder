@@ -247,6 +247,12 @@
     <string name="settings_cache_cleared">सहेजे गए ऑनलाइन परिणाम मिटा दिए गए।</string>
     <string name="settings_about">परिचय</string>
     <string name="settings_version">PIN Beat Finder %1$s • भारतीय डाक शाखाओं के लिए ऑफ़लाइन-प्रथम निर्देशिका</string>
+    <string name="settings_developer_title">डेवलपर</string>
+    <string name="settings_developer_name">राहुल रंजन (Rahul Ranjan)</string>
+    <string name="settings_developer_details">पोस्टल असिस्टेंट, भारतीय डाक • बोकारो स्टील सिटी, झारखंड</string>
+    <string name="exit_title">PIN Beat Finder बंद करें?</string>
+    <string name="exit_message">आपकी स्थानीय बीट निर्देशिका डिवाइस पर सहेजी हुई है और वापस आने पर यहीं मिलेगी।</string>
+    <string name="action_exit">बंद करें</string>
 
     <!-- v0.7.0 -->
     <string name="online_group_header">%1$s • %2$d</string>
