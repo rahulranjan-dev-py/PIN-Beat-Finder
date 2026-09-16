@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.14.2 — smoother list, no black screen on language change, signed build
+
+### Important: one-time reinstall
+This is the first build signed with the developer's own release key. Android will not install
+it over the earlier debug-signed builds (v0.14.1 and older). On each phone: **Share backup** to
+save the directory as Excel → uninstall → install v0.14.2 → **Import from Excel (add rows)**.
+Every later update installs in place again.
+
+### Fixed
+- **Stutter while scrolling a long list.** Two causes: every previous APK was an unoptimised
+  debug build, and each card carried a nested strip of four chips plus a placement animation
+  that fired across the whole list on every keystroke. Releases are now the shrunk and optimised
+  build (stack traces stay readable), the chip strip is a single text line, and the search list
+  no longer animates row placement.
+- **Black screen when changing language.** The activity is no longer recreated for a locale
+  change; the words change in place and Settings stays open. The window background now also
+  matches the app's own light or dark surface, so any rebuild or cold start shows the app colour
+  rather than black.
+
 ## v0.14.1 — confirmations and credits
 
 ### Fixed

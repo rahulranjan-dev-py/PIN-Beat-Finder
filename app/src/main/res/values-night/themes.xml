@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Compose draws everything; AppCompat parent is required by AppCompatActivity (per-app locales). -->
     <style name="Theme.PinBeatFinder" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
-        <!-- Shown while the activity is (re)created, so it must match the Compose surface colour. -->
         <item name="android:windowBackground">@color/window_background</item>
     </style>
 </resources>

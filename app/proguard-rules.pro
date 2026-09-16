@@ -1,3 +1,7 @@
+# Shrink and optimise but keep class/method names: crash reports are read by people, not a
+# mapping server, and the app carries no secrets that renaming would protect.
+-dontobfuscate
+
 # --- kotlinx.serialization -------------------------------------------------
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt

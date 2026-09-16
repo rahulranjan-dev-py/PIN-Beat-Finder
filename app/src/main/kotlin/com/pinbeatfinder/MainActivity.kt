@@ -1,6 +1,8 @@
 package com.pinbeatfinder
 
+import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -23,6 +25,7 @@ class MainActivity : AppCompatActivity() {
         // The app bar is always post-box red, so status-bar icons must always be light.
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
         super.onCreate(savedInstanceState)
+        applyWindowBackground()
         setContent {
             val settings by appContainer.appSettingsRepository.settings.collectAsStateWithLifecycle()
             val darkTheme = when (settings.themeMode) {
@@ -40,5 +43,27 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * The theme's windowBackground follows the system day/night setting, but the app can be
+     * forced light or dark in Settings. Paint the window to match the Compose surface so the
+     * frame between activity creation and the first composition is never a different colour.
+     */
+    private fun applyWindowBackground() {
+        val settings = appContainer.appSettingsRepository.settings.value
+        val systemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val dark = when (settings.themeMode) {
+            ThemeMode.SYSTEM -> systemDark
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+        val colour = when {
+            settings.highContrast && dark -> Color.BLACK
+            settings.highContrast -> Color.WHITE
+            dark -> 0xFF1A1110.toInt()
+            else -> 0xFFFFF8F7.toInt()
+        }
+        window.setBackgroundDrawable(ColorDrawable(colour))
     }
 }

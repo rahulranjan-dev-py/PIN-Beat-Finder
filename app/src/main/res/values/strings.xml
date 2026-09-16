@@ -106,6 +106,7 @@
     <string name="local_villages">villages</string>
     <string name="chip_beat">Beat %1$s</string>
     <string name="chip_office">Office: %1$s</string>
+    <string name="card_account">A/c %1$s</string>
     <string name="chip_account">Account: %1$s</string>
     <string name="chip_pin">PIN %1$s</string>
     <string name="match_exact">Exact match</string>
