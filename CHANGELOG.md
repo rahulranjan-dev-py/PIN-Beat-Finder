@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.14.0 — filter sheet
+
+### Changed
+- **Filters moved into a sheet.** The Local tab's State and District chip rows are replaced by a
+  single **Filters** button. It opens a sheet with State, District, Office type, Office, Beat and
+  PIN code, each as a chip group; the choices cascade (districts of the chosen state, offices of
+  the chosen district, and so on) and the list behind updates as you pick. Active filters show as
+  removable chips next to the button, with a Clear action.
+- Adding a record while filters are active pre-fills the form with the filtered state, district,
+  office type, office, beat and PIN.
+
 ## v0.13.1 — more room for the list
 
 ### Fixed

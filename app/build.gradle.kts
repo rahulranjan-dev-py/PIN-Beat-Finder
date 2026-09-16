@@ -55,8 +55,8 @@ android {
         applicationId = "com.pinbeatfinder"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.13.1"
+        versionCode = 17
+        versionName = "0.14.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

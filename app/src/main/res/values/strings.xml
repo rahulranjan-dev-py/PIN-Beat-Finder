@@ -37,6 +37,14 @@
     <string name="chip_all">All</string>
     <string name="filter_state">State</string>
     <string name="filter_district">District</string>
+    <string name="filter_office_type">Office type</string>
+    <string name="filter_office">Office</string>
+    <string name="filter_beat">Beat</string>
+    <string name="filter_pincode">PIN code</string>
+    <string name="filter_button">Filters</string>
+    <string name="filter_button_n">Filters (%1$d)</string>
+    <string name="filter_sheet_title">Filter local beats</string>
+    <string name="action_clear_all">Clear all</string>
     <string name="please_wait">Please wait…</string>
 
     <!-- online tab -->

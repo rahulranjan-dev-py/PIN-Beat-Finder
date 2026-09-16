@@ -22,6 +22,7 @@ import com.pinbeatfinder.domain.model.BeatSearchHit
 import com.pinbeatfinder.domain.model.MatchKind
 import com.pinbeatfinder.domain.model.DraftValidation
 import com.pinbeatfinder.domain.model.FieldError
+import com.pinbeatfinder.domain.model.FilterOptions
 import com.pinbeatfinder.domain.model.OfficeSummary
 import com.pinbeatfinder.domain.model.OfficeType
 import com.pinbeatfinder.domain.model.PostOffice
@@ -68,27 +69,27 @@ class LocalBeatsViewModel(
 
     private val dataVersion = MutableStateFlow(0)
 
-    private data class SearchKey(val query: String, val state: String?, val district: String?, val version: Int)
-    private data class GroupKey(val state: String?, val district: String?, val version: Int, val active: Boolean)
+    private data class SearchKey(val query: String, val filters: BeatSearchFilters, val version: Int)
+    private data class GroupKey(val filters: BeatSearchFilters, val version: Int, val active: Boolean)
 
     init {
         combine(
-            _state.map { Triple(it.query, it.selectedState, it.selectedDistrict) }.distinctUntilChanged(),
+            _state.map { it.query to it.filters }.distinctUntilChanged(),
             dataVersion,
-        ) { (q, s, d), v -> SearchKey(q, s, d, v) }
+        ) { (q, f), v -> SearchKey(q, f, v) }
             .debounce { key -> if (key.query.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
             .onEach { _state.update { it.copy(isSearching = true) } }
-            .mapLatest { key -> repository.search(key.query, BeatSearchFilters(key.state, key.district)) }
+            .mapLatest { key -> repository.search(key.query, key.filters) }
             .onEach { hits -> _state.update { it.copy(hits = hits, isSearching = false) } }
             .launchIn(viewModelScope)
 
         combine(
-            _state.map { Triple(it.selectedState, it.selectedDistrict, it.viewMode == LocalViewMode.BY_BEAT) }.distinctUntilChanged(),
+            _state.map { it.filters to (it.viewMode == LocalViewMode.BY_BEAT) }.distinctUntilChanged(),
             dataVersion,
-        ) { (s, d, active), v -> GroupKey(s, d, v, active) }
+        ) { (f, active), v -> GroupKey(f, v, active) }
             .mapLatest { key ->
                 if (!key.active) emptyList<BeatGroup>() to emptyList<OfficeSummary>()
-                else repository.listAll(BeatSearchFilters(key.state, key.district)).let { BeatGrouping.group(it) to BeatGrouping.summarizeOffices(it) }
+                else repository.listAll(key.filters).let { BeatGrouping.group(it) to BeatGrouping.summarizeOffices(it) }
             }
             .onEach { (groups, offices) -> _state.update { it.copy(beatGroups = groups, officeSummaries = offices) } }
             .launchIn(viewModelScope)
@@ -140,16 +141,17 @@ class LocalBeatsViewModel(
             .launchIn(viewModelScope)
 
         repository.observeStates()
-            .onEach { states ->
-                _state.update { s -> s.copy(states = states, selectedState = s.selectedState?.takeIf { it in states }) }
-            }
+            .onEach { states -> _state.update { s -> s.copy(states = states) } }
             .launchIn(viewModelScope)
 
-        _state.map { it.selectedState }.distinctUntilChanged()
+        _state.map { it.filters.state }.distinctUntilChanged()
             .flatMapLatest { repository.observeDistricts(it) }
-            .onEach { districts ->
-                _state.update { s -> s.copy(districts = districts, selectedDistrict = s.selectedDistrict?.takeIf { it in districts }) }
-            }
+            .onEach { districts -> _state.update { s -> s.copy(districts = districts) } }
+            .launchIn(viewModelScope)
+
+        // Filter choices follow the data; a selection whose value was deleted or re-typed is dropped.
+        repository.observeFacets()
+            .onEach { facets -> _state.update { s -> s.copy(facets = facets, filters = FilterOptions.prune(facets, s.filters)) } }
             .launchIn(viewModelScope)
 
         repository.observeCount()
@@ -162,9 +164,10 @@ class LocalBeatsViewModel(
     fun onIntent(intent: LocalBeatsIntent) {
         when (intent) {
             is LocalBeatsIntent.QueryChanged -> _state.update { it.copy(query = intent.query) }
-            is LocalBeatsIntent.StateSelected -> _state.update { it.copy(selectedState = intent.state, selectedDistrict = null) }
-            is LocalBeatsIntent.DistrictSelected -> _state.update { it.copy(selectedDistrict = intent.district) }
-            LocalBeatsIntent.ClearFilters -> _state.update { it.copy(selectedState = null, selectedDistrict = null) }
+            is LocalBeatsIntent.FiltersChanged -> _state.update { it.copy(filters = intent.filters) }
+            LocalBeatsIntent.ClearFilters -> _state.update { it.copy(filters = BeatSearchFilters()) }
+            LocalBeatsIntent.ShowFilters -> _state.update { it.copy(showFilters = true) }
+            LocalBeatsIntent.HideFilters -> _state.update { it.copy(showFilters = false) }
             is LocalBeatsIntent.SetViewMode -> _state.update { it.copy(viewMode = intent.mode, selectedIds = emptySet()) }
             is LocalBeatsIntent.ToggleBeatExpanded -> _state.update {
                 it.copy(expandedBeats = if (intent.key in it.expandedBeats) it.expandedBeats - intent.key else it.expandedBeats + intent.key)
@@ -172,14 +175,18 @@ class LocalBeatsViewModel(
 
             is LocalBeatsIntent.OpenEditor -> _state.update {
                 val draft = intent.record?.let(BeatDraft::from) ?: BeatDraft(
-                    state = it.selectedState.orEmpty(),
-                    district = it.selectedDistrict.orEmpty(),
+                    state = it.filters.state.orEmpty(),
+                    district = it.filters.district.orEmpty(),
+                    officeType = it.filters.officeType?.code ?: BeatDraft().officeType,
+                    officeName = it.filters.officeName.orEmpty(),
+                    beatNumber = it.filters.beatNumber.orEmpty(),
+                    pincode = it.filters.pincode.orEmpty(),
                 )
                 it.copy(editor = EditorState(draft))
             }
             is LocalBeatsIntent.OpenEditorWithDraft -> _state.update { it.copy(editor = EditorState(intent.draft)) }
             is LocalBeatsIntent.ShowPincode -> _state.update {
-                it.copy(query = intent.pincode, selectedState = null, selectedDistrict = null, viewMode = LocalViewMode.SEARCH)
+                it.copy(query = intent.pincode, filters = BeatSearchFilters(), viewMode = LocalViewMode.SEARCH)
             }
             is LocalBeatsIntent.EditorFieldChanged -> updateEditorField(intent.field, intent.value)
             LocalBeatsIntent.FetchOfficesForPin -> fetchOfficesForPin()

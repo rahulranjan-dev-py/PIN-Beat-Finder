@@ -36,6 +36,14 @@
     <string name="chip_all">सभी</string>
     <string name="filter_state">राज्य</string>
     <string name="filter_district">ज़िला</string>
+    <string name="filter_office_type">डाकघर का प्रकार</string>
+    <string name="filter_office">डाकघर</string>
+    <string name="filter_beat">बीट</string>
+    <string name="filter_pincode">पिन कोड</string>
+    <string name="filter_button">फ़िल्टर</string>
+    <string name="filter_button_n">फ़िल्टर (%1$d)</string>
+    <string name="filter_sheet_title">स्थानीय बीट फ़िल्टर करें</string>
+    <string name="action_clear_all">सभी हटाएँ</string>
     <string name="please_wait">कृपया प्रतीक्षा करें…</string>
 
     <string name="online_supporting">6 अंकों का पिन या डाकघर का नाम, फिर खोजें</string>

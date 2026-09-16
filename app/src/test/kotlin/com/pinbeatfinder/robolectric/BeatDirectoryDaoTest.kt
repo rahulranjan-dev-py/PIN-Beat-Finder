@@ -95,6 +95,21 @@ class BeatDirectoryDaoTest {
     }
 
     @Test
+    fun `office, type, beat and pin filters narrow search and browse, facets are distinct`() = runBlocking {
+        assertEquals(2, repo.search("", BeatSearchFilters(officeName = "rampur bo")).size)           // NOCASE column
+        assertEquals(1, repo.search("", BeatSearchFilters(officeName = "Rampur BO", beatNumber = "2", pincode = "261001")).count { it.record.localityName == "Rampur Kalan" })
+        assertEquals(4, repo.search("", BeatSearchFilters(officeType = OfficeType.BO)).size)
+        assertEquals(0, repo.search("", BeatSearchFilters(officeType = OfficeType.SO)).size)
+        assertEquals(listOf("Govindapur"), repo.search("Govindapur", BeatSearchFilters(pincode = "756137")).map { it.record.localityName })
+        assertEquals(0, repo.search("Govindapur", BeatSearchFilters(pincode = "261001")).size)
+        assertEquals(1, repo.listAll(BeatSearchFilters(beatNumber = "3")).size)
+
+        val facets = repo.observeFacets().first()
+        assertEquals(3, facets.size)   // Rampur BO/2, Bhilwara BO/1, Govindapur BO/3
+        assertTrue(facets.all { it.officeType == OfficeType.BO })
+    }
+
+    @Test
     fun `office stats per pin and bulk office type update`() = runBlocking {
         val stats = repo.officeStats("261001")
         assertEquals(setOf("rampur bo"), stats.keys)

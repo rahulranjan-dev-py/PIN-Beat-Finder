@@ -114,7 +114,6 @@ import com.pinbeatfinder.domain.model.OfficeType
 import com.pinbeatfinder.ui.components.OfficeTypeDropdown
 import com.pinbeatfinder.ui.components.CollapsingHeader
 import com.pinbeatfinder.ui.components.EmptyState
-import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.message
 import com.pinbeatfinder.ui.theme.rememberHaptic
 
@@ -253,6 +252,16 @@ fun LocalBeatsScreen(
             onKeep = { pair, keep -> onIntent(LocalBeatsIntent.ResolveDuplicate(pair, keep)) },
             onEdit = { onIntent(LocalBeatsIntent.OpenEditor(it)) },
             onDismiss = { onIntent(LocalBeatsIntent.DismissDuplicates) },
+        )
+    }
+
+    if (state.showFilters) {
+        FilterSheet(
+            filters = state.filters,
+            options = state.filterOptions,
+            onChange = { onIntent(LocalBeatsIntent.FiltersChanged(it)) },
+            onClear = { onIntent(LocalBeatsIntent.ClearFilters) },
+            onDismiss = { onIntent(LocalBeatsIntent.HideFilters) },
         )
     }
 
@@ -425,20 +434,12 @@ private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> 
             )
         }
 
-        // One state or one district is not a choice; the rows only appear once there is something to filter.
-        FilterChipsRow(
-            label = stringResource(R.string.filter_state),
-            options = state.states,
-            selected = state.selectedState,
-            onSelect = { onIntent(LocalBeatsIntent.StateSelected(it)) },
-            hideWhenSingle = true,
-        )
-        FilterChipsRow(
-            label = stringResource(R.string.filter_district),
-            options = state.districts,
-            selected = state.selectedDistrict,
-            onSelect = { onIntent(LocalBeatsIntent.DistrictSelected(it)) },
-            hideWhenSingle = true,
+        // One line: "Filters" button plus a removable chip per active filter; the sheet holds the choices.
+        FilterBar(
+            filters = state.filters,
+            onOpen = { onIntent(LocalBeatsIntent.ShowFilters) },
+            onChange = { onIntent(LocalBeatsIntent.FiltersChanged(it)) },
+            onClear = { onIntent(LocalBeatsIntent.ClearFilters) },
         )
     }
 }

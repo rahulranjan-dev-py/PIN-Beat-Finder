@@ -11,7 +11,10 @@ import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatGroup
 import com.pinbeatfinder.domain.model.BeatRecord
+import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.BeatSearchHit
+import com.pinbeatfinder.domain.model.FilterFacet
+import com.pinbeatfinder.domain.model.FilterOptions
 import com.pinbeatfinder.domain.model.FieldError
 import com.pinbeatfinder.domain.model.OfficeSummary
 import com.pinbeatfinder.domain.model.OfficeType
@@ -51,8 +54,11 @@ data class EditorState(
 
 data class LocalBeatsState(
     val query: String = "",
-    val selectedState: String? = null,
-    val selectedDistrict: String? = null,
+    val filters: BeatSearchFilters = BeatSearchFilters(),
+    /** Distinct combinations in the directory; the filter sheet derives its choices from these. */
+    val facets: List<FilterFacet> = emptyList(),
+    val showFilters: Boolean = false,
+    /** Known values for the editor's State/District suggestions. */
     val states: List<String> = emptyList(),
     val districts: List<String> = emptyList(),
     val hits: List<BeatSearchHit> = emptyList(),
@@ -79,16 +85,18 @@ data class LocalBeatsState(
     val selectedIds: Set<Long> = emptySet(),
     val confirmBulkDelete: Boolean = false,
 ) {
-    val hasFilters: Boolean get() = selectedState != null || selectedDistrict != null
+    val hasFilters: Boolean get() = !filters.isEmpty
+    val filterOptions: FilterOptions get() = FilterOptions.from(facets, filters)
     val isDirectoryEmpty: Boolean get() = totalRecords == 0
     val isSelecting: Boolean get() = selectedIds.isNotEmpty()
 }
 
 sealed interface LocalBeatsIntent {
     data class QueryChanged(val query: String) : LocalBeatsIntent
-    data class StateSelected(val state: String?) : LocalBeatsIntent
-    data class DistrictSelected(val district: String?) : LocalBeatsIntent
+    data class FiltersChanged(val filters: BeatSearchFilters) : LocalBeatsIntent
     data object ClearFilters : LocalBeatsIntent
+    data object ShowFilters : LocalBeatsIntent
+    data object HideFilters : LocalBeatsIntent
     data class SetViewMode(val mode: LocalViewMode) : LocalBeatsIntent
     data class ToggleBeatExpanded(val key: String) : LocalBeatsIntent
 

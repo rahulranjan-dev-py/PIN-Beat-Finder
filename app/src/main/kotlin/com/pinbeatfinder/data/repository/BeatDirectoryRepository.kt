@@ -7,6 +7,7 @@ import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.BeatSearchHit
+import com.pinbeatfinder.domain.model.FilterFacet
 import com.pinbeatfinder.domain.model.MatchKind
 import com.pinbeatfinder.domain.model.OfficeType
 import kotlinx.coroutines.CoroutineDispatcher
@@ -39,11 +40,11 @@ class BeatDirectoryRepository(
         limit: Int = RESULT_LIMIT,
     ): List<BeatSearchHit> = withContext(ioDispatcher) {
         val q = query.trim()
-        val state = filters.state?.takeIf { it.isNotBlank() }
-        val district = filters.district?.takeIf { it.isNotBlank() }
+        val f = filters.clean()
 
         if (q.isEmpty()) {
-            return@withContext dao.browse(state, district, limit).map { BeatSearchHit(it.toDomain(), 0.0) }
+            return@withContext dao.browse(f.state, f.district, f.officeType?.code, f.officeName, f.beatNumber, f.pincode, limit)
+                .map { BeatSearchHit(it.toDomain(), 0.0) }
         }
 
         val keys = phonetic.encode(q)
@@ -52,8 +53,12 @@ class BeatDirectoryRepository(
             exactText = q,
             primaryPattern = if (keys.isEmpty) "" else "${keys.primary}%",
             alternatePattern = if (keys.isEmpty || keys.alternate == keys.primary) "" else "${keys.alternate}%",
-            state = state,
-            district = district,
+            state = f.state,
+            district = f.district,
+            officeType = f.officeType?.code,
+            officeName = f.officeName,
+            beatNumber = f.beatNumber,
+            pincode = f.pincode,
             limit = CANDIDATE_LIMIT,
         )
 
@@ -83,8 +88,24 @@ class BeatDirectoryRepository(
 
     /** Unbounded filtered listing for the "By beat" view. */
     suspend fun listAll(filters: BeatSearchFilters = BeatSearchFilters()): List<BeatRecord> = withContext(ioDispatcher) {
-        dao.listAll(filters.state?.takeIf { it.isNotBlank() }, filters.district?.takeIf { it.isNotBlank() }).map { it.toDomain() }
+        val f = filters.clean()
+        dao.listAll(f.state, f.district, f.officeType?.code, f.officeName, f.beatNumber, f.pincode).map { it.toDomain() }
     }
+
+    /** Distinct filter combinations, live, for the filter sheet. */
+    fun observeFacets(): Flow<List<FilterFacet>> = dao.observeFacets().map { rows ->
+        rows.map { FilterFacet(it.state, it.district, OfficeType.parse(it.officeType) ?: OfficeType.BO, it.officeName, it.beatNumber, it.pincode) }
+    }
+
+    /** Blank strings mean "any", same as null. */
+    private fun BeatSearchFilters.clean() = BeatSearchFilters(
+        state = state?.takeIf { it.isNotBlank() },
+        district = district?.takeIf { it.isNotBlank() },
+        officeType = officeType,
+        officeName = officeName?.takeIf { it.isNotBlank() },
+        beatNumber = beatNumber?.takeIf { it.isNotBlank() },
+        pincode = pincode?.takeIf { it.isNotBlank() },
+    )
 
     /** Local data per office under [pincode], keyed by lower-cased office name. */
     suspend fun officeStats(pincode: String): Map<String, OfficeStats> = withContext(ioDispatcher) {
