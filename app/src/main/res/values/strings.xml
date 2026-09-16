@@ -2,9 +2,9 @@
 <resources>
     <string name="app_name">PIN Beat Finder</string>
     <string name="tab_online">All-India</string>
-    <string name="tab_local">Local Beats (Offline)</string>
+    <string name="tab_local">Local Beats</string>
     <string name="search_online_hint">PIN code or post office name</string>
-    <string name="search_local_hint">Village / locality (misspellings OK)</string>
+    <string name="search_local_hint">Search village or locality</string>
     <string name="add_beat">Add beat record</string>
 
     <!-- generic actions -->
@@ -40,7 +40,7 @@
     <string name="please_wait">Please wait…</string>
 
     <!-- online tab -->
-    <string name="online_supporting">Enter a 6-digit PIN or a post office name, then press Search.</string>
+    <string name="online_supporting">6-digit PIN or post office name, then Search</string>
     <string name="online_intro_title">All-India post office lookup</string>
     <string name="online_intro_message">Search any PIN code or post office name across India. The complete directory is built in and works offline; online sources fill in anything newer. Your searches appear here for quick re-use.</string>
     <string name="online_no_results_title">No results</string>
@@ -82,7 +82,7 @@
     <!-- local tab -->
     <string name="local_view_search">Search</string>
     <string name="local_view_by_beat">By beat</string>
-    <string name="local_supporting">%1$d record(s) offline • also matches beat number or PIN • long-press to select</string>
+    <string name="local_supporting">%1$d records offline • misspellings OK • beat no. or PIN also work • hold to select</string>
     <string name="local_selected">%1$d selected</string>
     <string name="local_cancel_selection">Cancel selection</string>
     <string name="local_no_matches_title">No matches</string>

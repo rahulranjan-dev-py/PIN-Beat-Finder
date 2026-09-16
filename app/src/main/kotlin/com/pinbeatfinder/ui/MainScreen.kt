@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -213,15 +215,20 @@ fun MainScreen() {
             }
             TabRow(selectedTabIndex = selectedTab) {
                 MainTab.entries.forEach { t ->
+                    // Icon inline with the label: a 48dp tab instead of the 72dp icon-over-text one.
                     Tab(
                         selected = t == tab,
                         onClick = { selectedTab = t.ordinal },
-                        text = { Text(stringResource(t.labelRes)) },
-                        icon = {
-                            Icon(
-                                if (t == MainTab.ONLINE) Icons.Default.CloudQueue else Icons.Default.Storage,
-                                contentDescription = null,
-                            )
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    if (t == MainTab.ONLINE) Icons.Default.CloudQueue else Icons.Default.Storage,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(t.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         },
                     )
                 }

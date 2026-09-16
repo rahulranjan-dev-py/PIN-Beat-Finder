@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.13.1 — more room for the list
+
+### Fixed
+- **The list was squeezed into the bottom third of the screen.** On both tabs the search box,
+  hint and filter chips now slide out of view as you scroll the results and slide back the moment
+  you scroll down, so the list can use the whole screen.
+- **Search box too tall.** Shorter placeholders that never wrap, and the hint under the box is a
+  single compact line instead of two lines inside the field.
+- **Filter rows shown with nothing to choose.** The State and District rows on the Local tab are
+  hidden while the directory has only one state or one district.
+- **Tabs took two lines.** "Local Beats (Offline)" is now "Local Beats" with the icon beside the
+  label; the tab bar is 24 dp shorter.
+
 ## v0.13.0 — printable beat sheets, near-duplicate warnings, duplicate finder
 
 ### Added

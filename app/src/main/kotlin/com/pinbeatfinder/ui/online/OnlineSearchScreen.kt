@@ -60,6 +60,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pinbeatfinder.R
@@ -69,6 +70,7 @@ import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.domain.model.toBeatDraft
 import com.pinbeatfinder.ui.components.EmptyState
+import com.pinbeatfinder.ui.components.CollapsingHeader
 import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.LabeledValue
 import com.pinbeatfinder.ui.theme.rememberHaptic
@@ -130,10 +132,48 @@ fun OnlineSearchContent(
     onIntent: (OnlineSearchIntent) -> Unit,
     bridge: OnlineBridge,
 ) {
+    CollapsingHeader(modifier = Modifier.fillMaxSize(), header = { OnlineHeader(state, onIntent) }) {
+        Column(Modifier.fillMaxSize()) {
+            if (state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            when {
+                state.error != null -> EmptyState(
+                    icon = if (state.error is AppError.Offline) Icons.Default.CloudOff else Icons.Default.SearchOff,
+                    title = stringResource(if (state.error is AppError.NotFound) R.string.online_no_results_title else R.string.online_lookup_failed),
+                    message = state.error.userMessage().asString(),
+                    actionLabel = if (state.error is AppError.NotFound) null else stringResource(R.string.action_retry),
+                    onAction = { onIntent(OnlineSearchIntent.Retry) },
+                )
+                !state.hasSearched && state.recents.isNotEmpty() -> RecentSearchesList(state = state, onIntent = onIntent)
+                !state.hasSearched -> EmptyState(
+                    icon = Icons.Default.TravelExplore,
+                    title = stringResource(R.string.online_intro_title),
+                    message = stringResource(R.string.online_intro_message),
+                )
+                state.results.isEmpty() && !state.isLoading -> EmptyState(
+                    icon = Icons.Default.SearchOff,
+                    title = stringResource(R.string.online_no_results_title),
+                    message = stringResource(R.string.online_no_results_message, state.submittedQuery),
+                )
+                state.visibleResults.isEmpty() -> EmptyState(
+                    icon = Icons.Default.SearchOff,
+                    title = stringResource(R.string.online_filtered_out_title),
+                    message = stringResource(R.string.online_filtered_out_message, state.results.size),
+                    actionLabel = stringResource(R.string.action_clear_filters),
+                    onAction = { onIntent(OnlineSearchIntent.ClearFilters) },
+                )
+                else -> ResultsList(state, onIntent, bridge)
+            }
+        }
+    }
+}
+
+/** Directory status, offline banner, search box and result filters; slides away as results scroll. */
+@Composable
+private fun OnlineHeader(state: OnlineSearchState, onIntent: (OnlineSearchIntent) -> Unit) {
     val keyboard = LocalSoftwareKeyboardController.current
     val isNumeric = state.query.all(Char::isDigit) && state.query.isNotEmpty()
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxWidth()) {
         when (val seed = state.seedState) {
             is SeedState.Seeding -> Column(Modifier.fillMaxWidth()) {
                 Text(
@@ -175,8 +215,8 @@ fun OnlineSearchContent(
             onValueChange = { onIntent(OnlineSearchIntent.QueryChanged(it)) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            placeholder = { Text(stringResource(R.string.search_online_hint)) },
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp),
+            placeholder = { Text(stringResource(R.string.search_online_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (state.query.isNotEmpty()) {
@@ -194,10 +234,15 @@ fun OnlineSearchContent(
                 keyboard?.hide()
                 onIntent(OnlineSearchIntent.Submit)
             }),
-            supportingText = { Text(stringResource(R.string.online_supporting)) },
         )
-
-        if (state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        Text(
+            stringResource(R.string.online_supporting),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+        )
 
         // Post-office names repeat across India ("Govindapur" exists in five states); let the
         // user narrow the fetched list without another network call.
@@ -218,35 +263,7 @@ fun OnlineSearchContent(
                 hideWhenSingle = true,
             )
         }
-
-        when {
-            state.error != null -> EmptyState(
-                icon = if (state.error is AppError.Offline) Icons.Default.CloudOff else Icons.Default.SearchOff,
-                title = stringResource(if (state.error is AppError.NotFound) R.string.online_no_results_title else R.string.online_lookup_failed),
-                message = state.error.userMessage().asString(),
-                actionLabel = if (state.error is AppError.NotFound) null else stringResource(R.string.action_retry),
-                onAction = { onIntent(OnlineSearchIntent.Retry) },
-            )
-            !state.hasSearched && state.recents.isNotEmpty() -> RecentSearchesList(state = state, onIntent = onIntent)
-            !state.hasSearched -> EmptyState(
-                icon = Icons.Default.TravelExplore,
-                title = stringResource(R.string.online_intro_title),
-                message = stringResource(R.string.online_intro_message),
-            )
-            state.results.isEmpty() && !state.isLoading -> EmptyState(
-                icon = Icons.Default.SearchOff,
-                title = stringResource(R.string.online_no_results_title),
-                message = stringResource(R.string.online_no_results_message, state.submittedQuery),
-            )
-            state.visibleResults.isEmpty() -> EmptyState(
-                icon = Icons.Default.SearchOff,
-                title = stringResource(R.string.online_filtered_out_title),
-                message = stringResource(R.string.online_filtered_out_message, state.results.size),
-                actionLabel = stringResource(R.string.action_clear_filters),
-                onAction = { onIntent(OnlineSearchIntent.ClearFilters) },
-            )
-            else -> ResultsList(state, onIntent, bridge)
-        }
+        Spacer(Modifier.height(2.dp))
     }
 }
 
