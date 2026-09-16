@@ -15,6 +15,16 @@ data class PincodeCount(val pincode: String, val count: Int)
 /** Projection for [BeatDirectoryDao.officeStats]: how much local data an office already has. */
 data class OfficeStats(val officeName: String, val villages: Int, val beats: Int)
 
+/** Projection for [BeatDirectoryDao.observeFacets]: one distinct filter combination. */
+data class FacetRow(
+    val state: String,
+    val district: String,
+    val officeType: String,
+    val officeName: String,
+    val beatNumber: String,
+    val pincode: String,
+)
+
 @Dao
 interface BeatDirectoryDao {
 
@@ -33,6 +43,10 @@ interface BeatDirectoryDao {
         SELECT * FROM local_beat_directory
         WHERE (:state IS NULL OR state = :state)
           AND (:district IS NULL OR district = :district)
+          AND (:officeType IS NULL OR officeType = :officeType)
+          AND (:officeName IS NULL OR branchOffice = :officeName)
+          AND (:beatNumber IS NULL OR beatNumber = :beatNumber)
+          AND (:pincode IS NULL OR pincode = :pincode)
           AND (
                 (:textPattern != '' AND localityName LIKE :textPattern)
              OR (:exactText != '' AND (beatNumber = :exactText OR pincode = :exactText))
@@ -50,6 +64,10 @@ interface BeatDirectoryDao {
         alternatePattern: String,
         state: String?,
         district: String?,
+        officeType: String?,
+        officeName: String?,
+        beatNumber: String?,
+        pincode: String?,
         limit: Int,
     ): List<BeatDirectoryEntity>
 
@@ -59,11 +77,23 @@ interface BeatDirectoryDao {
         SELECT * FROM local_beat_directory
         WHERE (:state IS NULL OR state = :state)
           AND (:district IS NULL OR district = :district)
+          AND (:officeType IS NULL OR officeType = :officeType)
+          AND (:officeName IS NULL OR branchOffice = :officeName)
+          AND (:beatNumber IS NULL OR beatNumber = :beatNumber)
+          AND (:pincode IS NULL OR pincode = :pincode)
         ORDER BY localityName ASC
         LIMIT :limit
         """,
     )
-    suspend fun browse(state: String?, district: String?, limit: Int): List<BeatDirectoryEntity>
+    suspend fun browse(
+        state: String?,
+        district: String?,
+        officeType: String?,
+        officeName: String?,
+        beatNumber: String?,
+        pincode: String?,
+        limit: Int,
+    ): List<BeatDirectoryEntity>
 
     @Query("SELECT * FROM local_beat_directory ORDER BY state, district, branchOffice, beatNumber, localityName")
     suspend fun getAll(): List<BeatDirectoryEntity>
@@ -74,10 +104,30 @@ interface BeatDirectoryDao {
         SELECT * FROM local_beat_directory
         WHERE (:state IS NULL OR state = :state)
           AND (:district IS NULL OR district = :district)
+          AND (:officeType IS NULL OR officeType = :officeType)
+          AND (:officeName IS NULL OR branchOffice = :officeName)
+          AND (:beatNumber IS NULL OR beatNumber = :beatNumber)
+          AND (:pincode IS NULL OR pincode = :pincode)
         ORDER BY branchOffice, beatNumber, localityName
         """,
     )
-    suspend fun listAll(state: String?, district: String?): List<BeatDirectoryEntity>
+    suspend fun listAll(
+        state: String?,
+        district: String?,
+        officeType: String?,
+        officeName: String?,
+        beatNumber: String?,
+        pincode: String?,
+    ): List<BeatDirectoryEntity>
+
+    /** Every distinct filter combination; small (one row per office/beat/PIN), drives the filter sheet. */
+    @Query(
+        """
+        SELECT DISTINCT state, district, officeType, branchOffice AS officeName, beatNumber, pincode
+        FROM local_beat_directory
+        """,
+    )
+    fun observeFacets(): Flow<List<FacetRow>>
 
     @Query("DELETE FROM local_beat_directory WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)

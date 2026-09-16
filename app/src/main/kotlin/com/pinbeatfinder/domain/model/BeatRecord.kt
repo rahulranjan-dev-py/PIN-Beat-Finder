@@ -29,11 +29,18 @@ data class BeatRecord(
     val officeDisplay: String get() = "$officeName ${officeType.code}"
 }
 
-/** Optional narrowing applied to a local directory search. */
+/** Optional narrowing applied to a local directory search. Null means "any". */
 data class BeatSearchFilters(
     val state: String? = null,
     val district: String? = null,
-)
+    val officeType: OfficeType? = null,
+    val officeName: String? = null,
+    val beatNumber: String? = null,
+    val pincode: String? = null,
+) {
+    val isEmpty: Boolean get() = count == 0
+    val count: Int get() = listOf(state, district, officeType, officeName, beatNumber, pincode).count { it != null }
+}
 
 /** Why a row matched, so the UI can explain it (bold substring vs. "sounds like"). */
 enum class MatchKind {
