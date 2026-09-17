@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.15.0 — browse by office
+
+### Changed
+- **Office cards instead of every village.** With the search box empty, the Local tab now lists
+  offices (name and type, account office, PIN, beats and villages). Tap one to open the office
+  screen: its villages grouped under beat headers, with edit, delete, swipe, multi-select,
+  look-up-online and Add (pre-filled with that office). Back returns to the cards at the same
+  scroll position. Share and PDF are on the office screen for the whole office, and on each
+  beat header for that beat.
+- **Search is unchanged.** Start typing and villages from the whole directory appear as before;
+  clear the box and the office cards come back. On a found village, the "Office" chip opens
+  that village's office screen.
+- **By beat** mode stays as it was.
+
 ## v0.14.3 — record cards restored
 
 ### Changed

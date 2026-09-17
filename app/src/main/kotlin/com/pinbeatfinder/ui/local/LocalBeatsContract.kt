@@ -72,6 +72,12 @@ data class LocalBeatsState(
     val busyMessage: UiText? = null,
 
     val viewMode: LocalViewMode = LocalViewMode.SEARCH,
+    /** Every record matching the filters; source for office cards, the office screen and By beat. */
+    val records: List<BeatRecord> = emptyList(),
+    /** The office whose villages are being browsed on the office screen; null on the main list. */
+    val openOffice: OfficeSummary? = null,
+    /** The open office's records grouped by beat. */
+    val officeGroups: List<BeatGroup> = emptyList(),
     val beatGroups: List<BeatGroup> = emptyList(),
     val expandedBeats: Set<String> = emptySet(),
     /** One row per office for the bulk type fixer; derived with [beatGroups]. */
@@ -89,6 +95,8 @@ data class LocalBeatsState(
     val filterOptions: FilterOptions get() = FilterOptions.from(facets, filters)
     val isDirectoryEmpty: Boolean get() = totalRecords == 0
     val isSelecting: Boolean get() = selectedIds.isNotEmpty()
+    /** Search mode with nothing typed shows office cards rather than every village. */
+    val showsOfficeCards: Boolean get() = viewMode == LocalViewMode.SEARCH && query.isBlank()
 }
 
 sealed interface LocalBeatsIntent {
@@ -98,6 +106,10 @@ sealed interface LocalBeatsIntent {
     data object ShowFilters : LocalBeatsIntent
     data object HideFilters : LocalBeatsIntent
     data class SetViewMode(val mode: LocalViewMode) : LocalBeatsIntent
+    /** Open the office screen for one office card (or the office of a found village). */
+    data class OpenOffice(val office: OfficeSummary) : LocalBeatsIntent
+    data class OpenOfficeOf(val record: BeatRecord) : LocalBeatsIntent
+    data object CloseOffice : LocalBeatsIntent
     data class ToggleBeatExpanded(val key: String) : LocalBeatsIntent
 
     data class OpenEditor(val record: BeatRecord? = null) : LocalBeatsIntent

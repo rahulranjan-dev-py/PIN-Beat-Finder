@@ -2,6 +2,7 @@ package com.pinbeatfinder.ui.local
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -22,11 +23,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
@@ -35,6 +39,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FindReplace
 import androidx.compose.material.icons.filled.Print
@@ -82,6 +87,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -334,12 +340,218 @@ fun LocalBeatsContent(
         return
     }
 
+    // The office cards keep their scroll position while an office screen is open on top.
+    val officeListState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
+
+    val openOffice = state.openOffice
+    if (openOffice != null) {
+        BackHandler { onIntent(LocalBeatsIntent.CloseOffice) }
+        OfficeScreen(office = openOffice, state = state, onIntent = onIntent, onLookupOnline = onLookupOnline)
+        return
+    }
+
     CollapsingHeader(modifier = Modifier.fillMaxSize(), header = { LocalHeader(state, onIntent) }) {
         Column(Modifier.fillMaxSize()) {
             if (state.isSearching && state.viewMode == LocalViewMode.SEARCH) LinearProgressIndicator(Modifier.fillMaxWidth()) else Spacer(Modifier.height(2.dp))
-            when (state.viewMode) {
-                LocalViewMode.SEARCH -> SearchResults(state, onIntent, onLookupOnline)
-                LocalViewMode.BY_BEAT -> BeatGroupsList(state, onIntent, onLookupOnline)
+            when {
+                state.showsOfficeCards -> OfficeCardsList(state, officeListState, onIntent)
+                state.viewMode == LocalViewMode.SEARCH -> SearchResults(state, onIntent, onLookupOnline)
+                else -> BeatGroupsList(state, onIntent, onLookupOnline)
+            }
+        }
+    }
+}
+
+// ------------------------------------------------------------------ office cards (search box empty)
+
+@Composable
+private fun OfficeCardsList(state: LocalBeatsState, listState: LazyListState, onIntent: (LocalBeatsIntent) -> Unit) {
+    if (state.officeSummaries.isEmpty()) {
+        EmptyState(
+            icon = Icons.Default.Route,
+            title = stringResource(R.string.local_no_offices_title),
+            message = stringResource(if (state.hasFilters) R.string.local_no_beats_filtered else R.string.local_loading),
+            actionLabel = if (state.hasFilters) stringResource(R.string.action_clear_filters) else null,
+            onAction = { onIntent(LocalBeatsIntent.ClearFilters) },
+        )
+        return
+    }
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            Text(
+                stringResource(R.string.local_offices_summary, state.officeSummaries.size, state.officeSummaries.sumOf { it.recordCount }),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items(state.officeSummaries, key = { it.key }) { office ->
+            OfficeCard(office = office, accountOffice = state.records.firstOrNull { it.officeName.equals(office.officeName, true) && it.pincode in office.pincodes }?.accountOffice.orEmpty()) {
+                onIntent(LocalBeatsIntent.OpenOffice(office))
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfficeCard(office: OfficeSummary, accountOffice: String, onOpen: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onOpen,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Row(Modifier.padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(office.officeDisplay, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                val detail = listOfNotNull(
+                    accountOffice.takeIf { it.isNotBlank() }?.let { stringResource(R.string.local_beat_subtitle_account, it) },
+                    stringResource(R.string.local_beat_subtitle_pin, office.pincodes.joinToString(", ")),
+                ).joinToString(" • ")
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.office_card_counts, office.beatCount, office.recordCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.action_open_office), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+// ------------------------------------------------------------------ office screen
+
+/** One office: its villages grouped by beat, with add/edit/delete/select and share for the office or a beat. */
+@Composable
+private fun OfficeScreen(
+    office: OfficeSummary,
+    state: LocalBeatsState,
+    onIntent: (LocalBeatsIntent) -> Unit,
+    onLookupOnline: (String) -> Unit,
+) {
+    val sample = state.officeGroups.firstOrNull()?.records?.firstOrNull()
+    var shareMenu by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = { onIntent(LocalBeatsIntent.CloseOffice) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(office.officeDisplay, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                val detail = listOfNotNull(
+                    sample?.accountOffice?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.local_beat_subtitle_account, it) },
+                    stringResource(R.string.local_beat_subtitle_pin, office.pincodes.joinToString(", ")),
+                    sample?.let { listOf(it.district, it.state).filter { s -> s.isNotBlank() }.joinToString(", ") }?.takeIf { it.isNotBlank() },
+                ).joinToString(" • ")
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            state.officeGroups.firstOrNull()?.let { anyGroup ->
+                Box {
+                    IconButton(onClick = { shareMenu = true }) { Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share)) }
+                    DropdownMenu(expanded = shareMenu, onDismissRequest = { shareMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.share_whole_office, office.officeDisplay)) },
+                            onClick = { shareMenu = false; onIntent(LocalBeatsIntent.ShareOffice(anyGroup)) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.print_whole_office, office.officeDisplay)) },
+                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                            onClick = { shareMenu = false; onIntent(LocalBeatsIntent.PrintOffice(anyGroup)) },
+                        )
+                    }
+                }
+            }
+        }
+        AnimatedVisibility(visible = state.isSelecting) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { onIntent(LocalBeatsIntent.ClearSelection) }) {
+                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.local_cancel_selection))
+                }
+                Text(stringResource(R.string.local_selected, state.selectedIds.size), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                TextButton(onClick = { onIntent(LocalBeatsIntent.RequestBulkDelete) }) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.action_delete))
+                }
+            }
+        }
+        if (state.officeGroups.isEmpty()) {
+            EmptyState(
+                icon = Icons.Default.Route,
+                title = stringResource(R.string.office_no_records_title),
+                message = stringResource(R.string.office_no_records_message),
+                actionLabel = stringResource(R.string.action_add),
+                onAction = { onIntent(LocalBeatsIntent.OpenEditor()) },
+            )
+        } else LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            state.officeGroups.forEach { group ->
+                item(key = "beat|" + group.key) {
+                    BeatHeaderRow(group = group, onIntent = onIntent)
+                }
+                items(group.records, key = { it.id }) { record ->
+                    SwipeToDeleteRow(
+                        enabled = !state.isSelecting,
+                        onDelete = { onIntent(LocalBeatsIntent.RequestDelete(record)) },
+                        modifier = Modifier.animateItem(),
+                    ) {
+                        BeatRecordCard(
+                            hit = BeatSearchHit(record, 0.0, MatchKind.NONE),
+                            query = "",
+                            selecting = state.isSelecting,
+                            selected = record.id in state.selectedIds,
+                            onEdit = { onIntent(LocalBeatsIntent.OpenEditor(record)) },
+                            onDelete = { onIntent(LocalBeatsIntent.RequestDelete(record)) },
+                            onLookupOnline = { onLookupOnline(record.pincode) },
+                            onToggleSelect = { onIntent(LocalBeatsIntent.ToggleSelected(record.id)) },
+                            onOpenOffice = null,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** "Beat 2 • 12 villages" section header with a share menu for that beat. */
+@Composable
+private fun BeatHeaderRow(group: BeatGroup, onIntent: (LocalBeatsIntent) -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            stringResource(R.string.office_beat_header, group.beatNumber, group.villageCount),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+        )
+        Box {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share), modifier = Modifier.size(20.dp)) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.share_this_beat, group.villageCount)) }, onClick = { menu = false; onIntent(LocalBeatsIntent.ShareBeat(group)) })
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.print_this_beat)) },
+                    leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                    onClick = { menu = false; onIntent(LocalBeatsIntent.PrintBeat(group)) },
+                )
             }
         }
     }
@@ -478,6 +690,7 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
                     onDelete = { onIntent(LocalBeatsIntent.RequestDelete(hit.record)) },
                     onLookupOnline = { onLookupOnline(hit.record.pincode) },
                     onToggleSelect = { onIntent(LocalBeatsIntent.ToggleSelected(hit.record.id)) },
+                    onOpenOffice = { onIntent(LocalBeatsIntent.OpenOfficeOf(hit.record)) },
                 )
             }
         }
@@ -527,6 +740,8 @@ private fun BeatRecordCard(
     onDelete: () -> Unit,
     onLookupOnline: () -> Unit,
     onToggleSelect: () -> Unit,
+    /** Opens the record's office screen; null when already on that screen. */
+    onOpenOffice: (() -> Unit)?,
 ) {
     val record: BeatRecord = hit.record
     val haptic = rememberHaptic()
@@ -585,7 +800,14 @@ private fun BeatRecordCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_beat, record.beatNumber)) })
-                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_office, record.officeDisplay)) })
+                // The office chip is the way from a found village to its office screen.
+                SuggestionChip(
+                    onClick = onOpenOffice ?: onEdit,
+                    label = { Text(stringResource(R.string.chip_office, record.officeDisplay)) },
+                    icon = if (onOpenOffice != null) {
+                        { Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                )
                 if (record.accountOffice.isNotBlank()) {
                     SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_account, record.accountOffice)) })
                 }
