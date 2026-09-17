@@ -104,7 +104,6 @@
     <string name="local_no_offices_title">No offices to show</string>
     <string name="office_card_counts">%1$d beat(s) • %2$d village(s)</string>
     <string name="action_open_office">Open office</string>
-    <string name="action_back">Back</string>
     <string name="office_beat_header">Beat %1$s • %2$d village(s)</string>
     <string name="office_no_records_title">No villages under this office</string>
     <string name="office_no_records_message">Add the first village with the button below.</string>

@@ -100,7 +100,6 @@
     <string name="local_no_offices_title">दिखाने के लिए कोई डाकघर नहीं</string>
     <string name="office_card_counts">%1$d बीट • %2$d गाँव</string>
     <string name="action_open_office">डाकघर खोलें</string>
-    <string name="action_back">वापस</string>
     <string name="office_beat_header">बीट %1$s • %2$d गाँव</string>
     <string name="office_no_records_title">इस डाकघर के अंतर्गत कोई गाँव नहीं</string>
     <string name="office_no_records_message">नीचे दिए बटन से पहला गाँव जोड़ें।</string>
