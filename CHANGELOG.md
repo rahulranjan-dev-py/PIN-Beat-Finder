@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.14.3 — record cards restored
+
+### Changed
+- The record card changes from v0.14.2 (single text line instead of the Beat / Office /
+  Account / PIN chips, no row animation) are reverted; cards look and behave as in v0.14.1.
+  The optimised build and the in-place language change stay, to judge on their own whether
+  they cure the scrolling stutter.
+
 ## v0.14.2 — smoother list, no black screen on language change, signed build
 
 ### Important: one-time reinstall
