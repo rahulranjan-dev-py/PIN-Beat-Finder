@@ -7,6 +7,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -69,6 +71,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -460,12 +463,11 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // No animateItem here: the list re-sorts on every keystroke and 178 cards animating their
-        // placement at once was the visible stutter. contentType lets the list reuse card layouts.
-        items(state.hits, key = { it.record.id }, contentType = { "record" }) { hit ->
+        items(state.hits, key = { it.record.id }) { hit ->
             SwipeToDeleteRow(
                 enabled = !state.isSelecting,
                 onDelete = { onIntent(LocalBeatsIntent.RequestDelete(hit.record)) },
+                modifier = Modifier.animateItem(),
             ) {
                 BeatRecordCard(
                     hit = hit,
@@ -575,22 +577,20 @@ private fun BeatRecordCard(
                     IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete)) }
                 }
             }
-            // One text line instead of four chips in a nested scroller: the chips all just opened
-            // the editor, and they were most of each card's layout cost.
-            val meta = listOf(
-                stringResource(R.string.chip_beat, record.beatNumber),
-                record.officeDisplay,
-                record.accountOffice.takeIf { it.isNotBlank() }?.let { stringResource(R.string.card_account, it) },
-                record.pincode,
-            ).filterNotNull().joinToString(" • ")
-            Text(
-                meta,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp, end = 12.dp),
-            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_beat, record.beatNumber)) })
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_office, record.officeDisplay)) })
+                if (record.accountOffice.isNotBlank()) {
+                    SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_account, record.accountOffice)) })
+                }
+                SuggestionChip(onClick = onEdit, label = { Text(stringResource(R.string.chip_pin, record.pincode)) })
+            }
             if (record.remarks.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(record.remarks, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
