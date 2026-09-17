@@ -29,6 +29,12 @@ data class OfficeSummary(
 }
 
 object BeatGrouping {
+    /** The records that belong to [office]: same name (case-insensitive) and one of its PINs. */
+    fun recordsOf(records: List<BeatRecord>, office: OfficeSummary): List<BeatRecord> {
+        val pins = office.pincodes.toSet()
+        return records.filter { it.officeName.trim().equals(office.officeName, ignoreCase = true) && it.pincode in pins }
+    }
+
     /**
      * One summary per (office name, PIN), ordered by name. The PIN is part of the identity so two
      * "Rampur" offices in different districts are never merged into one row.

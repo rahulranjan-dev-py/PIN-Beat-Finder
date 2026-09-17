@@ -83,15 +83,20 @@ class LocalBeatsViewModel(
             .onEach { hits -> _state.update { it.copy(hits = hits, isSearching = false) } }
             .launchIn(viewModelScope)
 
-        combine(
-            _state.map { it.filters to (it.viewMode == LocalViewMode.BY_BEAT) }.distinctUntilChanged(),
-            dataVersion,
-        ) { (f, active), v -> GroupKey(f, v, active) }
-            .mapLatest { key ->
-                if (!key.active) emptyList<BeatGroup>() to emptyList<OfficeSummary>()
-                else repository.listAll(key.filters).let { BeatGrouping.group(it) to BeatGrouping.summarizeOffices(it) }
+        // Office cards, the office screen and the By-beat view all derive from the filtered listing.
+        combine(_state.map { it.filters }.distinctUntilChanged(), dataVersion) { f, v -> GroupKey(f, v, true) }
+            .mapLatest { key -> repository.listAll(key.filters) }
+            .onEach { records ->
+                _state.update { s ->
+                    val office = s.openOffice
+                    s.copy(
+                        records = records,
+                        beatGroups = BeatGrouping.group(records),
+                        officeSummaries = BeatGrouping.summarizeOffices(records),
+                        officeGroups = if (office == null) emptyList() else BeatGrouping.group(BeatGrouping.recordsOf(records, office)),
+                    )
+                }
             }
-            .onEach { (groups, offices) -> _state.update { it.copy(beatGroups = groups, officeSummaries = offices) } }
             .launchIn(viewModelScope)
 
         // Office Name suggestions: what is typed -> directory name search -> short list, PIN matches first.
@@ -169,19 +174,41 @@ class LocalBeatsViewModel(
             LocalBeatsIntent.ShowFilters -> _state.update { it.copy(showFilters = true) }
             LocalBeatsIntent.HideFilters -> _state.update { it.copy(showFilters = false) }
             is LocalBeatsIntent.SetViewMode -> _state.update { it.copy(viewMode = intent.mode, selectedIds = emptySet()) }
+            is LocalBeatsIntent.OpenOffice -> openOffice(intent.office)
+            is LocalBeatsIntent.OpenOfficeOf -> {
+                val r = intent.record
+                val office = _state.value.officeSummaries.firstOrNull { it.officeName.equals(r.officeName.trim(), true) && r.pincode in it.pincodes }
+                    ?: OfficeSummary(r.officeName.trim(), r.officeType, false, listOf(r.pincode), 1, 1)
+                openOffice(office)
+            }
+            LocalBeatsIntent.CloseOffice -> _state.update { it.copy(openOffice = null, officeGroups = emptyList(), selectedIds = emptySet()) }
             is LocalBeatsIntent.ToggleBeatExpanded -> _state.update {
                 it.copy(expandedBeats = if (intent.key in it.expandedBeats) it.expandedBeats - intent.key else it.expandedBeats + intent.key)
             }
 
             is LocalBeatsIntent.OpenEditor -> _state.update {
-                val draft = intent.record?.let(BeatDraft::from) ?: BeatDraft(
-                    state = it.filters.state.orEmpty(),
-                    district = it.filters.district.orEmpty(),
-                    officeType = it.filters.officeType?.code ?: BeatDraft().officeType,
-                    officeName = it.filters.officeName.orEmpty(),
-                    beatNumber = it.filters.beatNumber.orEmpty(),
-                    pincode = it.filters.pincode.orEmpty(),
-                )
+                val office = it.openOffice
+                val sample = it.officeGroups.firstOrNull()?.records?.firstOrNull()
+                val draft = when {
+                    intent.record != null -> BeatDraft.from(intent.record)
+                    // On the office screen a new record belongs to that office.
+                    office != null -> BeatDraft(
+                        officeType = office.officeType.code,
+                        officeName = office.officeName,
+                        accountOffice = sample?.accountOffice.orEmpty(),
+                        pincode = office.pincodes.first(),
+                        district = sample?.district.orEmpty(),
+                        state = sample?.state.orEmpty(),
+                    )
+                    else -> BeatDraft(
+                        state = it.filters.state.orEmpty(),
+                        district = it.filters.district.orEmpty(),
+                        officeType = it.filters.officeType?.code ?: BeatDraft().officeType,
+                        officeName = it.filters.officeName.orEmpty(),
+                        beatNumber = it.filters.beatNumber.orEmpty(),
+                        pincode = it.filters.pincode.orEmpty(),
+                    )
+                }
                 it.copy(editor = EditorState(draft))
             }
             is LocalBeatsIntent.OpenEditorWithDraft -> _state.update { it.copy(editor = EditorState(intent.draft)) }
@@ -279,6 +306,16 @@ class LocalBeatsViewModel(
                 BeatField.REMARKS -> d.copy(remarks = value)
             }
             s.copy(editor = editor.copy(draft = draft, errors = editor.errors - field))
+        }
+    }
+
+    private fun openOffice(office: OfficeSummary) {
+        _state.update {
+            it.copy(
+                openOffice = office,
+                officeGroups = BeatGrouping.group(BeatGrouping.recordsOf(it.records, office)),
+                selectedIds = emptySet(),
+            )
         }
     }
 

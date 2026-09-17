@@ -58,6 +58,14 @@ class BeatGroupingTest {
     }
 
     @Test
+    fun `recordsOf picks one office by name and pin, case-insensitively`() {
+        val rows = listOf(r(1, "A", "Rampur", "1"), r(2, "B", "rampur", "2"), r(3, "C", "Rampur", "1", pin = "261002"), r(4, "D", "Amethi", "1"))
+        val office = BeatGrouping.summarizeOffices(rows).first { it.officeName == "Rampur" && it.pincodes == listOf("261001") }
+        assertEquals(listOf(1L, 2L), BeatGrouping.recordsOf(rows, office).map { it.id })
+        assertEquals(2, BeatGrouping.group(BeatGrouping.recordsOf(rows, office)).size)
+    }
+
+    @Test
     fun `natural compare`() {
         assertTrue(BeatGrouping.naturalCompare("2", "10") < 0)
         assertTrue(BeatGrouping.naturalCompare("2", "2A") < 0)
