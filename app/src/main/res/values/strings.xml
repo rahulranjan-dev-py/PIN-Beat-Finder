@@ -299,7 +299,6 @@
     <string name="update_install">Install</string>
     <string name="update_failed">Download failed: %1$s</string>
     <string name="update_open_browser">Open in browser</string>
-    <string name="action_retry">Retry</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_updates_desc">Installed: %1$s. Checked each time the app is opened when online; updates download and install from inside the app.</string>
     <string name="update_check_now">Check for updates</string>

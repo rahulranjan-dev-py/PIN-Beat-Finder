@@ -293,7 +293,6 @@
     <string name="update_install">इंस्टॉल करें</string>
     <string name="update_failed">डाउनलोड विफल: %1$s</string>
     <string name="update_open_browser">ब्राउज़र में खोलें</string>
-    <string name="action_retry">पुनः प्रयास</string>
     <string name="settings_updates">अपडेट</string>
     <string name="settings_updates_desc">इंस्टॉल: %1$s। ऑनलाइन होने पर हर बार ऐप खोलने पर जाँच; अपडेट ऐप के अंदर से ही डाउनलोड और इंस्टॉल होते हैं।</string>
     <string name="update_check_now">अपडेट जाँचें</string>
