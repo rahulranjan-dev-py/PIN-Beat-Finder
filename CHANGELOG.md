@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.16.0 — in-app updates
+
+### Added
+- **Update banner on every open.** The app checks the release page each time it comes to the
+  foreground (throttled to once a minute) and shows "Update available" with **Download & install**,
+  **Later** (hidden until the next open) and × (hidden for that version).
+- **Download inside the app.** Tapping Download & install fetches the APK into the app's cache
+  with a progress bar and a Cancel button, then checks it against the release's SHA256SUMS file
+  and refuses a file that does not match. **Install** hands the verified file to Android's
+  installer. The first time, Android asks once to allow PIN Beat Finder to install apps; the
+  banner returns straight to the installer afterwards.
+- If the download fails, the banner offers Retry and the old "open in browser" route.
+
 ## v0.15.1 — new app icon
 
 ### Changed

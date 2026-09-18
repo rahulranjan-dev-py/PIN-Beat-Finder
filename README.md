@@ -125,6 +125,11 @@ refuse to install one build over another. Release signing is unaffected.
 
 ### Updates and crash reports
 
+In-app updates: `UpdateChecker` asks the GitHub Releases API on each foreground (throttled),
+`ApkDownloader` streams the APK into `cacheDir/updates/` and verifies it against the release's
+`SHA256SUMS.txt`, and `UpdateInstaller` hands the file to the system installer via `FileProvider`
+(`REQUEST_INSTALL_PACKAGES`; Android asks the user once to allow installs from the app).
+
 Sideloaded builds cannot rely on a store, so `UpdateChecker` reads the public GitHub Releases
 feed (`BuildConfig.GITHUB_REPO`) and surfaces newer tags with a download link; checks are
 throttled to 6 hours and a dismissed tag stays hidden. `CrashReporter` installs an
