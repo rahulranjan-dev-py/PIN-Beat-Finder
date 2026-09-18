@@ -46,6 +46,13 @@ class AppContainer(context: Context) {
 
     val okHttpClient: OkHttpClient by lazy { NetworkModule.okHttpClient(appContext.cacheDir, connectivity) }
 
+    /**
+     * The lookup client caches every answer for a day so searches work offline; an update check
+     * served from that cache would hide a release published after the last check. This client
+     * shares the connection pool but has no cache and no cache-rewriting interceptors.
+     */
+    val liveHttpClient: OkHttpClient by lazy { NetworkModule.liveClient(okHttpClient) }
+
     val postalApi: PostalApiService by lazy { NetworkModule.postalApi(NetworkModule.retrofit(okHttpClient)) }
 
     val directoryDatabase: DirectoryDatabase by lazy { DirectoryDatabase.build(appContext) }
@@ -69,7 +76,7 @@ class AppContainer(context: Context) {
     }
 
     val updateChecker: UpdateChecker by lazy {
-        val service = NetworkModule.retrofit(okHttpClient).create(GithubReleasesService::class.java)
+        val service = NetworkModule.retrofit(liveHttpClient).create(GithubReleasesService::class.java)
         UpdateChecker(
             currentVersion = BuildConfig.VERSION_NAME,
             store = SharedPrefsStore(appContext),
@@ -77,7 +84,7 @@ class AppContainer(context: Context) {
         )
     }
 
-    val apkDownloader: ApkDownloader by lazy { ApkDownloader(okHttpClient, appContext.cacheDir) }
+    val apkDownloader: ApkDownloader by lazy { ApkDownloader(liveHttpClient, appContext.cacheDir) }
 
     val crashReporter: CrashReporter by lazy { CrashReporter(appContext, SharedPrefsStore(appContext), BuildConfig.VERSION_NAME) }
 

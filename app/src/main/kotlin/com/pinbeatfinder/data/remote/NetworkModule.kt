@@ -83,6 +83,14 @@ object NetworkModule {
         return builder.build()
     }
 
+    /** [base] without its cache or interceptors: every request goes to the network, every time. */
+    fun liveClient(base: OkHttpClient): OkHttpClient {
+        val b = base.newBuilder().cache(null)
+        b.interceptors().clear()
+        b.networkInterceptors().clear()
+        return b.build()
+    }
+
     fun retrofit(client: OkHttpClient): Retrofit = Retrofit.Builder()
         .baseUrl(PostalApiService.BASE_URL)
         .client(client)

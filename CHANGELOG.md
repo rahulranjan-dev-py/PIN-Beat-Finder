@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.16.2 — update check no longer served from the offline cache
+
+### Fixed
+- **"You have the latest version" while a newer release existed.** The update check shared the
+  lookup client, which keeps every answer for a day so searches work offline; the releases list
+  was therefore read from that cache. Update checks and APK downloads now use a client with no
+  cache. (On v0.16.0/v0.16.1, Settings → Clear online cache → Check for updates works around it.)
+
 ## v0.16.1 — language switch never goes black
 
 ### Fixed
