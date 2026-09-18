@@ -3,9 +3,10 @@
 ## v0.15.1 — new app icon
 
 ### Changed
-- **App icon.** The launcher icon is now the PIN Beat Finder artwork (map pin with envelope and
-  magnifier over beat routes). It is an adaptive icon, so it looks right under every launcher
-  shape; the themed (monochrome) variant for Android 13+ is unchanged.
+- **App icon.** The launcher icon is now the PIN Beat artwork (map pin with envelope and
+  magnifier over beat routes): the square card for normal launchers and a circular variant for
+  launchers that ask for the round icon. Both are adaptive icons, so they look right under every
+  launcher shape; the themed (monochrome) variant for Android 13+ is unchanged.
 
 ## v0.15.0 — browse by office
 
