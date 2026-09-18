@@ -8,6 +8,7 @@ import com.pinbeatfinder.data.directory.DirectorySeeder
 import com.pinbeatfinder.data.directory.IndiaPostDirectoryRepository
 import com.pinbeatfinder.data.crash.CrashReporter
 import com.pinbeatfinder.data.excel.ExcelSyncManager
+import com.pinbeatfinder.data.update.ApkDownloader
 import com.pinbeatfinder.data.update.GithubReleasesService
 import com.pinbeatfinder.data.update.UpdateChecker
 import com.pinbeatfinder.data.local.BeatFinderDatabase
@@ -75,6 +76,8 @@ class AppContainer(context: Context) {
             fetchReleases = { service.releases(BuildConfig.GITHUB_REPO) },
         )
     }
+
+    val apkDownloader: ApkDownloader by lazy { ApkDownloader(okHttpClient, appContext.cacheDir) }
 
     val crashReporter: CrashReporter by lazy { CrashReporter(appContext, SharedPrefsStore(appContext), BuildConfig.VERSION_NAME) }
 

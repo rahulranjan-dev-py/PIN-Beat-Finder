@@ -2,6 +2,7 @@ package com.pinbeatfinder.data
 
 import com.pinbeatfinder.data.prefs.KeyValueStore
 import com.pinbeatfinder.data.remote.PostalJson
+import com.pinbeatfinder.data.update.Checksums
 import com.pinbeatfinder.data.update.UpdateChecker
 import com.pinbeatfinder.data.update.VersionCompare
 import kotlinx.coroutines.runBlocking
@@ -43,10 +44,38 @@ class UpdateCheckerTest {
         assertNotNull(rel)
         assertEquals("v0.9.0", rel!!.tag)
         assertEquals("https://x/d/app-0.9.0.apk", rel.apkUrl)
+        assertEquals("https://x/d/SHA256SUMS.txt", rel.checksumsUrl)
         assertTrue(checker.state.value.shouldShowBanner)
         checker.dismiss("v0.9.0")
         assertFalse(checker.state.value.shouldShowBanner)
         assertEquals("v0.9.0", store.map[UpdateChecker.KEY_DISMISSED])
+    }
+
+    @Test
+    fun `later hides until the next foreground check`() = runBlocking {
+        var now = 1_000L
+        val checker = UpdateChecker("0.8.0", MemoryStore(), fetchReleases = { PostalJson.instance.parseToJsonElement(feed) }, clock = { now })
+        checker.check()
+        checker.later("v0.9.0")
+        assertFalse(checker.state.value.shouldShowBanner)
+        checker.checkOnForeground()               // within the foreground throttle: no network, but un-snoozed
+        assertTrue(checker.state.value.shouldShowBanner)
+        now += UpdateChecker.FOREGROUND_MIN_INTERVAL_MS + 1
+        assertEquals("v0.9.0", checker.checkOnForeground()!!.tag)
+    }
+
+    @Test
+    fun `checksum manifest parsing and hashing`() {
+        val text = "abc\n" +
+            "6b26063cd28a9a54927404a0331323d9658d9917f5d8ea80c88140018eb5e980  pin-beat-finder-v0.15.1-release.apk\n" +
+            "E7B682F492B136B7919642176C961CC44FC45D6B0BF8E3FF14019DFB0BB32024 *pin-beat-finder-v0.15.1-release.aab\n"
+        val m = Checksums.parse(text)
+        assertEquals(2, m.size)
+        assertEquals("6b26063cd28a9a54927404a0331323d9658d9917f5d8ea80c88140018eb5e980", m["pin-beat-finder-v0.15.1-release.apk"])
+        assertEquals("e7b682f492b136b7919642176c961cc44fc45d6b0bf8e3ff14019dfb0bb32024", m["pin-beat-finder-v0.15.1-release.aab"])
+        assertEquals("pin-beat-finder-v0.15.1-release.apk", Checksums.fileNameOf("https://github.com/x/y/releases/download/v0.15.1/pin-beat-finder-v0.15.1-release.apk?raw=1"))
+        // SHA-256("abc")
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", Checksums.sha256("abc".byteInputStream()))
     }
 
     @Test

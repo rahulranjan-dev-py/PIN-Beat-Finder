@@ -3,6 +3,8 @@ package com.pinbeatfinder.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -21,7 +23,6 @@ import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -59,7 +60,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.pinbeatfinder.BeatFinderApp
 import com.pinbeatfinder.R
+import com.pinbeatfinder.data.update.DownloadState
+import com.pinbeatfinder.data.update.UpdateInstaller
+import com.pinbeatfinder.ui.components.UpdateBanner
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import com.pinbeatfinder.appContainer
 import com.pinbeatfinder.data.prefs.DefaultTab
 import com.pinbeatfinder.ui.local.LocalBeatsIntent
@@ -207,28 +214,37 @@ fun MainScreen() {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             updateState.available?.takeIf { updateState.shouldShowBanner }?.let { release ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.tertiaryContainer)
-                        .padding(start = 16.dp, end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        stringResource(R.string.update_available, release.tag),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.apkUrl ?: release.pageUrl)))
-                    }) { Text(stringResource(R.string.update_download)) }
-                    IconButton(onClick = { container.updateChecker.dismiss(release.tag) }) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.update_dismiss))
-                    }
+                val downloadState by container.apkDownloader.state.collectAsStateWithLifecycle()
+                val appScope = (context.applicationContext as BeatFinderApp).appScope
+                var downloadJob by remember { mutableStateOf<Job?>(null) }
+                // A finished download survives the "allow installs" settings detour and a re-open.
+                LaunchedEffect(release.tag) {
+                    container.apkDownloader.prune(keepTag = release.tag)
+                    if (downloadState is DownloadState.Idle) container.apkDownloader.restoreIfDownloaded(release.tag)
                 }
+                val install = {
+                    (downloadState as? DownloadState.Ready)?.let { ready -> context.startActivity(UpdateInstaller.installIntent(context, ready.file)) }
+                    Unit
+                }
+                // Returning from the "allow from this source" page: continue straight to the installer.
+                val allowInstalls = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                    if (UpdateInstaller.canInstall(context)) install()
+                }
+                UpdateBanner(
+                    release = release,
+                    download = downloadState,
+                    onDownload = {
+                        downloadJob?.cancel()
+                        downloadJob = appScope.launch { container.apkDownloader.download(release) }
+                    },
+                    onCancelDownload = { downloadJob?.cancel(); downloadJob = null },
+                    onInstall = {
+                        if (UpdateInstaller.canInstall(context)) install() else allowInstalls.launch(UpdateInstaller.permissionIntent(context))
+                    },
+                    onLater = { container.updateChecker.later(release.tag) },
+                    onDismiss = { container.updateChecker.dismiss(release.tag); container.apkDownloader.reset() },
+                    onOpenBrowser = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.apkUrl ?: release.pageUrl))) },
+                )
             }
             TabRow(selectedTabIndex = selectedTab) {
                 MainTab.entries.forEach { t ->

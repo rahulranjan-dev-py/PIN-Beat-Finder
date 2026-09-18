@@ -5,6 +5,8 @@
     <!-- Online All-India lookups via api.postalpincode.in -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- In-app update: hand a downloaded release APK to the system installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".BeatFinderApp"

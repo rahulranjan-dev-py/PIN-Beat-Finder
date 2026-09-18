@@ -18,6 +18,8 @@ data class ReleaseInfo(
     val pageUrl: String,
     val apkUrl: String?,
     val notes: String,
+    /** `SHA256SUMS.txt` asset of the release, when published. */
+    val checksumsUrl: String? = null,
 )
 
 data class UpdateState(
@@ -28,8 +30,10 @@ data class UpdateState(
     val error: String? = null,
     /** Tag the user dismissed; the banner stays hidden for that version. */
     val dismissedTag: String? = null,
+    /** Tag the user postponed with "Later"; hidden until the app next comes to the foreground. */
+    val snoozedTag: String? = null,
 ) {
-    val shouldShowBanner: Boolean get() = available != null && available.tag != dismissedTag
+    val shouldShowBanner: Boolean get() = available != null && available.tag != dismissedTag && available.tag != snoozedTag
 }
 
 /**
@@ -76,10 +80,25 @@ class UpdateChecker(
         _state.update { it.copy(dismissedTag = tag) }
     }
 
+    /** Hide the banner for now; [checkOnForeground] brings it back on the next app open. */
+    fun later(tag: String) { _state.update { it.copy(snoozedTag = tag) } }
+
+    /**
+     * Called every time the app comes to the foreground: clears a "Later" and re-checks, throttled
+     * to once per [FOREGROUND_MIN_INTERVAL_MS] so flicking between apps does not hammer GitHub.
+     */
+    suspend fun checkOnForeground(): ReleaseInfo? {
+        _state.update { it.copy(snoozedTag = null) }
+        val last = _state.value.lastCheckedAt
+        if (last != null && clock() - last < FOREGROUND_MIN_INTERVAL_MS) return _state.value.available
+        return check(force = true)
+    }
+
     companion object {
         const val KEY_LAST_CHECK = "update_last_check"
         const val KEY_DISMISSED = "update_dismissed_tag"
         const val DEFAULT_MIN_INTERVAL_MS = 6L * 60 * 60 * 1000
+        const val FOREGROUND_MIN_INTERVAL_MS = 60L * 1000
 
         /** Newest first, drafts skipped. Tolerates missing fields. */
         fun parseReleases(root: JsonElement): List<ReleaseInfo> {
@@ -88,14 +107,15 @@ class UpdateChecker(
                 val o = el as? JsonObject ?: return@mapNotNull null
                 if (o["draft"]?.jsonPrimitive?.booleanOrNull == true) return@mapNotNull null
                 val tag = (o["tag_name"] as? JsonPrimitive)?.content ?: return@mapNotNull null
-                val apk = (o["assets"] as? JsonArray)
+                val assetUrls = (o["assets"] as? JsonArray)
                     ?.mapNotNull { a -> ((a as? JsonObject)?.get("browser_download_url") as? JsonPrimitive)?.content }
-                    ?.firstOrNull { it.endsWith(".apk", ignoreCase = true) }
+                    .orEmpty()
                 ReleaseInfo(
                     tag = tag,
                     pageUrl = (o["html_url"] as? JsonPrimitive)?.content.orEmpty(),
-                    apkUrl = apk,
+                    apkUrl = assetUrls.firstOrNull { it.endsWith(".apk", ignoreCase = true) },
                     notes = (o["body"] as? JsonPrimitive)?.content.orEmpty(),
+                    checksumsUrl = assetUrls.firstOrNull { it.endsWith("SHA256SUMS.txt", ignoreCase = true) },
                 )
             }.sortedWith { a, b -> VersionCompare.compare(b.tag, a.tag) }
         }

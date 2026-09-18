@@ -2,6 +2,8 @@
 <paths>
     <!-- Matches ExcelSyncManager.EXPORT_DIR (cacheDir/exports) -->
     <cache-path name="exports" path="exports/" />
+    <!-- Matches ApkDownloader.DIR (cacheDir/updates) -->
+    <cache-path name="updates" path="updates/" />
     <!-- Matches CrashReporter.DIR (filesDir/crashes) -->
     <files-path name="crashes" path="crashes/" />
 </paths>

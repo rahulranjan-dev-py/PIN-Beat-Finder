@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.pinbeatfinder.data.prefs.ThemeMode
 import com.pinbeatfinder.ui.MainScreen
 import com.pinbeatfinder.ui.theme.LocalHapticsEnabled
@@ -42,6 +44,15 @@ class MainActivity : AppCompatActivity() {
                     MainScreen()
                 }
             }
+        }
+    }
+
+    /** Every return to the app re-checks for a newer release (throttled inside the checker). */
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            val c = appContainer
+            if (c.connectivity.isOnline()) c.updateChecker.checkOnForeground()
         }
     }
 
