@@ -20,9 +20,11 @@ data class AppSettings(
     val hapticsEnabled: Boolean = true,
     /** Pure black/white surfaces with darker/lighter accents for sunlight readability. */
     val highContrast: Boolean = false,
+    /** BCP-47 tag of the app language ("hi", "en"); blank follows the phone. */
+    val language: String = "",
 )
 
-/** User preferences, persisted as one JSON blob. Language is handled by AppCompat's per-app locale API. */
+/** User preferences, persisted as one JSON blob. */
 class AppSettingsRepository(
     private val store: KeyValueStore,
     private val json: Json = Json { ignoreUnknownKeys = true; encodeDefaults = true },

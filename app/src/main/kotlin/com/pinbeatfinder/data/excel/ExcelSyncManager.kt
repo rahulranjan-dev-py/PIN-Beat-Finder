@@ -9,6 +9,7 @@ import com.pinbeatfinder.data.print.BeatSheetPdf
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.DraftValidation
+import com.pinbeatfinder.data.prefs.LocaleSupport
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,6 +27,8 @@ class ExcelSyncManager(
     private val context: Context,
     private val repository: BeatDirectoryRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /** Current app-language tag, so share-sheet titles match the UI language. */
+    private val languageTag: () -> String = { "" },
 ) {
     private val appContext = context.applicationContext
     private val authority = "${appContext.packageName}.fileprovider"
@@ -142,7 +145,7 @@ class ExcelSyncManager(
     }
 
     /** Localised string lookup for callers without a Context (share-sheet titles). */
-    fun string(resId: Int): String = appContext.getString(resId)
+    fun string(resId: Int): String = LocaleSupport.wrapBase(appContext, languageTag()).getString(resId)
 
     /** Removes exports older than [maxAgeMillis]; call opportunistically at start-up. */
     suspend fun pruneOldExports(maxAgeMillis: Long = 7L * 24 * 60 * 60 * 1000) = withContext(ioDispatcher) {

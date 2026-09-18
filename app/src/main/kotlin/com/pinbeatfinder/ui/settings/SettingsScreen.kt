@@ -2,7 +2,6 @@ package com.pinbeatfinder.ui.settings
 
 import android.content.Intent
 import android.net.Uri
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +57,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pinbeatfinder.BuildConfig
 import com.pinbeatfinder.R
@@ -91,11 +89,7 @@ fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
     var apiKeyDraft by remember(settings.dataGovInApiKey) { mutableStateOf(settings.dataGovInApiKey) }
-    val currentLanguage = remember {
-        val tag = AppCompatDelegate.getApplicationLocales().toLanguageTags()
-        AppLanguage.entries.firstOrNull { it.tag.isNotEmpty() && tag.startsWith(it.tag) } ?: AppLanguage.SYSTEM
-    }
-    var language by remember { mutableStateOf(currentLanguage) }
+    val language = AppLanguage.entries.firstOrNull { it.tag.isNotEmpty() && it.tag == settings.language } ?: AppLanguage.SYSTEM
 
     Scaffold(
         topBar = {
@@ -163,13 +157,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                     options = AppLanguage.entries,
                     selected = language,
                     label = { stringResource(it.labelRes) },
-                    onSelect = { v ->
-                        language = v
-                        // AppCompat persists this and recreates the activity with the new locale.
-                        AppCompatDelegate.setApplicationLocales(
-                            if (v.tag.isEmpty()) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(v.tag),
-                        )
-                    },
+                    // A plain setting: MainActivity re-localises the composition, nothing is recreated.
+                    onSelect = { v -> repo.update { it.copy(language = v.tag) } },
                 )
             }
 

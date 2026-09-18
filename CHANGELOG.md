@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.16.1 — language switch never goes black
+
+### Fixed
+- **Black screen on the first language change after opening the app.** The language was still
+  handed to Android's per-app locale system, whose first application in each process rebuilt the
+  screen. The language is now a plain app setting applied inside the app: switching only redraws
+  the words, on the first change and every change after. An existing choice made in earlier
+  versions is carried over automatically. Share-sheet titles now follow the app language too.
+
 ## v0.16.0 — in-app updates
 
 ### Added
