@@ -89,6 +89,6 @@ class AppContainer(context: Context) {
     }
 
     val excelSyncManager: ExcelSyncManager by lazy {
-        ExcelSyncManager(appContext, beatDirectoryRepository)
+        ExcelSyncManager(appContext, beatDirectoryRepository) { appSettingsRepository.settings.value.language }
     }
 }
