@@ -1,0 +1,47 @@
+name: Cleanup old releases
+
+# Deletes every release (and its tag) whose version is older than `keep_from`. Run manually from
+# the Actions tab. The git credential used by development sessions cannot delete refs, so this
+# runs with the workflow token instead. Always does a dry run first unless `confirm` is true.
+on:
+  workflow_dispatch:
+    inputs:
+      keep_from:
+        description: "Oldest tag to keep, e.g. v0.14.2 (everything older is deleted)"
+        required: true
+      confirm:
+        description: "Really delete (false = list only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete releases older than keep_from
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          KEEP_FROM: ${{ inputs.keep_from }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          keep="${KEEP_FROM#v}"
+          older() { # true when $1 (tag) is older than keep_from
+            [ "$(printf '%s\n%s\n' "${1#v}" "$keep" | sort -V | head -1)" = "${1#v}" ] && [ "${1#v}" != "$keep" ]
+          }
+          gh release list --repo "$REPO" --limit 200 --json tagName --jq '.[].tagName' | while read -r tag; do
+            if older "$tag"; then
+              if [ "$CONFIRM" = "true" ]; then
+                echo "Deleting release and tag $tag"
+                gh release delete "$tag" --repo "$REPO" --cleanup-tag --yes
+              else
+                echo "Would delete $tag"
+              fi
+            else
+              echo "Keeping $tag"
+            fi
+          done
