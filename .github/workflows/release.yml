@@ -22,6 +22,10 @@ on:
         description: "Mark as pre-release"
         type: boolean
         default: true
+      notes_only:
+        description: "Only refresh the release notes of an existing release (no build, files untouched)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -52,24 +56,33 @@ jobs:
           echo "prerelease=$pre"   >> "$GITHUB_OUTPUT"
           echo "signed=$signed"    >> "$GITHUB_OUTPUT"
 
+      - name: Release notes (short, from this version's CHANGELOG section)
+        run: |
+          mkdir -p dist
+          python3 scripts/release_notes.py "${{ steps.v.outputs.tag }}" CHANGELOG.md > dist/NOTES.md
+          cat dist/NOTES.md
+
       - uses: actions/setup-java@v4
+        if: inputs.notes_only != true
         with:
           distribution: temurin
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
+        if: inputs.notes_only != true
 
       - name: Unit tests
+        if: inputs.notes_only != true
         run: ./gradlew --no-daemon testDebugUnitTest
 
       - name: Decode release keystore
-        if: steps.v.outputs.signed == 'true'
+        if: inputs.notes_only != true && steps.v.outputs.signed == 'true'
         run: echo "$KEYSTORE_BASE64" | base64 -di > "$RUNNER_TEMP/release.jks"
 
       # Fails early with a readable reason (truncated file, wrong password, wrong alias) instead
       # of Gradle's "Failed to read key ... : null" deep inside packageRelease.
       - name: Verify keystore, password and alias
-        if: steps.v.outputs.signed == 'true'
+        if: inputs.notes_only != true && steps.v.outputs.signed == 'true'
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -88,7 +101,7 @@ jobs:
           echo "Keystore OK: alias '$KEY_ALIAS' found."
 
       - name: Build signed release APK and AAB
-        if: steps.v.outputs.signed == 'true'
+        if: inputs.notes_only != true && steps.v.outputs.signed == 'true'
         env:
           KEYSTORE_FILE: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -101,28 +114,41 @@ jobs:
           cp app/build/outputs/bundle/release/app-release.aab "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-release.aab"
 
       - name: Build debug-signed APK (no keystore configured)
-        if: steps.v.outputs.signed != 'true'
+        if: inputs.notes_only != true && steps.v.outputs.signed != 'true'
         run: |
           ./gradlew --no-daemon assembleDebug
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-debug.apk"
 
       - name: Checksums
-        run: (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+        if: inputs.notes_only != true
+        run: (cd dist && sha256sum *.apk *.aab > SHA256SUMS.txt && cat SHA256SUMS.txt)
 
       - name: Remove keystore from runner
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
 
       - name: Publish GitHub Release
+        if: inputs.notes_only != true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.v.outputs.tag }}
           name: PIN Beat Finder ${{ steps.v.outputs.tag }}
           prerelease: ${{ steps.v.outputs.prerelease }}
-          body_path: CHANGELOG.md
-          generate_release_notes: true
+          body_path: dist/NOTES.md
+          generate_release_notes: false
           files: |
             dist/*.apk
             dist/*.aab
             dist/SHA256SUMS.txt
+
+      # Rewrites only the notes of an existing release; assets and pre-release flag stay as they are.
+      - name: Refresh release notes
+        if: inputs.notes_only == true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          name: PIN Beat Finder ${{ steps.v.outputs.tag }}
+          prerelease: ${{ steps.v.outputs.prerelease }}
+          body_path: dist/NOTES.md
+          generate_release_notes: false
