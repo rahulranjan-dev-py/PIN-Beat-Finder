@@ -67,7 +67,7 @@ class PhoneticSearchEngine(
      * Relevance score in `[0, 1]` for how well [candidate] answers [query].
      *
      * Tiers (higher wins):
-     *  - 1.00 exact normalised match
+     *  - 1.00 exact normalised match (with the same numbers / single letters, if any)
      *  - 0.90 candidate starts with the query
      *  - 0.80 candidate contains the query as a token / substring
      *  - 0.70 phonetically identical (all tokens)
@@ -84,7 +84,8 @@ class PhoneticSearchEngine(
         val textual = jaroWinkler(q, c)
         val tieBreak = textual * 0.09 // keeps within-tier ordering below the next tier boundary
 
-        if (q == c) return 1.0
+        // "Ward 1" and "Ward 2" normalise to the same text; only a matching number is exact.
+        if (q == c) return if (IndianPhoneticNormalizer.qualifiersDiffer(query, candidate)) 0.80 + tieBreak else 1.0
         if (c.startsWith(q)) return 0.90 + tieBreak
         if (c.contains(q)) return 0.80 + tieBreak
 

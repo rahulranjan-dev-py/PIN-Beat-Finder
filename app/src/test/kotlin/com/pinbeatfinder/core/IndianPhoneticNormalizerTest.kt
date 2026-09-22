@@ -2,6 +2,8 @@ package com.pinbeatfinder.core
 
 import com.pinbeatfinder.core.phonetic.IndianPhoneticNormalizer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IndianPhoneticNormalizerTest {
@@ -50,5 +52,16 @@ class IndianPhoneticNormalizerTest {
     fun `doubled consonants collapse`() {
         assertEquals(n("Kallan"), n("Kalan"))
         assertEquals(n("Cuttack"), n("Kutak"))
+    }
+
+    @Test
+    fun `qualifiers keep the numbers and single letters that normalize drops`() {
+        assertEquals(listOf("1"), IndianPhoneticNormalizer.qualifiers("Ward 1"))
+        assertEquals(listOf("1"), IndianPhoneticNormalizer.qualifiers("Ward No. 01"))
+        assertEquals(listOf("b"), IndianPhoneticNormalizer.qualifiers("Sector B"))
+        assertEquals(emptyList<String>(), IndianPhoneticNormalizer.qualifiers("Rampur B.O."))
+        assertEquals(emptyList<String>(), IndianPhoneticNormalizer.qualifiers("Rampur Kalan"))
+        assertTrue(IndianPhoneticNormalizer.qualifiersDiffer("Ward 1", "Ward 2"))
+        assertFalse(IndianPhoneticNormalizer.qualifiersDiffer("Ward-1", "ward 1"))
     }
 }

@@ -15,7 +15,9 @@ data class DuplicatePair(val first: BeatRecord, val second: BeatRecord, val reas
  * Finds probable duplicates: records on the same beat of the same office and PIN whose
  * localities are the same after normalisation, share phonetic keys, or are within a small
  * spelling distance. Records on different beats are never paired — the same village name on
- * two beats is a real situation (a large village split between two postmen).
+ * two beats is a real situation (a large village split between two postmen). Names that differ
+ * only by a number or a single letter ("Ward 1" / "Ward 2", "Sector A" / "Sector B") are
+ * different places, not duplicates, even though they normalise to the same text.
  */
 class DuplicateFinder(private val engine: PhoneticSearchEngine = PhoneticSearchEngine()) {
 
@@ -26,9 +28,12 @@ class DuplicateFinder(private val engine: PhoneticSearchEngine = PhoneticSearchE
             .values
             .forEach { group ->
                 if (group.size < 2) return@forEach
-                val prepared = group.map { Prepared(it, IndianPhoneticNormalizer.normalize(it.localityName), engine.encode(it.localityName)) }
+                val prepared = group.map {
+                    Prepared(it, IndianPhoneticNormalizer.normalize(it.localityName), engine.encode(it.localityName), IndianPhoneticNormalizer.qualifiers(it.localityName))
+                }
                 for (i in prepared.indices) for (j in i + 1 until prepared.size) {
                     val a = prepared[i]; val b = prepared[j]
+                    if (a.qualifiers != b.qualifiers) continue
                     val reason = when {
                         a.norm.isNotEmpty() && a.norm == b.norm -> DuplicatePair.Reason.SAME_NAME
                         !a.keys.isEmpty && engine.phoneticallyEqual(a.keys, b.keys) -> DuplicatePair.Reason.SOUNDS_ALIKE
@@ -41,7 +46,7 @@ class DuplicateFinder(private val engine: PhoneticSearchEngine = PhoneticSearchE
         return pairs.sortedWith(compareBy({ it.first.officeName.lowercase() }, { it.first.beatNumber }, { it.first.localityName.lowercase() }))
     }
 
-    private class Prepared(val record: BeatRecord, val norm: String, val keys: com.pinbeatfinder.core.phonetic.PhoneticKeys)
+    private class Prepared(val record: BeatRecord, val norm: String, val keys: com.pinbeatfinder.core.phonetic.PhoneticKeys, val qualifiers: List<String>)
 
     companion object {
         /** Jaro–Winkler on normalised names; 0.92 pairs "rampur kalan"/"rampur kala" but not "rampur"/"raipur". */

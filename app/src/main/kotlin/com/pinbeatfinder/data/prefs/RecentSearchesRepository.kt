@@ -19,6 +19,8 @@ data class RecentSearch(
 interface KeyValueStore {
     fun read(key: String): String?
     fun write(key: String, value: String)
+    /** Like [write] but returns only once the value is on disk; for the last thing a dying process does. */
+    fun writeNow(key: String, value: String) = write(key, value)
 }
 
 /**

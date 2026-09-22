@@ -43,45 +43,47 @@ object BeatSheetPdf {
         val doc = PdfDocument()
         val rowsPerPage = ((PAGE_H - 2 * MARGIN - 70f - HEADER_H - 24f) / ROW_H).toInt()
         val pages = maxOf(1, (records.size + rowsPerPage - 1) / rowsPerPage)
-        try {
-            for (pageIndex in 0 until pages) {
-                val page = doc.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageIndex + 1).create())
-                val c = page.canvas
-                var y = MARGIN + 16f
-                c.drawText(title, MARGIN, y, titlePaint)
-                y += 16f
-                c.drawText(subtitle, MARGIN, y, subPaint)
-                y += 10f
-                c.drawText("${records.size} localit${if (records.size == 1) "y" else "ies"}", MARGIN, y + 10f, subPaint)
-                y += 28f
+        out.use { stream ->
+            try {
+                for (pageIndex in 0 until pages) {
+                    val page = doc.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageIndex + 1).create())
+                    val c = page.canvas
+                    var y = MARGIN + 16f
+                    c.drawText(title, MARGIN, y, titlePaint)
+                    y += 16f
+                    c.drawText(subtitle, MARGIN, y, subPaint)
+                    y += 10f
+                    c.drawText("${records.size} localit${if (records.size == 1) "y" else "ies"}", MARGIN, y + 10f, subPaint)
+                    y += 28f
 
-                // header row
-                c.drawRect(MARGIN, y, PAGE_W - MARGIN, y + HEADER_H, fillPaint)
-                val headers = listOf("Sl.", "Locality / Village", "Beat", "PIN", "Remarks")
-                headers.forEachIndexed { i, h -> c.drawText(h, MARGIN + COL_X[i] + 4f, y + 16f, headPaint) }
-                y += HEADER_H
+                    // header row
+                    c.drawRect(MARGIN, y, PAGE_W - MARGIN, y + HEADER_H, fillPaint)
+                    val headers = listOf("Sl.", "Locality / Village", "Beat", "PIN", "Remarks")
+                    headers.forEachIndexed { i, h -> c.drawText(h, MARGIN + COL_X[i] + 4f, y + 16f, headPaint) }
+                    y += HEADER_H
 
-                val from = pageIndex * rowsPerPage
-                val slice = records.subList(from, minOf(records.size, from + rowsPerPage))
-                slice.forEachIndexed { i, r ->
-                    val cells = listOf("${from + i + 1}", r.localityName, r.beatNumber, r.pincode, r.remarks)
-                    cells.forEachIndexed { col, text -> drawClipped(c, text, MARGIN + COL_X[col] + 4f, y + 14f, COL_W[col] - 8f, cellPaint) }
-                    y += ROW_H
-                    c.drawLine(MARGIN, y, PAGE_W - MARGIN, y, linePaint)
+                    val from = pageIndex * rowsPerPage
+                    val slice = records.subList(from, minOf(records.size, from + rowsPerPage))
+                    slice.forEachIndexed { i, r ->
+                        val cells = listOf("${from + i + 1}", r.localityName, r.beatNumber, r.pincode, r.remarks)
+                        cells.forEachIndexed { col, text -> drawClipped(c, text, MARGIN + COL_X[col] + 4f, y + 14f, COL_W[col] - 8f, cellPaint) }
+                        y += ROW_H
+                        c.drawLine(MARGIN, y, PAGE_W - MARGIN, y, linePaint)
+                    }
+                    // column rules
+                    var x = MARGIN
+                    COL_W.forEach { w -> c.drawLine(x, y - slice.size * ROW_H - HEADER_H, x, y, linePaint); x += w }
+                    c.drawLine(PAGE_W - MARGIN, y - slice.size * ROW_H - HEADER_H, PAGE_W - MARGIN, y, linePaint)
+
+                    c.drawText(footerText, MARGIN, PAGE_H - MARGIN + 12f, subPaint)
+                    val pageLabel = "Page ${pageIndex + 1} of $pages"
+                    c.drawText(pageLabel, PAGE_W - MARGIN - subPaint.measureText(pageLabel), PAGE_H - MARGIN + 12f, subPaint)
+                    doc.finishPage(page)
                 }
-                // column rules
-                var x = MARGIN
-                COL_W.forEach { w -> c.drawLine(x, y - slice.size * ROW_H - HEADER_H, x, y, linePaint); x += w }
-                c.drawLine(PAGE_W - MARGIN, y - slice.size * ROW_H - HEADER_H, PAGE_W - MARGIN, y, linePaint)
-
-                c.drawText(footerText, MARGIN, PAGE_H - MARGIN + 12f, subPaint)
-                val pageLabel = "Page ${pageIndex + 1} of $pages"
-                c.drawText(pageLabel, PAGE_W - MARGIN - subPaint.measureText(pageLabel), PAGE_H - MARGIN + 12f, subPaint)
-                doc.finishPage(page)
+                doc.writeTo(stream)
+            } finally {
+                doc.close()
             }
-            out.use { doc.writeTo(it) }
-        } finally {
-            doc.close()
         }
         return pages
     }

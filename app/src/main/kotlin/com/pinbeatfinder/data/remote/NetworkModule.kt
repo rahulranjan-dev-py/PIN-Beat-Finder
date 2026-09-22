@@ -60,6 +60,7 @@ object NetworkModule {
     const val CACHE_SIZE_BYTES = 10L * 1024 * 1024 // 10 MB
     private const val ONLINE_MAX_AGE_SECONDS = 24 * 60 * 60
     private const val OFFLINE_MAX_STALE_DAYS = 30
+    private const val DOWNLOAD_STALL_SECONDS = 30L
     private const val USER_AGENT = "PINBeatFinder/${BuildConfig.VERSION_NAME} (Android; +https://github.com/rahulranjan-dev-py/PIN-Beat-Finder)"
 
     val json: Json get() = PostalJson.instance
@@ -90,6 +91,17 @@ object NetworkModule {
         b.networkInterceptors().clear()
         return b.build()
     }
+
+    /**
+     * [base] with the lookup timeouts lifted: a whole-call limit sized for a 2 KB JSON answer
+     * would abort a multi-megabyte APK on a slow link. Only a stalled socket ends the transfer.
+     */
+    fun downloadClient(base: OkHttpClient): OkHttpClient = base.newBuilder()
+        .callTimeout(0, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(DOWNLOAD_STALL_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(DOWNLOAD_STALL_SECONDS, TimeUnit.SECONDS)
+        .build()
 
     fun retrofit(client: OkHttpClient): Retrofit = Retrofit.Builder()
         .baseUrl(PostalApiService.BASE_URL)

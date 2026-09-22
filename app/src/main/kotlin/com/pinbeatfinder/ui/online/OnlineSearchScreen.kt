@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -132,7 +133,11 @@ fun OnlineSearchContent(
     onIntent: (OnlineSearchIntent) -> Unit,
     bridge: OnlineBridge,
 ) {
-    CollapsingHeader(modifier = Modifier.fillMaxSize(), header = { OnlineHeader(state, onIntent) }) {
+    CollapsingHeader(
+        modifier = Modifier.fillMaxSize(),
+        revealKey = listOf(state.submittedQuery, state.stateFilter, state.districtFilter, state.results.size, state.error != null),
+        header = { OnlineHeader(state, onIntent) },
+    ) {
         Column(Modifier.fillMaxSize()) {
             if (state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
             when {
@@ -325,7 +330,7 @@ private fun ResultsList(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
                     }
                 }
                 if (!collapsed) {
-                    items(offices, key = { "${it.name}|${it.pincode}|${it.branchType}|${it.district}" }) { office ->
+                    itemsIndexed(offices, key = { i, it -> officeKey(it, i) }) { _, office ->
                         PostOfficeCard(
                             office = office,
                             localCount = state.localCountFor(office),
@@ -337,7 +342,7 @@ private fun ResultsList(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
                 }
             }
         } else {
-            items(state.visibleResults, key = { "${it.name}|${it.pincode}|${it.branchType}|${it.district}" }) { office ->
+            itemsIndexed(state.visibleResults, key = { i, it -> officeKey(it, i) }) { _, office ->
                 PostOfficeCard(
                     office = office,
                     localCount = state.localCountFor(office),
@@ -487,3 +492,10 @@ internal fun PostOffice.shareText(context: Context): String = buildString {
     if (circle.isNotBlank()) appendLine("${context.getString(R.string.label_circle)}: $circle")
     append(context.getString(R.string.share_footer))
 }
+
+/**
+ * Lazy-list key for a result row. The repository already drops exact repeats, but a key must
+ * never collide (Compose throws), so the row index is folded in as the final tie-break.
+ */
+private fun officeKey(office: PostOffice, index: Int): String =
+    "${office.name}|${office.pincode}|${office.branchType}|${office.district}|$index"

@@ -104,6 +104,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pinbeatfinder.R
+import kotlinx.coroutines.launch
 import com.pinbeatfinder.core.util.MatchHighlighter
 import com.pinbeatfinder.data.excel.ExcelCodec
 import com.pinbeatfinder.data.excel.ImportMode
@@ -154,7 +155,7 @@ fun LocalBeatsScreen(
     val haptic = rememberHaptic()
 
     // ---- SAF launchers -------------------------------------------------------------------
-    var pendingImportMode by remember { mutableStateOf(ImportMode.APPEND) }
+    var pendingImportMode by rememberSaveable { mutableStateOf(ImportMode.APPEND) }
     var confirmReplaceImport by remember { mutableStateOf(false) }
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { onIntent(LocalBeatsIntent.ImportFile(it, pendingImportMode)) }
@@ -185,12 +186,14 @@ fun LocalBeatsScreen(
     }
 
     LaunchedEffect(viewModel) {
+        // Snackbars suspend until they are dismissed; each runs in its own coroutine so a share
+        // sheet or a save haptic queued behind one is never delayed by it.
         viewModel.effects.collect { effect ->
             when (effect) {
-                is LocalBeatsEffect.ShowMessage -> snackbarHostState.showSnackbar(effect.text.asString(context))
+                is LocalBeatsEffect.ShowMessage -> launch { snackbarHostState.showSnackbar(effect.text.asString(context)) }
                 is LocalBeatsEffect.LaunchIntent -> launchIntent(effect.intent)
                 LocalBeatsEffect.Saved -> haptic(HapticFeedbackType.Confirm)
-                is LocalBeatsEffect.ShowUndoDelete -> {
+                is LocalBeatsEffect.ShowUndoDelete -> launch {
                     val result = snackbarHostState.showSnackbar(
                         message = context.getString(R.string.msg_deleted, effect.record.localityName),
                         actionLabel = context.getString(R.string.action_undo),
@@ -350,7 +353,11 @@ fun LocalBeatsContent(
         return
     }
 
-    CollapsingHeader(modifier = Modifier.fillMaxSize(), header = { LocalHeader(state, onIntent) }) {
+    CollapsingHeader(
+        modifier = Modifier.fillMaxSize(),
+        revealKey = listOf(state.query, state.filters, state.viewMode, state.hits.size, state.records.size),
+        header = { LocalHeader(state, onIntent) },
+    ) {
         Column(Modifier.fillMaxSize()) {
             if (state.isSearching && state.viewMode == LocalViewMode.SEARCH) LinearProgressIndicator(Modifier.fillMaxWidth()) else Spacer(Modifier.height(2.dp))
             when {

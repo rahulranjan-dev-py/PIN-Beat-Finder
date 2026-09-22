@@ -105,6 +105,26 @@ object IndianPhoneticNormalizer {
             .joinToString(" ")
     }
 
+    /**
+     * The parts [normalize] throws away but which tell localities apart: numbers and single
+     * letters. "Ward 1" / "Ward 2" and "Sector A" / "Sector B" normalise identically, yet are
+     * different places. Numbers lose leading zeros ("Ward 01" == "Ward 1"); "B.O."-style
+     * abbreviations are folded first so their letters do not count.
+     */
+    fun qualifiers(input: String): List<String> {
+        if (input.isBlank()) return emptyList()
+        val ascii = Normalizer.normalize(input, Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
+            .lowercase(Locale.ROOT)
+            .replace(Regex("\\b([a-z])\\.\\s*([a-z])\\b\\.?"), "$1$2")
+        return Regex("[0-9]+|(?<![a-z0-9])[a-z](?![a-z0-9])").findAll(ascii)
+            .map { m -> if (m.value[0].isDigit()) m.value.trimStart('0').ifEmpty { "0" } else m.value }
+            .toList()
+    }
+
+    /** True when [a] and [b] carry different numbers or letters and so cannot be the same place. */
+    fun qualifiersDiffer(a: String, b: String): Boolean = qualifiers(a) != qualifiers(b)
+
     /** Tokenised view of [normalize], convenient for per-token phonetic encoding. */
     fun tokens(input: String): List<String> =
         normalize(input).split(' ').filter { it.isNotEmpty() }

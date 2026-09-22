@@ -70,7 +70,8 @@ class CrashReporter(
         }
         File(dir, "crash_$stamp.txt").writeText(text)
         reports().drop(MAX_REPORTS).forEach { it.delete() }
-        store.write(KEY_UNACKNOWLEDGED, "1")
+        // apply() is asynchronous and the process is about to be killed: commit synchronously.
+        store.writeNow(KEY_UNACKNOWLEDGED, "1")
     }
 
     companion object {

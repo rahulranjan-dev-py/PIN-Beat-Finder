@@ -1,5 +1,54 @@
 # Changelog
 
+## v0.17.0 — new icon, bug and security fixes
+
+### Changed
+- **New app icon.** The red map-pin artwork with "PIN BEAT" lettering, in square and round
+  variants for every launcher shape.
+
+### Fixed
+- **Update download aborted after 12 seconds on slow connections.** The downloader inherited
+  the short whole-call timeout of the lookup client; it now has no overall limit and only gives
+  up when the connection stalls for 30 seconds. The transfer also lives outside the screen, so
+  rotating the phone or opening Settings no longer loses it, and a downloaded file that Android
+  has since cleared from the cache is no longer handed to the installer.
+- **Crash when an online or directory search returned the same office twice.** The bundled
+  directory has a few exact duplicate rows; results are now de-duplicated and the list can never
+  collide on a key.
+- **"Ward 1" and "Ward 2" flagged as duplicates.** Numbers and single letters in a locality name
+  now count: names that differ only by them are never paired by the duplicate finder, and a
+  search for "Ward 1" ranks "Ward 1" above "Ward 2".
+- **Resolving a duplicate could overwrite a newer edit.** The resolution now re-reads both
+  records from the database and tells you if one has changed or been removed since the scan.
+- **Search results for common words could miss the best match.** Candidates are now ranked
+  (exact, then prefix) before the 400-row cut, in both the local directory and the bundled one.
+- **Header stuck off-screen.** The collapsing search/filter header comes back whenever the
+  query, filters, view mode or number of results change, and whenever it grows.
+- **Share sheet delayed behind a message.** Snackbars no longer block the next effect.
+- **Stale multi-selection.** Changing the query, filters, view mode or jumping in from the
+  online tab clears the selection and any pending bulk delete, and lands on the main list even
+  if an office screen was open.
+- **Update banner housekeeping** no longer deletes a partial download in progress.
+- **Excel import** refuses files above 20 MB or 50,000 rows and reports a workbook whose header
+  maps two fields to one column instead of importing it twice.
+- Filters that individually exist but no longer occur together are relaxed instead of leaving
+  an empty list; a cancelled update check no longer leaves the spinner on; PDF output streams
+  are always closed; version tags with pre-release suffixes compare correctly; crash flags are
+  written synchronously; "%" and "_" in a search now match themselves; directory seeding reports
+  skipped lines and restarts cleanly after an interruption; a copied record keeps its place in a
+  batch; the office picker is drawn above the editor sheet; the import mode survives rotation.
+
+### Security
+- **Backups exclude the bundled directory** (170,000 rows that are re-seeded from the APK), so
+  Android's cloud backup and device transfer only carry the staff's own beat records.
+- **Release workflow hardened.** A release now fails outright when the signing secrets are
+  missing (no more debug-signed fallback), the published APK's certificate is verified against
+  the keystore before upload, workflow inputs reach the shell through environment variables,
+  the keystore secret is exposed to a single step, and every GitHub Action is pinned to a
+  commit.
+- **Update checksums are mandatory** when a release publishes them: a missing or unreadable
+  checksum file fails the download (retryable) instead of installing an unverified file.
+
 ## v0.16.2 — update check no longer served from the offline cache
 
 ### Fixed

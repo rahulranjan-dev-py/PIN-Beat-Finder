@@ -60,13 +60,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.pinbeatfinder.BeatFinderApp
 import com.pinbeatfinder.R
-import com.pinbeatfinder.data.update.DownloadState
 import com.pinbeatfinder.data.update.UpdateInstaller
 import com.pinbeatfinder.ui.components.UpdateBanner
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import com.pinbeatfinder.appContainer
 import com.pinbeatfinder.data.prefs.DefaultTab
 import com.pinbeatfinder.ui.local.LocalBeatsIntent
@@ -215,15 +211,15 @@ fun MainScreen() {
         Column(Modifier.fillMaxSize().padding(padding)) {
             updateState.available?.takeIf { updateState.shouldShowBanner }?.let { release ->
                 val downloadState by container.apkDownloader.state.collectAsStateWithLifecycle()
-                val appScope = (context.applicationContext as BeatFinderApp).appScope
-                var downloadJob by remember { mutableStateOf<Job?>(null) }
                 // A finished download survives the "allow installs" settings detour and a re-open.
+                // The transfer itself lives in the downloader, not here, so leaving this
+                // composition never drops it.
                 LaunchedEffect(release.tag) {
                     container.apkDownloader.prune(keepTag = release.tag)
-                    if (downloadState is DownloadState.Idle) container.apkDownloader.restoreIfDownloaded(release.tag)
+                    container.apkDownloader.restoreIfDownloaded(release.tag)
                 }
                 val install = {
-                    (downloadState as? DownloadState.Ready)?.let { ready -> context.startActivity(UpdateInstaller.installIntent(context, ready.file)) }
+                    container.apkDownloader.readyFile()?.let { file -> context.startActivity(UpdateInstaller.installIntent(context, file)) }
                     Unit
                 }
                 // Returning from the "allow from this source" page: continue straight to the installer.
@@ -233,11 +229,8 @@ fun MainScreen() {
                 UpdateBanner(
                     release = release,
                     download = downloadState,
-                    onDownload = {
-                        downloadJob?.cancel()
-                        downloadJob = appScope.launch { container.apkDownloader.download(release) }
-                    },
-                    onCancelDownload = { downloadJob?.cancel(); downloadJob = null },
+                    onDownload = { container.apkDownloader.start(release) },
+                    onCancelDownload = { container.apkDownloader.cancel() },
                     onInstall = {
                         if (UpdateInstaller.canInstall(context)) install() else allowInstalls.launch(UpdateInstaller.permissionIntent(context))
                     },

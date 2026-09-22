@@ -68,6 +68,8 @@ class UpdateChecker(
             _state.update { it.copy(checking = false, available = newest, lastCheckedAt = now) }
             newest
         } catch (e: CancellationException) {
+            // The screen that started the check went away; the spinner must not stay on forever.
+            _state.update { it.copy(checking = false) }
             throw e
         } catch (e: Exception) {
             _state.update { it.copy(checking = false, error = e.message ?: e::class.simpleName) }
