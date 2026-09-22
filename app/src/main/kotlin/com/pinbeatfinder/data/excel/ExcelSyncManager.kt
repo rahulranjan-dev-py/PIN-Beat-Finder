@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.pinbeatfinder.R
 import com.pinbeatfinder.core.util.BeatDraftValidator
 import com.pinbeatfinder.data.print.BeatSheetPdf
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
@@ -44,9 +45,22 @@ class ExcelSyncManager(
      * user for confirmation and then handed to [commitImport].
      */
     suspend fun prepareImport(uri: Uri, mode: ImportMode): ImportPreview = withContext(ioDispatcher) {
+        // A beat directory is a few hundred KB; a workbook far above that is the wrong file (or a
+        // zip bomb) and would be inflated whole into memory by the reader.
+        val size = runCatching { appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull() ?: -1L
+        if (size > MAX_IMPORT_BYTES) {
+            throw ExcelFormatException(string(R.string.msg_import_too_large, MAX_IMPORT_BYTES / (1024 * 1024)))
+        }
         val stream = appContext.contentResolver.openInputStream(uri)
             ?: throw FileNotFoundException("Could not open the selected file.")
-        val parsed = stream.use { ExcelCodec.read(it) }
+        val parsed = try {
+            stream.use { ExcelCodec.read(it) }
+        } catch (e: OutOfMemoryError) {
+            throw ExcelFormatException(string(R.string.msg_import_too_large, MAX_IMPORT_BYTES / (1024 * 1024)))
+        }
+        if (parsed.rows.size > MAX_IMPORT_ROWS) {
+            throw ExcelFormatException(string(R.string.msg_import_too_many_rows, MAX_IMPORT_ROWS))
+        }
 
         val valid = ArrayList<BeatRecord>(parsed.rows.size)
         val errors = ArrayList<RowError>()
@@ -145,7 +159,7 @@ class ExcelSyncManager(
     }
 
     /** Localised string lookup for callers without a Context (share-sheet titles). */
-    fun string(resId: Int): String = LocaleSupport.wrapBase(appContext, languageTag()).getString(resId)
+    fun string(resId: Int, vararg args: Any): String = LocaleSupport.wrapBase(appContext, languageTag()).getString(resId, *args)
 
     /** Removes exports older than [maxAgeMillis]; call opportunistically at start-up. */
     suspend fun pruneOldExports(maxAgeMillis: Long = 7L * 24 * 60 * 60 * 1000) = withContext(ioDispatcher) {
@@ -154,6 +168,9 @@ class ExcelSyncManager(
     }
 
     companion object {
+        /** Largest workbook accepted for import (20 MB): a real beat directory is well under 1 MB. */
+        const val MAX_IMPORT_BYTES = 20L * 1024 * 1024
+        const val MAX_IMPORT_ROWS = 50_000
         const val EXPORT_DIR = "exports"
     }
 }

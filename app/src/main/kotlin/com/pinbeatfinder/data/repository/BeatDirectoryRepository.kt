@@ -50,6 +50,7 @@ class BeatDirectoryRepository(
         val keys = phonetic.encode(q)
         val candidates = dao.searchCandidates(
             textPattern = "%${escapeLike(q)}%",
+            prefixPattern = "${escapeLike(q)}%",
             exactText = q,
             primaryPattern = if (keys.isEmpty) "" else "${keys.primary}%",
             alternatePattern = if (keys.isEmpty || keys.alternate == keys.primary) "" else "${keys.alternate}%",
@@ -179,6 +180,7 @@ class BeatDirectoryRepository(
         const val CANDIDATE_LIMIT = 400
 
         /** `%` and `_` are LIKE wildcards; a village literally named "100%" should still work. */
-        fun escapeLike(raw: String): String = raw.replace("%", "").replace("_", " ")
+        /** For `LIKE :pattern ESCAPE '\\'`: the wildcards and the escape itself become literal. */
+        fun escapeLike(raw: String): String = raw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     }
 }

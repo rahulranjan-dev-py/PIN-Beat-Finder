@@ -177,6 +177,8 @@
     <string name="msg_template_saved">Template saved.</string>
     <string name="msg_file_failed">File operation failed: %1$s</string>
     <string name="msg_bad_format">Unrecognised spreadsheet format.</string>
+    <string name="msg_import_too_large">This file is larger than %1$d MB. A beat directory export is much smaller; please pick the right file.</string>
+    <string name="msg_import_too_many_rows">This file has more than %1$d rows. Split it into smaller files.</string>
 
     <!-- editor -->
     <string name="editor_add_title">Add beat record</string>
@@ -234,6 +236,7 @@
     <string name="duplicates_reason_spelling">near spelling</string>
     <string name="action_keep_this">Keep this</string>
     <string name="msg_duplicate_resolved">Kept “%1$s” and removed its duplicate.</string>
+    <string name="msg_duplicate_gone">One of these records was already changed or removed. Run the duplicate check again.</string>
     <string name="settings_data_sources">Data sources</string>
     <string name="settings_data_sources_text">Built-in directory: Department of Posts “All India Pincode Directory” from data.gov.in (Government Open Data License – India), merged with the India Post facility master (CSI SPM Help, OfficeMaster) for account offices. Snapshot %1$s.\n\nOnline lookup: api.data.gov.in, a community mirror of the same dataset, and api.postalpincode.in.\n\nThe local beat directory is your own data and never leaves the device unless you share a backup.</string>
 

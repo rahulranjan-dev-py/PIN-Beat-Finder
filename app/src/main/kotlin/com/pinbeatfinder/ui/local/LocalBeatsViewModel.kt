@@ -168,12 +168,14 @@ class LocalBeatsViewModel(
 
     fun onIntent(intent: LocalBeatsIntent) {
         when (intent) {
-            is LocalBeatsIntent.QueryChanged -> _state.update { it.copy(query = intent.query) }
-            is LocalBeatsIntent.FiltersChanged -> _state.update { it.copy(filters = intent.filters) }
-            LocalBeatsIntent.ClearFilters -> _state.update { it.copy(filters = BeatSearchFilters()) }
+            // Any change to what is listed drops the selection: a "delete 3 selected" must never
+            // act on rows the list no longer shows.
+            is LocalBeatsIntent.QueryChanged -> _state.update { it.copy(query = intent.query, selectedIds = emptySet(), confirmBulkDelete = false) }
+            is LocalBeatsIntent.FiltersChanged -> _state.update { it.copy(filters = intent.filters, selectedIds = emptySet(), confirmBulkDelete = false) }
+            LocalBeatsIntent.ClearFilters -> _state.update { it.copy(filters = BeatSearchFilters(), selectedIds = emptySet(), confirmBulkDelete = false) }
             LocalBeatsIntent.ShowFilters -> _state.update { it.copy(showFilters = true) }
             LocalBeatsIntent.HideFilters -> _state.update { it.copy(showFilters = false) }
-            is LocalBeatsIntent.SetViewMode -> _state.update { it.copy(viewMode = intent.mode, selectedIds = emptySet()) }
+            is LocalBeatsIntent.SetViewMode -> _state.update { it.copy(viewMode = intent.mode, selectedIds = emptySet(), confirmBulkDelete = false) }
             is LocalBeatsIntent.OpenOffice -> openOffice(intent.office)
             is LocalBeatsIntent.OpenOfficeOf -> {
                 val r = intent.record
@@ -181,7 +183,7 @@ class LocalBeatsViewModel(
                     ?: OfficeSummary(r.officeName.trim(), r.officeType, false, listOf(r.pincode), 1, 1)
                 openOffice(office)
             }
-            LocalBeatsIntent.CloseOffice -> _state.update { it.copy(openOffice = null, officeGroups = emptyList(), selectedIds = emptySet()) }
+            LocalBeatsIntent.CloseOffice -> _state.update { it.copy(openOffice = null, officeGroups = emptyList(), selectedIds = emptySet(), confirmBulkDelete = false) }
             is LocalBeatsIntent.ToggleBeatExpanded -> _state.update {
                 it.copy(expandedBeats = if (intent.key in it.expandedBeats) it.expandedBeats - intent.key else it.expandedBeats + intent.key)
             }
@@ -211,9 +213,16 @@ class LocalBeatsViewModel(
                 }
                 it.copy(editor = EditorState(draft))
             }
-            is LocalBeatsIntent.OpenEditorWithDraft -> _state.update { it.copy(editor = EditorState(intent.draft)) }
+            is LocalBeatsIntent.OpenEditorWithDraft -> _state.update {
+                it.copy(editor = EditorState(intent.draft), openOffice = null, officeGroups = emptyList(), selectedIds = emptySet(), confirmBulkDelete = false)
+            }
+            // Jumping in from the online tab lands on the main search list, never inside an office
+            // that happened to be open, and with no stale selection.
             is LocalBeatsIntent.ShowPincode -> _state.update {
-                it.copy(query = intent.pincode, filters = BeatSearchFilters(), viewMode = LocalViewMode.SEARCH)
+                it.copy(
+                    query = intent.pincode, filters = BeatSearchFilters(), viewMode = LocalViewMode.SEARCH,
+                    openOffice = null, officeGroups = emptyList(), selectedIds = emptySet(), confirmBulkDelete = false,
+                )
             }
             is LocalBeatsIntent.EditorFieldChanged -> updateEditorField(intent.field, intent.value)
             LocalBeatsIntent.FetchOfficesForPin -> fetchOfficesForPin()
@@ -247,8 +256,9 @@ class LocalBeatsViewModel(
             LocalBeatsIntent.SaveEditor -> saveEditor()
             LocalBeatsIntent.DismissEditor -> _state.update { it.copy(editor = null) }
             LocalBeatsIntent.DuplicateInEditor -> _state.update { s ->
-                val d = s.editor?.draft ?: return@update s
-                s.copy(editor = EditorState(d.copy(id = 0L, localityName = "", remarks = "")))
+                val editor = s.editor ?: return@update s
+                // A copy keeps its place in a batch: the queued offices are still to be entered.
+                s.copy(editor = EditorState(editor.draft.copy(id = 0L, localityName = "", remarks = ""), queue = editor.queue, queueTotal = editor.queueTotal))
             }
 
             is LocalBeatsIntent.RequestDelete -> _state.update { it.copy(pendingDelete = intent.record) }
@@ -444,17 +454,27 @@ class LocalBeatsViewModel(
     }
 
     private fun resolveDuplicate(intent: LocalBeatsIntent.ResolveDuplicate) {
-        val drop = if (intent.keep.id == intent.pair.first.id) intent.pair.second else intent.pair.first
+        val dropSnapshot = if (intent.keep.id == intent.pair.first.id) intent.pair.second else intent.pair.first
         viewModelScope.launch {
             try {
-                repository.save(DuplicateFinder.merged(intent.keep, drop))
+                // The dialog holds a snapshot from the scan; the rows may have been edited or
+                // deleted since (an earlier resolution, an edit on another screen). Work from
+                // what is in the database now so a stale copy never overwrites a newer edit.
+                val keep = repository.getById(intent.keep.id)
+                val drop = repository.getById(dropSnapshot.id)
+                if (keep == null || drop == null) {
+                    _state.update { s -> s.copy(duplicates = s.duplicates?.filter { it.first.id != dropSnapshot.id && it.second.id != dropSnapshot.id && it.first.id != intent.keep.id && it.second.id != intent.keep.id }) }
+                    _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_duplicate_gone)))
+                    return@launch
+                }
+                repository.save(DuplicateFinder.merged(keep, drop))
                 repository.delete(drop.id)
                 dataVersion.update { it + 1 }
                 _state.update { s ->
                     // Drop every pair that involved the deleted record; the kept one may still pair with others.
                     s.copy(duplicates = s.duplicates?.filter { it.first.id != drop.id && it.second.id != drop.id })
                 }
-                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_duplicate_resolved, intent.keep.localityName)))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_duplicate_resolved, keep.localityName)))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

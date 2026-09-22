@@ -62,11 +62,18 @@ class PostalLookupRepository(
         local?.let { src ->
             if (src.isReady()) {
                 val started = clock()
-                val hit = runCatching { src.search(q, isPincode) }
+                val hit = try {
+                    Result.success(src.search(q, isPincode))
+                } catch (e: CancellationException) {
+                    // A superseded search is not a broken directory: never record it as a failure.
+                    throw e
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
                 val latency = clock() - started
                 hit.onSuccess { offices ->
                     _health.update { it + (src.id to ProviderHealth(src.id, src.label, ProviderHealth.Status.OK, latency, clock())) }
-                    if (offices.isNotEmpty()) return@withContext AppResult.Success(offices)
+                    if (offices.isNotEmpty()) return@withContext AppResult.Success(dedupe(offices))
                 }.onFailure { e ->
                     _health.update { it + (src.id to ProviderHealth(src.id, src.label, ProviderHealth.Status.FAILED, latency, clock(), e.message)) }
                 }
@@ -101,7 +108,7 @@ class PostalLookupRepository(
                 when (outcome) {
                     is AppResult.Success -> if (outcome.value.isNotEmpty()) {
                         pending.forEach { it.cancel() }
-                        return@coroutineScope outcome
+                        return@coroutineScope AppResult.Success(dedupe(outcome.value))
                     }
                     is AppResult.Failure -> failures += outcome.error
                 }
@@ -165,6 +172,14 @@ class PostalLookupRepository(
 
     companion object {
         const val PROBE_PINCODE = "110001"
+
+        /**
+         * Drops rows that repeat an office (same name, PIN, type and district): both the bundled
+         * directory and some providers carry exact duplicates, and the result list keys on these
+         * fields. Order is kept, so the first (best-ranked) copy survives.
+         */
+        fun dedupe(offices: List<PostOffice>): List<PostOffice> =
+            offices.distinctBy { listOf(it.name, it.pincode, it.branchType, it.district).joinToString("|") { f -> f.trim().lowercase() } }
 
         /** Rank errors so the aggregate message reflects the most actionable cause. */
         fun pickMostUseful(errors: List<AppError>): AppError {

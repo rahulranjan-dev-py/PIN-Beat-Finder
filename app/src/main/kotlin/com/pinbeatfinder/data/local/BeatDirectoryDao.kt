@@ -37,6 +37,8 @@ interface BeatDirectoryDao {
      *
      * Beat number and PIN are matched exactly so staff can type "3" or "110001" directly.
      * The result is a small candidate set (bounded by [limit]) that the repository re-ranks.
+     * Exact and prefix matches on the typed text sort first so a common query ("Ram") whose
+     * candidates exceed [limit] never drops the best rows before the re-rank sees them.
      */
     @Query(
         """
@@ -48,17 +50,20 @@ interface BeatDirectoryDao {
           AND (:beatNumber IS NULL OR beatNumber = :beatNumber)
           AND (:pincode IS NULL OR pincode = :pincode)
           AND (
-                (:textPattern != '' AND localityName LIKE :textPattern)
+                (:textPattern != '' AND localityName LIKE :textPattern ESCAPE '\')
              OR (:exactText != '' AND (beatNumber = :exactText OR pincode = :exactText))
              OR (:primaryPattern != '' AND (phoneticPrimary LIKE :primaryPattern OR phoneticAlternate LIKE :primaryPattern))
              OR (:alternatePattern != '' AND (phoneticPrimary LIKE :alternatePattern OR phoneticAlternate LIKE :alternatePattern))
           )
-        ORDER BY localityName ASC
+        ORDER BY (localityName = :exactText) DESC,
+                 (:prefixPattern != '' AND localityName LIKE :prefixPattern ESCAPE '\') DESC,
+                 localityName ASC
         LIMIT :limit
         """,
     )
     suspend fun searchCandidates(
         textPattern: String,
+        prefixPattern: String,
         exactText: String,
         primaryPattern: String,
         alternatePattern: String,

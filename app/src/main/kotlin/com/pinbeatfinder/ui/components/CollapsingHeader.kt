@@ -2,6 +2,7 @@ package com.pinbeatfinder.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -21,17 +22,23 @@ import kotlin.math.roundToInt
  * to the bottom third of small screens. The content is given the space the header vacates.
  *
  * Works with any scrollable content (LazyColumn, verticalScroll) because it hooks the
- * nested-scroll chain; non-scrollable content simply leaves the header in place.
+ * nested-scroll chain. The header only moves through scrolling, so two cases would otherwise
+ * strand it off-screen with content that can no longer scroll it back: the content shrinking
+ * (a new query with few hits) and the header growing (filter chips appearing). [revealKey]
+ * brings it back whenever the content changes, and a taller header always reveals itself.
  */
 @Composable
 fun CollapsingHeader(
     modifier: Modifier = Modifier,
+    revealKey: Any? = Unit,
     header: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
     // 0 = fully shown … -headerHeight = fully hidden. Kept in px; header height is read at measure time.
     var offset by remember { mutableFloatStateOf(0f) }
     var headerHeight by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(revealKey) { offset = 0f }
 
     val connection = remember {
         object : NestedScrollConnection {
@@ -56,7 +63,12 @@ fun CollapsingHeader(
         },
     ) { measurables, constraints ->
         val headerPlaceable = measurables[0].measure(constraints.copy(minHeight = 0, maxHeight = Int.MAX_VALUE))
-        headerHeight = headerPlaceable.height.toFloat()
+        val newHeight = headerPlaceable.height.toFloat()
+        if (newHeight != headerHeight) {
+            // Grew (e.g. filter chips appeared): show it whole. Shrank: keep it within range.
+            offset = if (newHeight > headerHeight) 0f else offset.coerceIn(-newHeight, 0f)
+            headerHeight = newHeight
+        }
         val shown = (headerPlaceable.height + offset.roundToInt()).coerceIn(0, headerPlaceable.height)
         val contentHeight = (constraints.maxHeight - shown).coerceAtLeast(0)
         val contentPlaceable = measurables[1].measure(constraints.copy(minHeight = contentHeight, maxHeight = contentHeight))

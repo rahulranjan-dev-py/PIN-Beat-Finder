@@ -13,6 +13,8 @@ interface DirectoryDao {
     /**
      * Candidate retrieval for name search: normalised-prefix and phonetic-prefix hit indexes;
      * the raw substring match is the safety net (full scan, still ~100 ms on 165k rows).
+     * Rows whose normalised name starts with the query sort first, then shorter names, so a
+     * short query with thousands of candidates keeps the closest ones inside [limit].
      */
     @Query(
         """
@@ -20,7 +22,8 @@ interface DirectoryDao {
         WHERE (:normPattern != '' AND normalizedName LIKE :normPattern)
            OR (:primaryPattern != '' AND (phoneticPrimary LIKE :primaryPattern OR phoneticAlternate LIKE :primaryPattern))
            OR (:alternatePattern != '' AND (phoneticPrimary LIKE :alternatePattern OR phoneticAlternate LIKE :alternatePattern))
-           OR (:textPattern != '' AND name LIKE :textPattern)
+           OR (:textPattern != '' AND name LIKE :textPattern ESCAPE '\')
+        ORDER BY (:normPattern != '' AND normalizedName LIKE :normPattern) DESC, LENGTH(name) ASC, name ASC
         LIMIT :limit
         """,
     )

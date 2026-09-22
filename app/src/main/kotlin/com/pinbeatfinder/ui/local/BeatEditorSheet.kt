@@ -87,19 +87,6 @@ fun BeatEditorSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val draft = editor.draft
 
-    editor.fetchedOffices?.let { offices ->
-        OfficePickerDialog(
-            pincode = draft.pincode,
-            offices = offices,
-            stats = editor.officeStats,
-            selection = editor.pickerSelection,
-            onSelect = onOfficeSelected,
-            onToggle = onTogglePickerOffice,
-            onConfirmSelection = onConfirmPickerSelection,
-            onDismiss = onDismissOffices,
-        )
-    }
-
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
@@ -218,6 +205,20 @@ fun BeatEditorSheet(
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    // Composed after the sheet so it is drawn above it whatever the dialog / sheet window order.
+    editor.fetchedOffices?.let { offices ->
+        OfficePickerDialog(
+            pincode = draft.pincode,
+            offices = offices,
+            stats = editor.officeStats,
+            selection = editor.pickerSelection,
+            onSelect = onOfficeSelected,
+            onToggle = onTogglePickerOffice,
+            onConfirmSelection = onConfirmPickerSelection,
+            onDismiss = onDismissOffices,
+        )
     }
 }
 

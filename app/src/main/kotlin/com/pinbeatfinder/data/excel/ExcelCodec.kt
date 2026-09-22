@@ -204,6 +204,12 @@ object ExcelCodec {
                 ?: normalisedHeaders.entries.firstOrNull { (h, _) -> h.isNotEmpty() && (h.startsWith(key) || key.startsWith(h)) }?.value
         }
         val mapping = BeatField.entries.mapNotNull { field -> find(field.label)?.let { field to it } }.toMap()
+        mapping.entries.groupBy({ it.value }, { it.key }).values.firstOrNull { it.size > 1 }?.let { clash ->
+            throw ExcelFormatException(
+                "Column \"${cellText(headerRow, mapping.getValue(clash.first()))}\" matches more than one field " +
+                    "(${clash.joinToString { it.label }}). Use the template's exact column names.",
+            )
+        }
         val legacyBo = find(LEGACY_BRANCH_OFFICE)
         val legacySo = find(LEGACY_SUB_POST_OFFICE)
         val legacyCoversOffice = legacyBo != null || legacySo != null

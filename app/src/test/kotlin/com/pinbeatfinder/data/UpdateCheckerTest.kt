@@ -33,7 +33,13 @@ class UpdateCheckerTest {
         assertTrue(VersionCompare.isNewer("v1.0.0", "v0.9.9"))
         assertFalse(VersionCompare.isNewer("v0.9.0", "0.9.0"))
         assertFalse(VersionCompare.isNewer("v0.9.0-rc1", "0.9.0"))
+        assertTrue(VersionCompare.isNewer("v0.9.0", "v0.9.0-rc1"))
+        assertTrue(VersionCompare.isNewer("v0.9.0-rc2", "v0.9.0-rc1"))
+        assertTrue(VersionCompare.isNewer("v0.9.0-rc10", "v0.9.0-rc9"))
+        assertTrue(VersionCompare.isNewer("v0.9.1-rc1", "v0.9.0"))
+        assertFalse(VersionCompare.isNewer("v0.9.0+build5", "v0.9.0"))
         assertEquals(listOf(0, 9, 0), VersionCompare.parse("v0.9.0"))
+        assertEquals(listOf(0, 9, 0), VersionCompare.parse("v0.9.0-rc1"))
     }
 
     @Test

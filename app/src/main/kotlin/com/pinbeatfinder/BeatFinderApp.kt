@@ -17,7 +17,7 @@ class BeatFinderApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        container = AppContainer(this, appScope)
         container.crashReporter.install()
         // First launch (or a new asset version) loads the bundled All-India directory into Room.
         appScope.launch { container.directorySeeder.ensureSeeded() }

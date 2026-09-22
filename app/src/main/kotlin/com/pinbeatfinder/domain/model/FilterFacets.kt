@@ -40,15 +40,29 @@ data class FilterOptions(
             )
         }
 
-        /** Drops any selection that no longer exists in the directory (after a delete or import). */
+        /**
+         * Drops any selection that no longer exists in the directory (after a delete or import).
+         * Each value is checked on its own first, then the combination: a state and a beat that
+         * both still exist but no longer occur together would otherwise leave an empty list with
+         * no hint why. The narrowest filters give way first.
+         */
         fun prune(facets: List<FilterFacet>, f: BeatSearchFilters): BeatSearchFilters {
             if (f.isEmpty || facets.isEmpty()) return if (facets.isEmpty()) BeatSearchFilters() else f
             var out = f
             if (out.state != null && facets.none { it.state.equals(out.state, true) }) out = out.copy(state = null)
             if (out.district != null && facets.none { it.district.equals(out.district, true) }) out = out.copy(district = null)
+            if (out.officeType != null && facets.none { it.officeType == out.officeType }) out = out.copy(officeType = null)
             if (out.officeName != null && facets.none { it.officeName.equals(out.officeName, true) }) out = out.copy(officeName = null)
             if (out.beatNumber != null && facets.none { it.beatNumber.equals(out.beatNumber, true) }) out = out.copy(beatNumber = null)
             if (out.pincode != null && facets.none { it.pincode == out.pincode }) out = out.copy(pincode = null)
+            val relax: List<(BeatSearchFilters) -> BeatSearchFilters> = listOf(
+                { it.copy(beatNumber = null) }, { it.copy(pincode = null) }, { it.copy(officeName = null) },
+                { it.copy(officeType = null) }, { it.copy(district = null) }, { it.copy(state = null) },
+            )
+            for (step in relax) {
+                if (facets.any { it.matches(out) }) break
+                out = step(out)
+            }
             return out
         }
     }

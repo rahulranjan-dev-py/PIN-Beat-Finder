@@ -46,4 +46,17 @@ class DuplicateFinderTest {
         assertEquals("near temple", kept.remarks)
         assertEquals("mine", DuplicateFinder.merged(r(1, "Rampur", remarks = "mine"), r(2, "Rampur", remarks = "theirs")).remarks)
     }
+
+    @Test
+    fun `names that differ only by a number or single letter are different places`() {
+        val pairs = finder.find(
+            listOf(
+                r(1, "Ward 1"), r(2, "Ward 2"), r(3, "Ward-01"),
+                r(4, "Sector A"), r(5, "Sector B"),
+                r(6, "Rampur B.O."), r(7, "Rampur BO"),
+            ),
+        )
+        val keys = pairs.map { it.first.id to it.second.id }.toSet()
+        assertEquals(setOf(1L to 3L, 6L to 7L), keys)
+    }
 }

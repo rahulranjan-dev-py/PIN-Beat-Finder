@@ -3,13 +3,16 @@ name: Release
 # Publishes a GitHub Release with installable artifacts.
 # Trigger either by pushing a tag (v0.1.0) or manually from the Actions tab with a version.
 #
-# Signed builds need four repository secrets (Settings > Secrets and variables > Actions):
+# Builds need four repository secrets (Settings > Secrets and variables > Actions):
 #   KEYSTORE_BASE64   base64 of the .jks file      (base64 -w0 release.jks)
 #   KEYSTORE_PASSWORD keystore password
 #   KEY_ALIAS         key alias inside the keystore
 #   KEY_PASSWORD      key password (omit if identical to the keystore password)
-# Without them the workflow still publishes a debug-signed APK and marks the release as a
-# pre-release regardless of the input.
+# Without them the workflow fails: every published APK must carry the release key, or phones
+# that already have the app refuse the update as "signed with a different key".
+#
+# Actions are pinned to commit SHAs (the version tag is in the comment) so a moved tag can
+# never swap in different code on a job that handles the signing key.
 on:
   push:
     tags: ["v*"]
@@ -33,56 +36,66 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Resolve version and signing mode
+      # Inputs reach the shell through env, never by interpolation into the script.
+      - name: Resolve version and check signing secrets
         id: v
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          INPUT_NOTES_ONLY: ${{ inputs.notes_only }}
+          HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' && secrets.KEYSTORE_PASSWORD != '' && secrets.KEY_ALIAS != '' }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
             tag="${GITHUB_REF_NAME}"; pre="true"
           else
-            tag="${{ inputs.version }}"; pre="${{ inputs.prerelease }}"
+            tag="$INPUT_VERSION"; pre="$INPUT_PRERELEASE"
           fi
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            signed="true"
-          else
-            signed="false"; pre="true"
-            echo "::warning::No KEYSTORE_BASE64 secret; publishing a debug-signed APK as a pre-release."
+          case "$tag" in
+            v[0-9]*) ;;
+            *) echo "::error::Version must look like v0.17.0, got '$tag'."; exit 1 ;;
+          esac
+          if [ "$INPUT_NOTES_ONLY" != "true" ] && [ "$HAS_KEYSTORE" != "true" ]; then
+            echo "::error::KEYSTORE_BASE64, KEYSTORE_PASSWORD and KEY_ALIAS secrets are required: an APK signed with any other key cannot update the installed app."; exit 1
           fi
           echo "tag=$tag"          >> "$GITHUB_OUTPUT"
           echo "prerelease=$pre"   >> "$GITHUB_OUTPUT"
-          echo "signed=$signed"    >> "$GITHUB_OUTPUT"
 
       - name: Release notes (short, from this version's CHANGELOG section)
+        env:
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
           mkdir -p dist
-          python3 scripts/release_notes.py "${{ steps.v.outputs.tag }}" CHANGELOG.md > dist/NOTES.md
+          python3 scripts/release_notes.py "$TAG" CHANGELOG.md > dist/NOTES.md
           cat dist/NOTES.md
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         if: inputs.notes_only != true
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
         if: inputs.notes_only != true
 
       - name: Unit tests
         if: inputs.notes_only != true
         run: ./gradlew --no-daemon testDebugUnitTest
 
+      # The base64 secret is exposed to this one step only.
       - name: Decode release keystore
-        if: inputs.notes_only != true && steps.v.outputs.signed == 'true'
+        if: inputs.notes_only != true
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: echo "$KEYSTORE_BASE64" | base64 -di > "$RUNNER_TEMP/release.jks"
 
       # Fails early with a readable reason (truncated file, wrong password, wrong alias) instead
       # of Gradle's "Failed to read key ... : null" deep inside packageRelease.
       - name: Verify keystore, password and alias
-        if: inputs.notes_only != true && steps.v.outputs.signed == 'true'
+        if: inputs.notes_only != true
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -101,24 +114,39 @@ jobs:
           echo "Keystore OK: alias '$KEY_ALIAS' found."
 
       - name: Build signed release APK and AAB
-        if: inputs.notes_only != true && steps.v.outputs.signed == 'true'
+        if: inputs.notes_only != true
         env:
           KEYSTORE_FILE: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
           ./gradlew --no-daemon assembleRelease bundleRelease
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-release.apk"
-          cp app/build/outputs/bundle/release/app-release.aab "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-release.aab"
+          cp app/build/outputs/apk/release/app-release.apk "dist/pin-beat-finder-$TAG-release.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/pin-beat-finder-$TAG-release.aab"
 
-      - name: Build debug-signed APK (no keystore configured)
-        if: inputs.notes_only != true && steps.v.outputs.signed != 'true'
+      # The build must never have fallen back to the checked-in debug keystore.
+      - name: Confirm the APK carries the release key
+        if: inputs.notes_only != true
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          ./gradlew --no-daemon assembleDebug
-          mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/pin-beat-finder-${{ steps.v.outputs.tag }}-debug.apk"
+          norm() { tr -d ': \n' | tr 'A-F' 'a-f'; }
+          want=$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>/dev/null | grep -m1 'SHA256:' | sed 's/.*SHA256: *//' | norm)
+          apk=$(ls dist/*-release.apk)
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -n "$apksigner" ]; then
+            have=$("$apksigner" verify --print-certs "$apk" | grep -m1 'SHA-256 digest' | sed 's/.*: *//' | norm)
+          else
+            have=$(keytool -printcert -jarfile "$apk" 2>/dev/null | grep -m1 'SHA256:' | sed 's/.*SHA256: *//' | norm)
+          fi
+          echo "keystore $want"; echo "apk      $have"
+          if [ -z "$want" ] || [ -z "$have" ] || [ "$want" != "$have" ]; then
+            echo "::error::The APK is not signed with the release key."; exit 1
+          fi
 
       - name: Checksums
         if: inputs.notes_only != true
@@ -130,7 +158,7 @@ jobs:
 
       - name: Publish GitHub Release
         if: inputs.notes_only != true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.v.outputs.tag }}
           name: PIN Beat Finder ${{ steps.v.outputs.tag }}
@@ -145,7 +173,7 @@ jobs:
       # Rewrites only the notes of an existing release; assets and pre-release flag stay as they are.
       - name: Refresh release notes
         if: inputs.notes_only == true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.v.outputs.tag }}
           name: PIN Beat Finder ${{ steps.v.outputs.tag }}

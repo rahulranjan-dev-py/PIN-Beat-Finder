@@ -58,6 +58,8 @@ class PhoneticSearchEngineTest {
         val unrelated = engine.score("Rampur", "Lucknow")
         assertEquals(1.0, exact, 0.0)
         assertEquals(1.0, engine.score("Rampoor", "Rampur"), 0.0)
+        assertEquals(1.0, engine.score("Ward 1", "Ward-01"), 0.0)
+        assertTrue(engine.score("Ward 1", "Ward 2") < 0.9)
         assertTrue(exact > prefix)
         assertTrue(prefix > phonetic)
         assertTrue(phonetic > unrelated)

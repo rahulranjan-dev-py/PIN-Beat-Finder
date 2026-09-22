@@ -173,6 +173,8 @@
     <string name="msg_template_saved">टेम्पलेट सहेजा गया।</string>
     <string name="msg_file_failed">फ़ाइल कार्रवाई विफल: %1$s</string>
     <string name="msg_bad_format">स्प्रेडशीट का प्रारूप पहचाना नहीं गया।</string>
+    <string name="msg_import_too_large">यह फ़ाइल %1$d MB से बड़ी है। बीट डायरेक्टरी की फ़ाइल इससे बहुत छोटी होती है; कृपया सही फ़ाइल चुनें।</string>
+    <string name="msg_import_too_many_rows">इस फ़ाइल में %1$d से अधिक पंक्तियाँ हैं। इसे छोटी फ़ाइलों में बाँटें।</string>
 
     <string name="editor_add_title">बीट रिकॉर्ड जोड़ें</string>
     <string name="editor_edit_title">बीट रिकॉर्ड संपादित करें</string>
@@ -229,6 +231,7 @@
     <string name="duplicates_reason_spelling">मिलती-जुलती वर्तनी</string>
     <string name="action_keep_this">इसे रखें</string>
     <string name="msg_duplicate_resolved">“%1$s” रखा गया और उसका दोहराव हटा दिया गया।</string>
+    <string name="msg_duplicate_gone">इनमें से एक रिकॉर्ड पहले ही बदला या हटाया जा चुका है। दोहराव जाँच फिर से चलाएँ।</string>
     <string name="settings_data_sources">डेटा स्रोत</string>
     <string name="settings_data_sources_text">अंतर्निहित निर्देशिका: डाक विभाग की “All India Pincode Directory” (data.gov.in, Government Open Data License – India), जिसमें लेखा डाकघरों के लिए India Post facility master (CSI SPM Help, OfficeMaster) जोड़ा गया है। स्नैपशॉट %1$s।\n\nऑनलाइन खोज: api.data.gov.in, उसी डेटा का एक सामुदायिक मिरर, और api.postalpincode.in।\n\nस्थानीय बीट निर्देशिका आपका अपना डेटा है और बैकअप साझा किए बिना डिवाइस से बाहर नहीं जाता।</string>
 

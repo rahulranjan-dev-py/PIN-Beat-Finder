@@ -20,6 +20,7 @@ import com.pinbeatfinder.data.remote.NetworkModule
 import com.pinbeatfinder.data.remote.PostalApiService
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.data.repository.PostalLookupRepository
+import kotlinx.coroutines.CoroutineScope
 import okhttp3.OkHttpClient
 
 /**
@@ -27,7 +28,7 @@ import okhttp3.OkHttpClient
  * "singleton", so a DI framework would add build time and code-gen without buying anything.
  * Everything is lazy so cold start does not touch the database or build an OkHttp client.
  */
-class AppContainer(context: Context) {
+class AppContainer(context: Context, private val appScope: CoroutineScope) {
     private val appContext = context.applicationContext
 
     val phoneticEngine: PhoneticSearchEngine = PhoneticSearchEngine()
@@ -84,7 +85,9 @@ class AppContainer(context: Context) {
         )
     }
 
-    val apkDownloader: ApkDownloader by lazy { ApkDownloader(liveHttpClient, appContext.cacheDir) }
+    val apkDownloader: ApkDownloader by lazy {
+        ApkDownloader(NetworkModule.downloadClient(liveHttpClient), appContext.cacheDir, appScope)
+    }
 
     val crashReporter: CrashReporter by lazy { CrashReporter(appContext, SharedPrefsStore(appContext), BuildConfig.VERSION_NAME) }
 
