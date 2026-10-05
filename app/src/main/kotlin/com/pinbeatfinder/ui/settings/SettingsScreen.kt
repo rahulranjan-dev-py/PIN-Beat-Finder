@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -24,7 +27,6 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -41,8 +43,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,10 +52,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pinbeatfinder.BuildConfig
@@ -66,11 +68,14 @@ import com.pinbeatfinder.data.prefs.DefaultTab
 import com.pinbeatfinder.data.prefs.TextScale
 import com.pinbeatfinder.data.prefs.ThemeMode
 import com.pinbeatfinder.data.remote.ProviderHealth
-import com.pinbeatfinder.ui.theme.OnPostBoxRed
-import com.pinbeatfinder.ui.theme.PostBoxRed
+import com.pinbeatfinder.ui.components.PrimaryButton
+import com.pinbeatfinder.ui.components.ScreenTitleBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private enum class AppLanguage(val tag: String, val labelRes: Int) {
     SYSTEM("", R.string.lang_system),
@@ -92,19 +97,16 @@ fun SettingsScreen(onBack: () -> Unit) {
     val language = AppLanguage.entries.firstOrNull { it.tag.isNotEmpty() && it.tag == settings.language } ?: AppLanguage.SYSTEM
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+            ScreenTitleBar(
+                title = stringResource(R.string.settings_title),
+                modifier = Modifier.statusBarsPadding(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PostBoxRed,
-                    titleContentColor = OnPostBoxRed,
-                    navigationIconContentColor = OnPostBoxRed,
-                ),
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -117,14 +119,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            SettingGroup(stringResource(R.string.settings_default_tab)) {
-                Segmented(
-                    options = DefaultTab.entries,
-                    selected = settings.defaultTab,
-                    label = { stringResource(if (it == DefaultTab.ONLINE) R.string.tab_online else R.string.tab_local) },
-                    onSelect = { v -> repo.update { it.copy(defaultTab = v) } },
-                )
-            }
+            // ---- Appearance --------------------------------------------------------------
+            SectionHeader(stringResource(R.string.settings_section_appearance))
 
             SettingGroup(stringResource(R.string.settings_theme)) {
                 Segmented(
@@ -142,6 +138,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                     onSelect = { v -> repo.update { it.copy(themeMode = v) } },
                 )
             }
+
+            SwitchRow(
+                title = stringResource(R.string.settings_high_contrast),
+                description = stringResource(R.string.settings_high_contrast_desc),
+                checked = settings.highContrast,
+                onCheckedChange = { v -> repo.update { it.copy(highContrast = v) } },
+            )
 
             SettingGroup(stringResource(R.string.settings_text_size)) {
                 Segmented(
@@ -164,44 +167,146 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             HorizontalDivider()
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_high_contrast), style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        stringResource(R.string.settings_high_contrast_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(checked = settings.highContrast, onCheckedChange = { v -> repo.update { it.copy(highContrast = v) } })
+            // ---- App ---------------------------------------------------------------------
+            SectionHeader(stringResource(R.string.settings_section_app))
+
+            SettingGroup(stringResource(R.string.settings_default_tab)) {
+                Segmented(
+                    options = DefaultTab.entries,
+                    selected = settings.defaultTab,
+                    label = { stringResource(if (it == DefaultTab.ONLINE) R.string.tab_online else R.string.tab_local) },
+                    onSelect = { v -> repo.update { it.copy(defaultTab = v) } },
+                )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_haptics), style = MaterialTheme.typography.titleMedium)
+            SwitchRow(
+                title = stringResource(R.string.settings_haptics),
+                description = stringResource(R.string.settings_haptics_desc),
+                checked = settings.hapticsEnabled,
+                onCheckedChange = { v -> repo.update { it.copy(hapticsEnabled = v) } },
+            )
+
+            SettingGroup(stringResource(R.string.settings_updates), description = stringResource(R.string.settings_updates_desc, BuildConfig.VERSION_NAME)) {
+                val update by container.updateChecker.state.collectAsStateWithLifecycle()
+                var checkedOnce by remember { mutableStateOf(false) }
+                update.available?.let { rel ->
+                    Text(stringResource(R.string.update_available, rel.tag), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    PrimaryButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rel.apkUrl ?: rel.pageUrl))) }) {
+                        Text(stringResource(R.string.update_download))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+                if (checkedOnce && update.available == null && update.error == null && !update.checking) {
+                    Text(stringResource(R.string.update_up_to_date), style = MaterialTheme.typography.bodySmall)
+                }
+                update.error?.let { Text(stringResource(R.string.update_check_failed, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                update.lastCheckedAt?.let {
                     Text(
-                        stringResource(R.string.settings_haptics_desc),
+                        stringResource(R.string.update_last_checked, displayDateTime(Date(it))),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.width(12.dp))
-                Switch(checked = settings.hapticsEnabled, onCheckedChange = { v -> repo.update { it.copy(hapticsEnabled = v) } })
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(
+                    enabled = !update.checking,
+                    onClick = { scope.launch { container.updateChecker.check(force = true); checkedOnce = true } },
+                ) {
+                    if (update.checking) {
+                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Icon(Icons.Default.SystemUpdate, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.update_check_now))
+                }
+            }
+
+            SettingGroup(stringResource(R.string.settings_crash), description = stringResource(R.string.settings_crash_desc)) {
+                var latest by remember { mutableStateOf(container.crashReporter.latest()) }
+                if (latest == null) {
+                    Text(stringResource(R.string.crash_none), style = MaterialTheme.typography.bodySmall)
+                } else {
+                    Text(stringResource(R.string.crash_latest, crashStampText(latest!!.nameWithoutExtension)), style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PrimaryButton(onClick = {
+                            context.startActivity(container.crashReporter.shareIntent(latest!!, context.getString(R.string.crash_share_title)))
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.crash_share))
+                        }
+                        OutlinedButton(onClick = {
+                            container.crashReporter.deleteAll()
+                            latest = null
+                        }) { Text(stringResource(R.string.crash_delete)) }
+                    }
+                }
+            }
+
+            SettingGroup(stringResource(R.string.settings_about)) {
+                Text(
+                    stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.settings_developer_title), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.settings_developer_name), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.settings_developer_details),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.settings_disclaimer),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             HorizontalDivider()
+
+            // ---- Data --------------------------------------------------------------------
+            SectionHeader(stringResource(R.string.settings_section_data))
+
+            val seedState by container.directorySeeder.state.collectAsStateWithLifecycle()
+            val snapshot = (seedState as? SeedState.Ready)?.version ?: "—"
+            SettingGroup(stringResource(R.string.settings_data_sources)) {
+                Text(
+                    stringResource(R.string.settings_data_sources_text, snapshot),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            SettingGroup(stringResource(R.string.settings_clear_cache), description = stringResource(R.string.settings_clear_cache_desc)) {
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        withContext(Dispatchers.IO) { runCatching { container.clearOnlineCache() } }
+                        snackbar.showSnackbar(context.getString(R.string.settings_cache_cleared))
+                    }
+                }) {
+                    Icon(Icons.Default.DeleteSweep, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.action_clear))
+                }
+            }
 
             SettingGroup(stringResource(R.string.settings_api_key), description = stringResource(R.string.settings_api_key_desc)) {
                 OutlinedTextField(
                     value = apiKeyDraft,
                     onValueChange = { apiKeyDraft = it.trim() },
                     modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(stringResource(R.string.settings_api_key_hint)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 )
                 Spacer(Modifier.height(8.dp))
-                Button(
+                PrimaryButton(
                     onClick = {
                         repo.update { it.copy(dataGovInApiKey = apiKeyDraft) }
                         scope.launch { snackbar.showSnackbar(context.getString(R.string.settings_api_key_saved)) }
@@ -265,114 +370,47 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.source_test_now))
                 }
             }
-
-            SettingGroup(stringResource(R.string.settings_clear_cache), description = stringResource(R.string.settings_clear_cache_desc)) {
-                OutlinedButton(onClick = {
-                    scope.launch {
-                        withContext(Dispatchers.IO) { runCatching { container.clearOnlineCache() } }
-                        snackbar.showSnackbar(context.getString(R.string.settings_cache_cleared))
-                    }
-                }) {
-                    Icon(Icons.Default.DeleteSweep, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.settings_clear_cache))
-                }
-            }
-
-            HorizontalDivider()
-
-            SettingGroup(stringResource(R.string.settings_updates), description = stringResource(R.string.settings_updates_desc, BuildConfig.VERSION_NAME)) {
-                val update by container.updateChecker.state.collectAsStateWithLifecycle()
-                var checkedOnce by remember { mutableStateOf(false) }
-                update.available?.let { rel ->
-                    Text(stringResource(R.string.update_available, rel.tag), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(6.dp))
-                    Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rel.apkUrl ?: rel.pageUrl))) }) {
-                        Text(stringResource(R.string.update_download))
-                    }
-                    Spacer(Modifier.height(6.dp))
-                }
-                if (checkedOnce && update.available == null && update.error == null && !update.checking) {
-                    Text(stringResource(R.string.update_up_to_date), style = MaterialTheme.typography.bodySmall)
-                }
-                update.error?.let { Text(stringResource(R.string.update_check_failed, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
-                update.lastCheckedAt?.let {
-                    Text(
-                        stringResource(R.string.update_last_checked, java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(it))),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(6.dp))
-                OutlinedButton(
-                    enabled = !update.checking,
-                    onClick = { scope.launch { container.updateChecker.check(force = true); checkedOnce = true } },
-                ) {
-                    if (update.checking) {
-                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Icon(Icons.Default.SystemUpdate, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.update_check_now))
-                }
-            }
-
-            SettingGroup(stringResource(R.string.settings_crash), description = stringResource(R.string.settings_crash_desc)) {
-                var latest by remember { mutableStateOf(container.crashReporter.latest()) }
-                if (latest == null) {
-                    Text(stringResource(R.string.crash_none), style = MaterialTheme.typography.bodySmall)
-                } else {
-                    Text(stringResource(R.string.crash_latest, latest!!.nameWithoutExtension.removePrefix("crash_")), style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = {
-                            context.startActivity(container.crashReporter.shareIntent(latest!!, context.getString(R.string.crash_share_title)))
-                        }) {
-                            Icon(Icons.Default.Share, contentDescription = null)
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.crash_share))
-                        }
-                        OutlinedButton(onClick = {
-                            container.crashReporter.deleteAll()
-                            latest = null
-                        }) { Text(stringResource(R.string.crash_delete)) }
-                    }
-                }
-            }
-
-            HorizontalDivider()
-
-            SettingGroup(stringResource(R.string.settings_about)) {
-                Text(
-                    stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.settings_developer_title), style = MaterialTheme.typography.labelLarge)
-                Text(stringResource(R.string.settings_developer_name), style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    stringResource(R.string.settings_developer_details),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            HorizontalDivider()
-
-            val seedState by container.directorySeeder.state.collectAsStateWithLifecycle()
-            val snapshot = (seedState as? SeedState.Ready)?.version ?: "—"
-            SettingGroup(stringResource(R.string.settings_data_sources)) {
-                Text(
-                    stringResource(R.string.settings_data_sources_text, snapshot),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+/** Section title: "Appearance", "App", "Data". */
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.Bold,
+    )
+}
+
+@Composable
+private fun SwitchRow(title: String, description: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+/** "5 Oct 2026, 14:30" in the app's language. */
+@Composable
+private fun displayDateTime(date: Date): String {
+    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    return SimpleDateFormat("d MMM yyyy, HH:mm", locale).format(date)
+}
+
+/** Crash files are named "crash_yyyyMMdd_HHmmss"; show that stamp as a date, or as is if it does not parse. */
+@Composable
+private fun crashStampText(fileName: String): String {
+    val stamp = fileName.removePrefix("crash_")
+    val parsed = runCatching { SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).parse(stamp) }.getOrNull()
+    return if (parsed != null) displayDateTime(parsed) else stamp
 }
 
 @Composable
@@ -395,13 +433,16 @@ private fun <T> Segmented(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+    // Devanagari glyphs sit taller than Latin ones; sizing the row to its tallest segment and
+    // stretching every segment keeps "हिन्दी" level with "System" and "English".
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         options.forEachIndexed { index, option ->
             SegmentedButton(
                 selected = option == selected,
                 onClick = { onSelect(option) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-            ) { Text(label(option), maxLines = 1) }
+                modifier = Modifier.fillMaxHeight(),
+            ) { Text(label(option), maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
 }

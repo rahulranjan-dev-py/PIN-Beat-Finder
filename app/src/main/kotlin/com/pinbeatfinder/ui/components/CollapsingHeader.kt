@@ -1,5 +1,7 @@
 package com.pinbeatfinder.ui.components
 
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -10,10 +12,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Velocity
 import kotlin.math.roundToInt
 
 /**
@@ -21,11 +25,10 @@ import kotlin.math.roundToInt
  * content scrolls down ("enter always"), so a tall search/filter block no longer pins the list
  * to the bottom third of small screens. The content is given the space the header vacates.
  *
- * Works with any scrollable content (LazyColumn, verticalScroll) because it hooks the
- * nested-scroll chain. The header only moves through scrolling, so two cases would otherwise
- * strand it off-screen with content that can no longer scroll it back: the content shrinking
- * (a new query with few hits) and the header growing (filter chips appearing). [revealKey]
- * brings it back whenever the content changes, and a taller header always reveals itself.
+ * The header never rests half-way: when the finger lifts or a fling ends it settles to fully
+ * shown or fully hidden, and it fades while moving, so its text is never left cut mid-letter
+ * under the tab row. [revealKey] brings it back whenever the content changes (a new query, a
+ * different view) and a taller header always reveals itself.
  */
 @Composable
 fun CollapsingHeader(
@@ -50,6 +53,18 @@ fun CollapsingHeader(
                 offset = target
                 return Offset(0f, consumed)
             }
+
+            // Called when a drag ends (even with no velocity) and after every fling: settle.
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                val h = headerHeight
+                if (h > 0f) {
+                    val target = if (offset > -h / 2f) 0f else -h
+                    if (offset != target) {
+                        animate(initialValue = offset, targetValue = target, animationSpec = tween(SETTLE_MS)) { value, _ -> offset = value }
+                    }
+                }
+                return Velocity.Zero
+            }
         }
     }
 
@@ -58,7 +73,11 @@ fun CollapsingHeader(
             .nestedScroll(connection)
             .clipToBounds(),
         content = {
-            Box { header() }
+            Box(
+                Modifier.graphicsLayer {
+                    alpha = if (headerHeight > 0f) (1f + offset / headerHeight).coerceIn(0f, 1f) else 1f
+                },
+            ) { header() }
             Box { content() }
         },
     ) { measurables, constraints ->
@@ -78,3 +97,5 @@ fun CollapsingHeader(
         }
     }
 }
+
+private const val SETTLE_MS = 160

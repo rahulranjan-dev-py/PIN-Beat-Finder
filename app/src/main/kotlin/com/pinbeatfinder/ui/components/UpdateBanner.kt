@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -91,7 +90,7 @@ fun UpdateBanner(
                 if (!download.verified) {
                     Text(stringResource(R.string.update_unverified), style = MaterialTheme.typography.labelSmall, color = fg, modifier = Modifier.weight(1f).padding(top = 8.dp))
                 }
-                Button(onClick = onInstall) { Text(stringResource(R.string.update_install)) }
+                PrimaryButton(onClick = onInstall) { Text(stringResource(R.string.update_install)) }
                 Spacer(Modifier.width(8.dp))
             }
             active && download is DownloadState.Failed -> Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -100,7 +99,7 @@ fun UpdateBanner(
             }
             else -> Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onLater) { Text(stringResource(R.string.update_later)) }
-                Button(onClick = onDownload) { Text(stringResource(R.string.update_download_install)) }
+                PrimaryButton(onClick = onDownload) { Text(stringResource(R.string.update_download_install)) }
                 Spacer(Modifier.width(8.dp))
             }
         }

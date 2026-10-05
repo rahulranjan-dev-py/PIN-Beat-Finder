@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -36,8 +37,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // The app bar is always post-box red, so status-bar icons must always be light.
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
+        // No coloured app bar any more: status-bar icons follow the theme (light on dark, dark on light).
+        applySystemBars(isDarkTheme())
         super.onCreate(savedInstanceState)
         // AppCompat only knows the platform-stored locale once its delegate is attached; retry here.
         migrateStoredLocale(this)
@@ -49,6 +50,8 @@ class MainActivity : AppCompatActivity() {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
+            // Changing the theme in Settings recomposes without recreating: restyle the bars too.
+            LaunchedEffect(darkTheme) { applySystemBars(darkTheme) }
             // Language is applied here, in composition: changing it recomposes the strings in place.
             val activityContext = LocalContext.current
             val systemConfiguration = LocalConfiguration.current
@@ -93,6 +96,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Whether the app is dark right now: the forced setting, or the system when set to follow it. */
+    private fun isDarkTheme(): Boolean {
+        val systemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        return when (appContainer.appSettingsRepository.settings.value.themeMode) {
+            ThemeMode.SYSTEM -> systemDark
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+    }
+
+    /** Transparent edge-to-edge bars with light icons on the dark theme and dark icons on the light one. */
+    private fun applySystemBars(dark: Boolean) {
+        val style = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+    }
+
     /**
      * The theme's windowBackground follows the system day/night setting, but the app can be
      * forced light or dark in Settings. Paint the window to match the Compose surface so the
@@ -100,17 +119,12 @@ class MainActivity : AppCompatActivity() {
      */
     private fun applyWindowBackground() {
         val settings = appContainer.appSettingsRepository.settings.value
-        val systemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val dark = when (settings.themeMode) {
-            ThemeMode.SYSTEM -> systemDark
-            ThemeMode.LIGHT -> false
-            ThemeMode.DARK -> true
-        }
+        val dark = isDarkTheme()
         val colour = when {
             settings.highContrast && dark -> Color.BLACK
             settings.highContrast -> Color.WHITE
-            dark -> 0xFF1A1110.toInt()
-            else -> 0xFFFFF8F7.toInt()
+            dark -> 0xFF14161A.toInt()
+            else -> 0xFFF7F7F5.toInt()
         }
         window.setBackgroundDrawable(ColorDrawable(colour))
     }

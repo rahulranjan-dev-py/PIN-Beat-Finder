@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -31,12 +29,10 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,8 +45,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.pinbeatfinder.R
+import com.pinbeatfinder.ui.components.PrimaryButton
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
@@ -58,6 +56,7 @@ import com.pinbeatfinder.domain.model.FieldError
 import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.domain.model.plainName
+import com.pinbeatfinder.ui.components.AppBottomSheet
 import com.pinbeatfinder.ui.components.OfficeTypeDropdown
 import com.pinbeatfinder.ui.components.labelRes
 import com.pinbeatfinder.ui.components.message
@@ -84,16 +83,15 @@ fun BeatEditorSheet(
     onSkipQueued: () -> Unit = {},
     onOpenExisting: (BeatRecord) -> Unit = {},
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val draft = editor.draft
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppBottomSheet(onDismissRequest = onDismiss) { bottomInset ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .navigationBarsPadding()
+                .padding(bottom = bottomInset)
                 .imePadding(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -187,7 +185,7 @@ fun BeatEditorSheet(
             ) {
                 TextButton(onClick = onDismiss, enabled = !editor.isSaving) { Text(stringResource(R.string.action_cancel)) }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onSave, enabled = !editor.isSaving) {
+                PrimaryButton(onClick = onSave, enabled = !editor.isSaving) {
                     if (editor.isSaving) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
@@ -389,8 +387,10 @@ private fun OfficePickerDialog(
                                 val details = listOf(office.officeType.fullName, office.deliveryStatus, account).filter { it.isNotBlank() }
                                 Text(details.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 stats[office.plainName().lowercase()]?.let { local ->
+                                    val counts = pluralStringResource(R.plurals.count_beats, local.beats, local.beats) + ", " +
+                                        pluralStringResource(R.plurals.count_villages, local.villages, local.villages)
                                     Text(
-                                        stringResource(R.string.picker_local_stats, local.beats, local.villages),
+                                        stringResource(R.string.picker_local_stats, counts),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
@@ -405,7 +405,7 @@ private fun OfficePickerDialog(
         },
         confirmButton = {
             if (batch) {
-                Button(onClick = onConfirmSelection) { Text(stringResource(R.string.action_add_n_offices, selection.size)) }
+                PrimaryButton(onClick = onConfirmSelection) { Text(pluralStringResource(R.plurals.action_add_n_offices, selection.size, selection.size)) }
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },

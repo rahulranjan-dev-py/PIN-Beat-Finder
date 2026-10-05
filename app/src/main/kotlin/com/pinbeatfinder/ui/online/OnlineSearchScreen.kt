@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +23,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
@@ -30,19 +31,16 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
@@ -56,6 +54,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -70,10 +69,16 @@ import com.pinbeatfinder.data.directory.SeedState
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.domain.model.toBeatDraft
+import com.pinbeatfinder.ui.components.AppCard
 import com.pinbeatfinder.ui.components.EmptyState
 import com.pinbeatfinder.ui.components.CollapsingHeader
 import com.pinbeatfinder.ui.components.FilterChipsRow
-import com.pinbeatfinder.ui.components.LabeledValue
+import com.pinbeatfinder.ui.components.PillSearchField
+import com.pinbeatfinder.ui.components.PlainListBottomPadding
+import com.pinbeatfinder.ui.components.ScreenTitleBar
+import com.pinbeatfinder.ui.components.displayCase
+import com.pinbeatfinder.ui.components.displayRegion
+import com.pinbeatfinder.ui.components.placeLine
 import com.pinbeatfinder.ui.theme.rememberHaptic
 import kotlinx.coroutines.launch
 
@@ -88,6 +93,7 @@ fun OnlineSearchScreen(
     viewModel: OnlineSearchViewModel,
     snackbarHostState: SnackbarHostState,
     bridge: OnlineBridge,
+    onOpenSettings: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -95,7 +101,7 @@ fun OnlineSearchScreen(
     val scope = rememberCoroutineScope()
     val haptic = rememberHaptic()
 
-    OnlineSearchContent(state = state, onIntent = viewModel::onIntent, bridge = bridge)
+    OnlineSearchContent(state = state, onIntent = viewModel::onIntent, bridge = bridge, onOpenSettings = onOpenSettings)
 
     state.selectedOffice?.let { office ->
         PostOfficeDetailSheet(
@@ -132,7 +138,24 @@ fun OnlineSearchContent(
     state: OnlineSearchState,
     onIntent: (OnlineSearchIntent) -> Unit,
     bridge: OnlineBridge,
+    onOpenSettings: () -> Unit = {},
 ) {
+    Column(Modifier.fillMaxSize()) {
+        ScreenTitleBar(
+            title = stringResource(R.string.tab_online),
+            actions = {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.action_settings))
+                }
+            },
+        )
+        OnlineBody(state, onIntent, bridge)
+    }
+}
+
+/** Everything under the title: the search block collapses as the results scroll. */
+@Composable
+private fun OnlineBody(state: OnlineSearchState, onIntent: (OnlineSearchIntent) -> Unit, bridge: OnlineBridge) {
     CollapsingHeader(
         modifier = Modifier.fillMaxSize(),
         revealKey = listOf(state.submittedQuery, state.stateFilter, state.districtFilter, state.results.size, state.error != null),
@@ -162,7 +185,7 @@ fun OnlineSearchContent(
                 state.visibleResults.isEmpty() -> EmptyState(
                     icon = Icons.Default.SearchOff,
                     title = stringResource(R.string.online_filtered_out_title),
-                    message = stringResource(R.string.online_filtered_out_message, state.results.size),
+                    message = pluralStringResource(R.plurals.online_filtered_out_message, state.results.size, state.results.size),
                     actionLabel = stringResource(R.string.action_clear_filters),
                     onAction = { onIntent(OnlineSearchIntent.ClearFilters) },
                 )
@@ -215,22 +238,13 @@ private fun OnlineHeader(state: OnlineSearchState, onIntent: (OnlineSearchIntent
             }
         }
 
-        OutlinedTextField(
+        PillSearchField(
             value = state.query,
             onValueChange = { onIntent(OnlineSearchIntent.QueryChanged(it)) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp),
-            placeholder = { Text(stringResource(R.string.search_online_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                if (state.query.isNotEmpty()) {
-                    IconButton(onClick = { onIntent(OnlineSearchIntent.Clear) }) {
-                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_clear))
-                    }
-                }
-            },
-            singleLine = true,
+            // The × sends the same intent the old trailing icon did.
+            onClear = { onIntent(OnlineSearchIntent.Clear) },
+            placeholder = stringResource(R.string.search_online_hint),
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 4.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = if (isNumeric) KeyboardType.Number else KeyboardType.Text,
                 imeAction = ImeAction.Search,
@@ -244,9 +258,9 @@ private fun OnlineHeader(state: OnlineSearchState, onIntent: (OnlineSearchIntent
             stringResource(R.string.online_supporting),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 2.dp),
         )
 
         // Post-office names repeat across India ("Govindapur" exists in five states); let the
@@ -277,14 +291,15 @@ private fun OnlineHeader(state: OnlineSearchState, onIntent: (OnlineSearchIntent
 private fun ResultsList(state: OnlineSearchState, onIntent: (OnlineSearchIntent) -> Unit, bridge: OnlineBridge) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = PlainListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
             val shown = state.visibleResults.size
+            val total = state.results.size
             Text(
-                if (state.hasFilters) stringResource(R.string.online_count_filtered, shown, state.results.size, state.submittedQuery)
-                else stringResource(R.string.online_count, shown, state.submittedQuery),
+                if (state.hasFilters) pluralStringResource(R.plurals.online_count_filtered, total, shown, total, state.submittedQuery)
+                else pluralStringResource(R.plurals.online_count, shown, shown, state.submittedQuery),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -310,13 +325,17 @@ private fun ResultsList(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface)
+                            .background(MaterialTheme.colorScheme.background)
                             .clickable { onIntent(OnlineSearchIntent.ToggleStateGroup(stateName)) }
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            stringResource(R.string.online_group_header, stateName, offices.size),
+                            stringResource(
+                                R.string.online_group_header,
+                                stateName.takeIf { it.isNotBlank() }?.displayCase() ?: stringResource(R.string.online_unknown_state),
+                                offices.size,
+                            ),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -359,7 +378,7 @@ private fun ResultsList(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
 private fun RecentSearchesList(state: OnlineSearchState, onIntent: (OnlineSearchIntent) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 96.dp),
+        contentPadding = PaddingValues(bottom = PlainListBottomPadding),
     ) {
         item {
             Row(
@@ -415,6 +434,7 @@ private fun RecentSearchesList(state: OnlineSearchState, onIntent: (OnlineSearch
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PostOfficeCard(
     office: PostOffice,
@@ -423,12 +443,9 @@ private fun PostOfficeCard(
     onShowLocalBeats: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(Modifier.padding(16.dp)) {
+    // Name and PIN, then two lines; the full record is one tap away in the sheet.
+    AppCard(modifier = modifier.fillMaxWidth(), onClick = onClick) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     office.name,
@@ -436,14 +453,20 @@ private fun PostOfficeCard(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                AssistChip(onClick = onClick, label = { Text(office.pincode) })
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    office.pincode,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
             }
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(office.branchType, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(4.dp))
+            // Whole items wrap to the next line at large font sizes; words are never split.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(office.branchType, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
                 if (office.deliveryStatus.isNotBlank()) {
-                    Text("•", style = MaterialTheme.typography.bodySmall)
-                    Text(office.deliveryStatus, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("• " + office.deliveryStatus, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (office.fromCache) {
                     SuggestionChip(
@@ -453,15 +476,12 @@ private fun PostOfficeCard(
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            LabeledValue(stringResource(R.string.label_district), office.district)
-            LabeledValue(stringResource(R.string.label_state), office.state)
-            LabeledValue(stringResource(R.string.label_division), office.division)
-            LabeledValue(stringResource(R.string.label_region), office.region)
-            LabeledValue(stringResource(R.string.label_circle), office.circle)
-            LabeledValue(stringResource(R.string.label_block), office.block)
+            val place = listOf(placeLine(office.district, office.state), office.division.displayCase()).filter { it.isNotBlank() }.joinToString(" • ")
+            if (place.isNotBlank()) {
+                Text(place, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (localCount > 0) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -471,7 +491,7 @@ private fun PostOfficeCard(
                     Icon(Icons.Default.Storage, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        stringResource(R.string.online_local_count, localCount),
+                        pluralStringResource(R.plurals.online_local_count, localCount, localCount),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -481,15 +501,16 @@ private fun PostOfficeCard(
     }
 }
 
+/** The shared text uses the same display formatting as the screen (title case, no placeholder region). */
 internal fun PostOffice.shareText(context: Context): String = buildString {
     appendLine(name)
     appendLine(context.getString(R.string.detail_pin, pincode))
     if (branchType.isNotBlank()) appendLine(branchType + if (deliveryStatus.isNotBlank()) " • $deliveryStatus" else "")
-    if (district.isNotBlank()) appendLine("${context.getString(R.string.label_district)}: $district")
-    if (state.isNotBlank()) appendLine("${context.getString(R.string.label_state)}: $state")
-    if (division.isNotBlank()) appendLine("${context.getString(R.string.label_division)}: $division")
-    if (region.isNotBlank()) appendLine("${context.getString(R.string.label_region)}: $region")
-    if (circle.isNotBlank()) appendLine("${context.getString(R.string.label_circle)}: $circle")
+    if (district.isNotBlank()) appendLine("${context.getString(R.string.label_district)}: ${district.displayCase()}")
+    if (state.isNotBlank()) appendLine("${context.getString(R.string.label_state)}: ${state.displayCase()}")
+    if (division.isNotBlank()) appendLine("${context.getString(R.string.label_division)}: ${division.displayCase()}")
+    displayRegion(region)?.let { appendLine("${context.getString(R.string.label_region)}: ${it.displayCase()}") }
+    if (circle.isNotBlank()) appendLine("${context.getString(R.string.label_circle)}: ${circle.displayCase()}")
     append(context.getString(R.string.share_footer))
 }
 

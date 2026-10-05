@@ -1,6 +1,7 @@
 package com.pinbeatfinder.ui.components
 
 import android.content.Context
+import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
@@ -9,10 +10,13 @@ import androidx.compose.ui.platform.LocalContext
 sealed interface UiText {
     data class Raw(val text: String) : UiText
     class Res(@StringRes val id: Int, vararg val args: Any) : UiText
+    /** A quantity string; [count] picks the grammatical form and is also the first format argument. */
+    class Plural(@PluralsRes val id: Int, val count: Int, vararg val args: Any) : UiText
 
     fun asString(context: Context): String = when (this) {
         is Raw -> text
         is Res -> context.getString(id, *args)
+        is Plural -> context.resources.getQuantityString(id, count, count, *args)
     }
 
     @Composable

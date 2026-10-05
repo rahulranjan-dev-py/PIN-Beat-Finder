@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /** Centered placeholder for empty/error states with an optional action. */
@@ -50,22 +51,22 @@ fun EmptyState(
         )
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(20.dp))
-            Button(onClick = onAction) { Text(actionLabel) }
+            PrimaryButton(onClick = onAction) { Text(actionLabel) }
         }
     }
 }
 
-/** "Label   Value" line used inside result cards. */
+/** "Label   Value" line with the labels in a fixed-width column so the values line up. */
 @Composable
-fun LabeledValue(label: String, value: String, modifier: Modifier = Modifier) {
+fun LabeledValue(label: String, value: String, modifier: Modifier = Modifier, labelWidth: Dp = 96.dp) {
     if (value.isBlank()) return
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+    Row(modifier = modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.Top) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(end = 8.dp),
+            modifier = Modifier.width(labelWidth).padding(end = 8.dp, top = 2.dp),
         )
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
     }
 }

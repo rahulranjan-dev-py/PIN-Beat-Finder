@@ -515,7 +515,7 @@ class LocalBeatsViewModel(
             try {
                 val changed = repository.setOfficeType(intent.office.officeName, intent.office.pincodes, intent.type)
                 dataVersion.update { it + 1 }
-                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_office_type_updated, intent.type.code, changed)))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Plural(R.plurals.msg_office_type_updated, changed, intent.type.code)))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -591,7 +591,7 @@ class LocalBeatsViewModel(
                 repository.deleteMany(ids)
                 dataVersion.update { it + 1 }
                 _state.update { it.copy(selectedIds = emptySet(), confirmBulkDelete = false) }
-                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_deleted_n, ids.size)))
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Plural(R.plurals.msg_deleted_n, ids.size)))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
