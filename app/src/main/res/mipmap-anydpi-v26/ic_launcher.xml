@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Vector adaptive icon: solid post-box red behind a white pin-with-envelope glyph. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Artwork supplied by the developer; the background is the same artwork zoomed and softened
-         so any launcher mask shows a matching gradient around the rounded card. -->
-    <background android:drawable="@mipmap/ic_launcher_bg" />
-    <foreground android:drawable="@mipmap/ic_launcher_fg" />
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
     <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
 </adaptive-icon>

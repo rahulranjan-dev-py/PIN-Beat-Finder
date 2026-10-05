@@ -2,4 +2,6 @@
 <resources>
     <!-- = PinBeatFinderTheme light surface -->
     <color name="window_background">#FFF7F7F5</color>
+    <!-- Adaptive launcher icon background (Phase 3) -->
+    <color name="ic_launcher_background">#FFB3261E</color>
 </resources>
