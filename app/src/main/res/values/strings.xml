@@ -3,7 +3,7 @@
     <string name="app_name">PIN Beat Finder</string>
     <string name="tab_online">All-India</string>
     <string name="tab_local">Local Beats</string>
-    <string name="search_online_hint">PIN code or post office name</string>
+    <string name="search_online_hint">PIN or office name</string>
     <string name="search_local_hint">Search village or locality</string>
     <string name="add_beat">Add beat record</string>
 
@@ -54,14 +54,10 @@
     <string name="online_no_results_title">No results</string>
     <string name="online_no_results_message">Nothing matched “%1$s”.</string>
     <string name="online_filtered_out_title">No results match the filters</string>
-    <string name="online_filtered_out_message">Clear the State/District filters to see all %1$d result(s).</string>
     <string name="online_lookup_failed">Lookup failed</string>
-    <string name="online_count">%1$d post office(s) for “%2$s”</string>
-    <string name="online_count_filtered">%1$d of %2$d post office(s) for “%3$s”</string>
     <string name="online_source">Source: %1$s • tap a card for details</string>
     <string name="online_cached">cached</string>
     <string name="online_offline_banner">You are offline — using the built-in directory and saved results.</string>
-    <string name="online_local_count">%1$d local beat record(s) for this PIN  ›</string>
     <string name="recents_title">Recent searches</string>
     <string name="recents_searched_times">Searched %1$d times</string>
     <string name="error_offline">You are offline. Connect to the internet for All-India lookups, or use the Local Beats tab.</string>
@@ -74,7 +70,6 @@
     <!-- detail sheet -->
     <string name="detail_pin">PIN %1$s</string>
     <string name="detail_source">Source: %1$s</string>
-    <string name="detail_show_local">Show %1$d local beat record(s) for this PIN</string>
     <string name="detail_add_local">Add to local directory</string>
     <string name="share_office_title">Share post office</string>
     <string name="share_subject">%1$s – PIN %2$s</string>
@@ -90,7 +85,6 @@
     <!-- local tab -->
     <string name="local_view_search">Search</string>
     <string name="local_view_by_beat">By beat</string>
-    <string name="local_supporting">%1$d records offline • misspellings OK • beat no. or PIN also work • hold to select</string>
     <string name="local_selected">%1$d selected</string>
     <string name="local_cancel_selection">Cancel selection</string>
     <string name="local_no_matches_title">No matches</string>
@@ -99,18 +93,13 @@
     <string name="local_no_beats_title">No beats to show</string>
     <string name="local_no_beats_filtered">No records match the current State/District filters.</string>
     <string name="local_loading">Loading…</string>
-    <string name="local_beats_summary">%1$d beat(s) • %2$d village(s)</string>
-    <string name="local_offices_summary">%1$d office(s) • %2$d village(s) • tap an office to browse, or type to search all villages</string>
     <string name="local_no_offices_title">No offices to show</string>
-    <string name="office_card_counts">%1$d beat(s) • %2$d village(s)</string>
     <string name="action_open_office">Open office</string>
-    <string name="office_beat_header">Beat %1$s • %2$d village(s)</string>
     <string name="office_no_records_title">No villages under this office</string>
     <string name="office_no_records_message">Add the first village with the button below.</string>
     <string name="local_beat_title">Beat %1$s</string>
     <string name="local_beat_subtitle_account">Account %1$s</string>
     <string name="local_beat_subtitle_pin">PIN %1$s</string>
-    <string name="local_villages">villages</string>
     <string name="chip_beat">Beat %1$s</string>
     <string name="chip_office">Office: %1$s</string>
     <string name="card_account">A/c %1$s</string>
@@ -121,26 +110,15 @@
 
     <string name="delete_title">Delete record?</string>
     <string name="delete_message">“%1$s” (Beat %2$s, %3$s) will be removed. You can undo right after.</string>
-    <string name="bulk_delete_title">Delete %1$d record(s)?</string>
     <string name="bulk_delete_message">The selected villages will be removed from the local directory. This cannot be undone.</string>
     <string name="replace_title">Replace entire directory?</string>
-    <string name="replace_message">All %1$d existing record(s) will be deleted and replaced by the rows in the selected spreadsheet. You will see a preview before anything is written.</string>
     <string name="preview_title_replace">Replace directory?</string>
     <string name="preview_title_import">Import these rows?</string>
-    <string name="preview_existing_deleted">• %1$d existing record(s) will be deleted first</string>
-    <string name="preview_will_add">• %1$d row(s) will be added</string>
-    <string name="preview_duplicates">• %1$d duplicate(s) will be skipped</string>
-    <string name="preview_blank">• %1$d blank row(s) ignored</string>
-    <string name="preview_errors">• %1$d row(s) have errors and will be skipped</string>
     <string name="preview_nothing">Nothing to import.</string>
     <string name="rows_with_errors">Rows with errors:</string>
     <string name="row_error">Row %1$d: %2$s</string>
     <string name="report_title_issues">Import finished with issues</string>
     <string name="report_title_ok">Import complete</string>
-    <string name="report_imported">%1$d record(s) imported</string>
-    <string name="report_duplicates">%1$d duplicate(s) skipped</string>
-    <string name="report_rejected">%1$d row(s) rejected</string>
-    <string name="report_blank">%1$d blank row(s) ignored.</string>
     <string name="busy_reading">Reading spreadsheet…</string>
     <string name="busy_importing">Importing…</string>
     <string name="busy_replacing">Replacing directory…</string>
@@ -155,13 +133,13 @@
     <string name="onboarding_template">Get the blank template first</string>
     <string name="onboarding_add">Add the first village by hand</string>
 
-    <string name="menu_import_append">Import from Excel (add rows)</string>
-    <string name="menu_import_replace">Import from Excel (replace all)</string>
-    <string name="menu_share_backup">Share backup (.xlsx)</string>
-    <string name="menu_save_backup">Save backup to device…</string>
-    <string name="menu_share_template">Share blank template</string>
-    <string name="menu_save_template">Save blank template to device…</string>
-    <string name="menu_find_duplicates">Find duplicate villages</string>
+    <string name="menu_import_append">Import (add rows)</string>
+    <string name="menu_import_replace">Import (replace all)</string>
+    <string name="menu_share_backup">Share backup</string>
+    <string name="menu_save_backup">Save backup…</string>
+    <string name="menu_share_template">Share template</string>
+    <string name="menu_save_template">Save template…</string>
+    <string name="menu_find_duplicates">Find duplicates</string>
     <string name="share_backup_title">Share beat directory backup</string>
     <string name="share_template_title">Share import template</string>
 
@@ -172,7 +150,6 @@
     <string name="msg_restored">Restored %1$s.</string>
     <string name="msg_restore_failed">Could not restore: %1$s</string>
     <string name="msg_delete_failed">Could not delete: %1$s</string>
-    <string name="msg_deleted_n">Deleted %1$d record(s).</string>
     <string name="msg_backup_saved">Backup saved.</string>
     <string name="msg_template_saved">Template saved.</string>
     <string name="msg_file_failed">File operation failed: %1$s</string>
@@ -204,32 +181,28 @@
     <string name="fetch_no_offices">No offices found for PIN %1$s in the built-in directory.</string>
     <string name="fetch_directory_not_ready">The built-in directory is still loading. Try again in a moment.</string>
     <string name="office_suggestion_subtitle">PIN %1$s • %2$s, %3$s</string>
-    <string name="picker_local_stats">Already in local beats: %1$d beat(s), %2$d village(s)</string>
+    <string name="picker_local_stats">Already in local beats: %1$s</string>
     <string name="action_fix_office_types">Office types</string>
     <string name="action_done">Done</string>
     <string name="office_types_title">Fix office types</string>
     <string name="office_types_hint">Changing a type here updates every record of that office. Offices whose records disagree on the type are marked.</string>
-    <string name="office_summary_line">%1$d village(s) • %2$d beat(s) • PIN %3$s</string>
     <string name="office_summary_mixed">Mixed types — pick the right one</string>
-    <string name="msg_office_type_updated">Office type set to %1$s for %2$d record(s).</string>
     <string name="fetch_offices_batch_hint">Tick the offices you want to enter one after another, then tap Add.</string>
-    <string name="action_add_n_offices">Add %1$d office(s)</string>
     <string name="editor_batch_progress">Office %1$d of %2$d</string>
     <string name="action_skip">Skip</string>
     <string name="action_save_next">Save &amp; next</string>
-    <string name="share_this_beat">This beat (%1$d village(s))</string>
-    <string name="share_whole_office">All beats of %1$s</string>
+    <string name="share_this_beat">Share this beat</string>
+    <string name="share_whole_office">Share whole office</string>
     <string name="share_export_title">Share beat list</string>
     <string name="msg_nothing_to_share">Nothing to share.</string>
     <string name="busy_pdf">Preparing PDF…</string>
     <string name="share_pdf_title">Share beat sheet (PDF)</string>
     <string name="print_this_beat">This beat as PDF</string>
-    <string name="print_whole_office">All beats of %1$s as PDF</string>
+    <string name="print_whole_office">Whole office as PDF</string>
     <string name="editor_similar_title">Already in the directory — tap to open instead of adding again</string>
     <string name="editor_similar_row">%1$s • Beat %2$s • %3$s • %4$s</string>
     <string name="duplicates_title">Duplicate villages</string>
     <string name="duplicates_none">No probable duplicates found. Only villages on the same beat, office and PIN are compared.</string>
-    <string name="duplicates_hint">%1$d pair(s) look like the same village entered twice. Keeping one deletes the other; its remarks are carried over if the kept one has none. Tap a name to edit it instead.</string>
     <string name="duplicates_context">Beat %1$s • %2$s • %3$s</string>
     <string name="duplicates_reason_same">same name</string>
     <string name="duplicates_reason_sounds">sounds alike</string>
@@ -276,8 +249,8 @@
     <string name="online_expand_all">Expand all states</string>
     <string name="settings_high_contrast">High contrast</string>
     <string name="settings_high_contrast_desc">Black-and-white surfaces with stronger colours for bright sunlight.</string>
-    <string name="settings_sources">Online data sources</string>
-    <string name="settings_sources_desc">Sources are queried together and the fastest answer wins. Status reflects the most recent attempt.</string>
+    <string name="settings_sources">Lookup sources</string>
+    <string name="settings_sources_desc">The built-in directory answers first; online sources are queried together and the fastest answer wins. Status reflects the most recent attempt.</string>
     <string name="source_test_now">Test now</string>
     <string name="source_status_ok">Working • %1$d ms</string>
     <string name="source_status_failed">Not responding (%1$s)</string>
@@ -316,4 +289,112 @@
     <string name="crash_delete">Delete reports</string>
     <string name="crash_share_title">Share crash report</string>
     <string name="crash_snackbar">The app crashed last time. You can share the report from Settings.</string>
+
+    <!-- UI redesign phase 1: display-only strings -->
+    <string name="online_unknown_state">Unknown state</string>
+    <string name="local_offices_hint">Tap an office to browse, or type to search all villages</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_app">App</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_api_key_hint">Paste your key here</string>
+    <string name="settings_disclaimer">Unofficial app. Not affiliated with or endorsed by the Department of Posts.</string>
+    <string name="launcher_label">PIN Beat</string>
+
+    <!-- Quantity strings; the count is always the first argument -->
+    <plurals name="count_beats">
+        <item quantity="one">%1$d beat</item>
+        <item quantity="other">%1$d beats</item>
+    </plurals>
+    <plurals name="count_villages">
+        <item quantity="one">%1$d village</item>
+        <item quantity="other">%1$d villages</item>
+    </plurals>
+    <plurals name="count_offices">
+        <item quantity="one">%1$d office</item>
+        <item quantity="other">%1$d offices</item>
+    </plurals>
+    <plurals name="local_supporting">
+        <item quantity="one">%1$d record offline • beat no. or PIN also work • hold a card to select</item>
+        <item quantity="other">%1$d records offline • beat no. or PIN also work • hold a card to select</item>
+    </plurals>
+    <plurals name="online_filtered_out_message">
+        <item quantity="one">Clear the State/District filters to see the %1$d hidden result.</item>
+        <item quantity="other">Clear the State/District filters to see all %1$d results.</item>
+    </plurals>
+    <plurals name="online_count">
+        <item quantity="one">%1$d post office for “%2$s”</item>
+        <item quantity="other">%1$d post offices for “%2$s”</item>
+    </plurals>
+    <plurals name="online_count_filtered">
+        <item quantity="one">%1$d of %2$d post office for “%3$s”</item>
+        <item quantity="other">%1$d of %2$d post offices for “%3$s”</item>
+    </plurals>
+    <plurals name="online_local_count">
+        <item quantity="one">%1$d local beat record for this PIN  ›</item>
+        <item quantity="other">%1$d local beat records for this PIN  ›</item>
+    </plurals>
+    <plurals name="detail_show_local">
+        <item quantity="one">Show %1$d local beat record for this PIN</item>
+        <item quantity="other">Show %1$d local beat records for this PIN</item>
+    </plurals>
+    <plurals name="bulk_delete_title">
+        <item quantity="one">Delete %1$d record?</item>
+        <item quantity="other">Delete %1$d records?</item>
+    </plurals>
+    <plurals name="replace_message">
+        <item quantity="one">The %1$d existing record will be deleted and replaced by the rows in the selected spreadsheet. You will see a preview before anything is written.</item>
+        <item quantity="other">All %1$d existing records will be deleted and replaced by the rows in the selected spreadsheet. You will see a preview before anything is written.</item>
+    </plurals>
+    <plurals name="preview_existing_deleted">
+        <item quantity="one">• %1$d existing record will be deleted first</item>
+        <item quantity="other">• %1$d existing records will be deleted first</item>
+    </plurals>
+    <plurals name="preview_will_add">
+        <item quantity="one">• %1$d row will be added</item>
+        <item quantity="other">• %1$d rows will be added</item>
+    </plurals>
+    <plurals name="preview_duplicates">
+        <item quantity="one">• %1$d duplicate will be skipped</item>
+        <item quantity="other">• %1$d duplicates will be skipped</item>
+    </plurals>
+    <plurals name="preview_blank">
+        <item quantity="one">• %1$d blank row ignored</item>
+        <item quantity="other">• %1$d blank rows ignored</item>
+    </plurals>
+    <plurals name="preview_errors">
+        <item quantity="one">• %1$d row has errors and will be skipped</item>
+        <item quantity="other">• %1$d rows have errors and will be skipped</item>
+    </plurals>
+    <plurals name="report_imported">
+        <item quantity="one">%1$d record imported</item>
+        <item quantity="other">%1$d records imported</item>
+    </plurals>
+    <plurals name="report_duplicates">
+        <item quantity="one">%1$d duplicate skipped</item>
+        <item quantity="other">%1$d duplicates skipped</item>
+    </plurals>
+    <plurals name="report_rejected">
+        <item quantity="one">%1$d row rejected</item>
+        <item quantity="other">%1$d rows rejected</item>
+    </plurals>
+    <plurals name="report_blank">
+        <item quantity="one">%1$d blank row ignored.</item>
+        <item quantity="other">%1$d blank rows ignored.</item>
+    </plurals>
+    <plurals name="msg_deleted_n">
+        <item quantity="one">Deleted %1$d record.</item>
+        <item quantity="other">Deleted %1$d records.</item>
+    </plurals>
+    <plurals name="msg_office_type_updated">
+        <item quantity="one">Office type set to %2$s for %1$d record.</item>
+        <item quantity="other">Office type set to %2$s for %1$d records.</item>
+    </plurals>
+    <plurals name="action_add_n_offices">
+        <item quantity="one">Add %1$d office</item>
+        <item quantity="other">Add %1$d offices</item>
+    </plurals>
+    <plurals name="duplicates_hint">
+        <item quantity="one">%1$d pair looks like the same village entered twice. Keeping one deletes the other; its remarks are carried over if the kept one has none. Tap a name to edit it instead.</item>
+        <item quantity="other">%1$d pairs look like the same village entered twice. Keeping one deletes the other; its remarks are carried over if the kept one has none. Tap a name to edit it instead.</item>
+    </plurals>
 </resources>

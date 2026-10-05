@@ -42,8 +42,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FindReplace
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
@@ -94,6 +94,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -121,7 +122,10 @@ import com.pinbeatfinder.domain.model.OfficeType
 import com.pinbeatfinder.ui.components.OfficeTypeDropdown
 import com.pinbeatfinder.ui.components.CollapsingHeader
 import com.pinbeatfinder.ui.components.EmptyState
+import com.pinbeatfinder.ui.components.LocalListBottomPadding
+import com.pinbeatfinder.ui.components.displayCase
 import com.pinbeatfinder.ui.components.message
+import com.pinbeatfinder.ui.components.placeLine
 import com.pinbeatfinder.ui.theme.rememberHaptic
 
 /** Overflow-menu actions surfaced by the host screen's top bar. Order = menu order. */
@@ -248,7 +252,7 @@ fun LocalBeatsScreen(
         AlertDialog(
             onDismissRequest = { onIntent(LocalBeatsIntent.CancelBulkDelete) },
             icon = { Icon(Icons.Default.Delete, contentDescription = null) },
-            title = { Text(stringResource(R.string.bulk_delete_title, state.selectedIds.size)) },
+            title = { Text(pluralStringResource(R.plurals.bulk_delete_title, state.selectedIds.size, state.selectedIds.size)) },
             text = { Text(stringResource(R.string.bulk_delete_message)) },
             confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmBulkDelete) }) { Text(stringResource(R.string.action_delete)) } },
             dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelBulkDelete) }) { Text(stringResource(R.string.action_cancel)) } },
@@ -287,7 +291,7 @@ fun LocalBeatsScreen(
             onDismissRequest = { confirmReplaceImport = false },
             icon = { Icon(Icons.Default.SwapHoriz, contentDescription = null) },
             title = { Text(stringResource(R.string.replace_title)) },
-            text = { Text(stringResource(R.string.replace_message, state.totalRecords)) },
+            text = { Text(pluralStringResource(R.plurals.replace_message, state.totalRecords, state.totalRecords)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmReplaceImport = false
@@ -386,16 +390,9 @@ private fun OfficeCardsList(state: LocalBeatsState, listState: LazyListState, on
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = LocalListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
-            Text(
-                stringResource(R.string.local_offices_summary, state.officeSummaries.size, state.officeSummaries.sumOf { it.recordCount }),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
         items(state.officeSummaries, key = { it.key }) { office ->
             OfficeCard(office = office, accountOffice = state.records.firstOrNull { it.officeName.equals(office.officeName, true) && it.pincode in office.pincodes }?.accountOffice.orEmpty()) {
                 onIntent(LocalBeatsIntent.OpenOffice(office))
@@ -420,7 +417,7 @@ private fun OfficeCard(office: OfficeSummary, accountOffice: String, onOpen: () 
                 ).joinToString(" • ")
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    stringResource(R.string.office_card_counts, office.beatCount, office.recordCount),
+                    beatsAndVillages(office.beatCount, office.recordCount),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -458,7 +455,7 @@ private fun OfficeScreen(
                 val detail = listOfNotNull(
                     sample?.accountOffice?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.local_beat_subtitle_account, it) },
                     stringResource(R.string.local_beat_subtitle_pin, office.pincodes.joinToString(", ")),
-                    sample?.let { listOf(it.district, it.state).filter { s -> s.isNotBlank() }.joinToString(", ") }?.takeIf { it.isNotBlank() },
+                    sample?.let { placeLine(it.district, it.state) }?.takeIf { it.isNotBlank() },
                 ).joinToString(" • ")
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -467,12 +464,13 @@ private fun OfficeScreen(
                     IconButton(onClick = { shareMenu = true }) { Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share)) }
                     DropdownMenu(expanded = shareMenu, onDismissRequest = { shareMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.share_whole_office, office.officeDisplay)) },
+                            text = { Text(stringResource(R.string.share_whole_office), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                             onClick = { shareMenu = false; onIntent(LocalBeatsIntent.ShareOffice(anyGroup)) },
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.print_whole_office, office.officeDisplay)) },
-                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                            text = { Text(stringResource(R.string.print_whole_office), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                             onClick = { shareMenu = false; onIntent(LocalBeatsIntent.PrintOffice(anyGroup)) },
                         )
                     }
@@ -508,7 +506,7 @@ private fun OfficeScreen(
             )
         } else LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = LocalListBottomPadding),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             state.officeGroups.forEach { group ->
@@ -545,7 +543,7 @@ private fun BeatHeaderRow(group: BeatGroup, onIntent: (LocalBeatsIntent) -> Unit
     var menu by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            stringResource(R.string.office_beat_header, group.beatNumber, group.villageCount),
+            stringResource(R.string.local_beat_title, group.beatNumber) + " • " + pluralStringResource(R.plurals.count_villages, group.villageCount, group.villageCount),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
@@ -553,10 +551,14 @@ private fun BeatHeaderRow(group: BeatGroup, onIntent: (LocalBeatsIntent) -> Unit
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share), modifier = Modifier.size(20.dp)) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.share_this_beat, group.villageCount)) }, onClick = { menu = false; onIntent(LocalBeatsIntent.ShareBeat(group)) })
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.print_this_beat)) },
-                    leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                    text = { Text(stringResource(R.string.share_this_beat), maxLines = 1) },
+                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                    onClick = { menu = false; onIntent(LocalBeatsIntent.ShareBeat(group)) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.print_this_beat), maxLines = 1) },
+                    leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                     onClick = { menu = false; onIntent(LocalBeatsIntent.PrintBeat(group)) },
                 )
             }
@@ -644,10 +646,10 @@ private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> 
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             )
             Text(
-                stringResource(R.string.local_supporting, state.totalRecords),
+                pluralStringResource(R.plurals.local_supporting, state.totalRecords, state.totalRecords),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
             )
@@ -660,8 +662,44 @@ private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> 
             onChange = { onIntent(LocalBeatsIntent.FiltersChanged(it)) },
             onClear = { onIntent(LocalBeatsIntent.ClearFilters) },
         )
+
+        // Summary lines live in the header, not the list, so they collapse with it instead of
+        // scrolling half-cut under the tab row.
+        when {
+            state.showsOfficeCards && state.officeSummaries.isNotEmpty() -> Text(
+                pluralStringResource(R.plurals.count_offices, state.officeSummaries.size, state.officeSummaries.size) + " • " +
+                    pluralStringResource(R.plurals.count_villages, state.records.size, state.records.size) + " • " +
+                    stringResource(R.string.local_offices_hint),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+            )
+            state.viewMode == LocalViewMode.BY_BEAT && state.beatGroups.isNotEmpty() -> Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    beatsAndVillages(state.beatGroups.size, state.beatGroups.sumOf { it.villageCount }),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                AssistChip(
+                    onClick = { onIntent(LocalBeatsIntent.ShowOfficeTypes) },
+                    label = { Text(stringResource(R.string.action_fix_office_types), maxLines = 1) },
+                    leadingIcon = { Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                )
+            }
+        }
     }
 }
+
+/** "3 beats • 42 villages", each half pluralised on its own. */
+@Composable
+private fun beatsAndVillages(beats: Int, villages: Int): String =
+    pluralStringResource(R.plurals.count_beats, beats, beats) + " • " + pluralStringResource(R.plurals.count_villages, villages, villages)
 
 // ------------------------------------------------------------------ search mode
 
@@ -679,7 +717,7 @@ private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = LocalListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(state.hits, key = { it.record.id }) { hit ->
@@ -788,7 +826,7 @@ private fun BeatRecordCard(
                 Column(Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "${record.district}, ${record.state}",
+                        placeLine(record.district, record.state),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -861,7 +899,7 @@ private fun DuplicatesDialog(
             } else {
                 Column {
                     Text(
-                        stringResource(R.string.duplicates_hint, pairs.size),
+                        pluralStringResource(R.plurals.duplicates_hint, pairs.size, pairs.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -935,32 +973,28 @@ private fun OfficeTypesDialog(
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
                     items(offices, key = { it.key }) { office ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(office.officeName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        // Text on its own lines and the dropdown below: the summary always has the full width to wrap.
+                        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                            Text(office.officeName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                pluralStringResource(R.plurals.count_villages, office.recordCount, office.recordCount) + " • " +
+                                    pluralStringResource(R.plurals.count_beats, office.beatCount, office.beatCount) + " • " +
+                                    stringResource(R.string.local_beat_subtitle_pin, office.pincodes.joinToString(", ")),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (office.isMixed) {
                                 Text(
-                                    stringResource(R.string.office_summary_line, office.recordCount, office.beatCount, office.pincodes.joinToString(", ")),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    stringResource(R.string.office_summary_mixed),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.error,
                                 )
-                                if (office.isMixed) {
-                                    Text(
-                                        stringResource(R.string.office_summary_mixed),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
-                                }
                             }
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.height(6.dp))
                             OfficeTypeDropdown(
                                 value = office.officeType.code,
                                 onSelect = { type -> if (type != office.officeType || office.isMixed) onSet(office, type) },
-                                modifier = Modifier.width(104.dp),
+                                modifier = Modifier.width(140.dp),
                                 compact = true,
                             )
                         }
@@ -987,24 +1021,9 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = LocalListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.local_beats_summary, state.beatGroups.size, state.beatGroups.sumOf { it.villageCount }),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                AssistChip(
-                    onClick = { onIntent(LocalBeatsIntent.ShowOfficeTypes) },
-                    label = { Text(stringResource(R.string.action_fix_office_types)) },
-                    leadingIcon = { Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                )
-            }
-        }
         items(state.beatGroups, key = { it.key }) { group ->
             BeatGroupCard(
                 modifier = Modifier.animateItem(),
@@ -1054,34 +1073,35 @@ private fun BeatGroupCard(
                     )
                 }
                 Text(
-                    "${group.villageCount}",
-                    style = MaterialTheme.typography.titleMedium,
+                    pluralStringResource(R.plurals.count_villages, group.villageCount, group.villageCount),
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
                 )
-                Text(" " + stringResource(R.string.local_villages), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Box {
                     IconButton(onClick = { shareMenu = true }) {
                         Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
                     }
                     DropdownMenu(expanded = shareMenu, onDismissRequest = { shareMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.share_this_beat, group.villageCount)) },
+                            text = { Text(stringResource(R.string.share_this_beat), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                             onClick = { shareMenu = false; onShareBeat() },
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.share_whole_office, group.officeDisplay)) },
+                            text = { Text(stringResource(R.string.share_whole_office), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                             onClick = { shareMenu = false; onShareOffice() },
                         )
                         HorizontalDivider()
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.print_this_beat)) },
-                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                            text = { Text(stringResource(R.string.print_this_beat), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                             onClick = { shareMenu = false; onPrintBeat() },
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.print_whole_office, group.officeDisplay)) },
-                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) },
+                            text = { Text(stringResource(R.string.print_whole_office), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                             onClick = { shareMenu = false; onPrintOffice() },
                         )
                     }
@@ -1176,12 +1196,12 @@ private fun ImportPreviewDialog(preview: ImportPreview, onConfirm: () -> Unit, o
         text = {
             Column {
                 if (preview.mode == ImportMode.REPLACE_ALL && preview.existingCount > 0) {
-                    Text(stringResource(R.string.preview_existing_deleted, preview.existingCount), color = MaterialTheme.colorScheme.error)
+                    Text(pluralStringResource(R.plurals.preview_existing_deleted, preview.existingCount, preview.existingCount), color = MaterialTheme.colorScheme.error)
                 }
-                Text(stringResource(R.string.preview_will_add, preview.willInsert))
-                if (preview.duplicatesSkipped > 0) Text(stringResource(R.string.preview_duplicates, preview.duplicatesSkipped))
-                if (preview.blankRowsSkipped > 0) Text(stringResource(R.string.preview_blank, preview.blankRowsSkipped))
-                if (preview.hasErrors) Text(stringResource(R.string.preview_errors, preview.errors.size), color = MaterialTheme.colorScheme.error)
+                Text(pluralStringResource(R.plurals.preview_will_add, preview.willInsert, preview.willInsert))
+                if (preview.duplicatesSkipped > 0) Text(pluralStringResource(R.plurals.preview_duplicates, preview.duplicatesSkipped, preview.duplicatesSkipped))
+                if (preview.blankRowsSkipped > 0) Text(pluralStringResource(R.plurals.preview_blank, preview.blankRowsSkipped, preview.blankRowsSkipped))
+                if (preview.hasErrors) Text(pluralStringResource(R.plurals.preview_errors, preview.errors.size, preview.errors.size), color = MaterialTheme.colorScheme.error)
                 if (preview.hasErrors) {
                     Spacer(Modifier.height(10.dp))
                     RowErrorList(preview.errors)
@@ -1229,13 +1249,13 @@ private fun ImportReportDialog(report: ImportReport, onDismiss: () -> Unit) {
         text = {
             Column {
                 val parts = buildList {
-                    add(stringResource(R.string.report_imported, report.inserted))
-                    if (report.duplicatesSkipped > 0) add(stringResource(R.string.report_duplicates, report.duplicatesSkipped))
-                    if (report.errors.isNotEmpty()) add(stringResource(R.string.report_rejected, report.errors.size))
+                    add(pluralStringResource(R.plurals.report_imported, report.inserted, report.inserted))
+                    if (report.duplicatesSkipped > 0) add(pluralStringResource(R.plurals.report_duplicates, report.duplicatesSkipped, report.duplicatesSkipped))
+                    if (report.errors.isNotEmpty()) add(pluralStringResource(R.plurals.report_rejected, report.errors.size, report.errors.size))
                 }
                 Text(parts.joinToString(", ") + ".")
                 if (report.blankRowsSkipped > 0) {
-                    Text(stringResource(R.string.report_blank, report.blankRowsSkipped), style = MaterialTheme.typography.bodySmall)
+                    Text(pluralStringResource(R.plurals.report_blank, report.blankRowsSkipped, report.blankRowsSkipped), style = MaterialTheme.typography.bodySmall)
                 }
                 if (report.hasErrors) {
                     Spacer(Modifier.height(12.dp))

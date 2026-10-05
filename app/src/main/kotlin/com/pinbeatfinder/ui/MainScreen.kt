@@ -19,8 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -53,6 +53,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -114,6 +118,19 @@ fun MainScreen() {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     // The menu lives in the top bar but its actions belong to the local tab; bridge via callback.
     var menuActionHandler by remember { mutableStateOf<(LocalBeatsMenuAction) -> Unit>({}) }
+
+    // The "Add beat record" button shrinks to its icon while the list scrolls up (so it covers
+    // less of the last rows) and grows back as soon as the list scrolls down or the tab changes.
+    var fabExpanded by remember { mutableStateOf(true) }
+    val fabScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -2f) fabExpanded = false else if (available.y > 2f) fabExpanded = true
+                return Offset.Zero
+            }
+        }
+    }
+    LaunchedEffect(tab) { fabExpanded = true }
 
     // Cross-tab bridge: each side asks the host to switch tabs and hand over a query/draft.
     val onlineBridge = remember(onlineViewModel, localViewModel) {
@@ -184,7 +201,7 @@ fun MainScreen() {
                             LocalBeatsMenuAction.entries.forEachIndexed { index, action ->
                                 if (index == 2 || index == 4) HorizontalDivider()
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(action.labelRes)) },
+                                    text = { Text(stringResource(action.labelRes), maxLines = 1) },
                                     leadingIcon = { Icon(action.icon, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -201,14 +218,15 @@ fun MainScreen() {
             if (tab == MainTab.LOCAL) {
                 ExtendedFloatingActionButton(
                     onClick = { localViewModel.onIntent(LocalBeatsIntent.OpenEditor()) },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text(stringResource(R.string.add_beat)) },
+                    expanded = fabExpanded,
+                    icon = { Icon(Icons.Default.Add, contentDescription = if (fabExpanded) null else stringResource(R.string.add_beat)) },
+                    text = { Text(stringResource(R.string.add_beat), maxLines = 1) },
                 )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier.fillMaxSize().padding(padding).nestedScroll(fabScrollConnection)) {
             updateState.available?.takeIf { updateState.shouldShowBanner }?.let { release ->
                 val downloadState by container.apkDownloader.state.collectAsStateWithLifecycle()
                 // A finished download survives the "allow installs" settings detour and a re-open.
@@ -248,7 +266,8 @@ fun MainScreen() {
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    if (t == MainTab.ONLINE) Icons.Default.CloudQueue else Icons.Default.Storage,
+                                    // A globe, not a cloud: this tab works offline from the built-in directory.
+                                    if (t == MainTab.ONLINE) Icons.Default.Public else Icons.Default.Storage,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
                                 )

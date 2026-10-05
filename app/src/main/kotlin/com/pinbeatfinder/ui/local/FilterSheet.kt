@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,11 +26,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +39,8 @@ import com.pinbeatfinder.R
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.FilterOptions
 import com.pinbeatfinder.domain.model.OfficeType
+import com.pinbeatfinder.ui.components.AppBottomSheet
+import com.pinbeatfinder.ui.components.displayCase
 
 /**
  * One-line filter bar: a "Filters" button with the active count, followed by one removable
@@ -72,8 +72,8 @@ fun FilterBar(
                 leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             ),
         )
-        filters.state?.let { ActiveChip(it) { onChange(filters.copy(state = null, district = null)) } }
-        filters.district?.let { ActiveChip(it) { onChange(filters.copy(district = null)) } }
+        filters.state?.let { ActiveChip(it.displayCase()) { onChange(filters.copy(state = null, district = null)) } }
+        filters.district?.let { ActiveChip(it.displayCase()) { onChange(filters.copy(district = null)) } }
         filters.officeType?.let { ActiveChip(it.code) { onChange(filters.copy(officeType = null)) } }
         filters.officeName?.let { ActiveChip(it) { onChange(filters.copy(officeName = null)) } }
         filters.beatNumber?.let { ActiveChip(stringResource(R.string.chip_beat, it)) { onChange(filters.copy(beatNumber = null)) } }
@@ -97,7 +97,7 @@ private fun ActiveChip(label: String, onRemove: () -> Unit) {
 /**
  * Bottom sheet with one chip group per filter. Choices cascade (districts of the chosen state,
  * offices of the chosen district…), and each change applies immediately so the list behind the
- * sheet updates as you narrow down.
+ * sheet updates as you narrow down. The chip groups scroll; the title and the Done button stay put.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -108,22 +108,26 @@ fun FilterSheet(
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppBottomSheet(onDismissRequest = onDismiss) { bottomInset ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.filter_sheet_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            if (!filters.isEmpty) TextButton(onClick = onClear) { Text(stringResource(R.string.action_clear_all)) }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .weight(1f, fill = false)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .navigationBarsPadding(),
+                .padding(horizontal = 20.dp),
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.filter_sheet_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                if (!filters.isEmpty) TextButton(onClick = onClear) { Text(stringResource(R.string.action_clear_all)) }
-            }
-
-            ChipGroup(stringResource(R.string.filter_state), options.states, filters.state) { onChange(filters.copy(state = it, district = null)) }
-            ChipGroup(stringResource(R.string.filter_district), options.districts, filters.district) { onChange(filters.copy(district = it)) }
+            ChipGroup(stringResource(R.string.filter_state), options.states, filters.state, labelOf = { it.displayCase() }) { onChange(filters.copy(state = it, district = null)) }
+            ChipGroup(stringResource(R.string.filter_district), options.districts, filters.district, labelOf = { it.displayCase() }) { onChange(filters.copy(district = it)) }
             ChipGroup(
                 stringResource(R.string.filter_office_type),
                 options.officeTypes.map { it.code },
@@ -133,11 +137,16 @@ fun FilterSheet(
             ChipGroup(stringResource(R.string.filter_office), options.offices, filters.officeName) { onChange(filters.copy(officeName = it)) }
             ChipGroup(stringResource(R.string.filter_beat), options.beats, filters.beatNumber) { onChange(filters.copy(beatNumber = it)) }
             ChipGroup(stringResource(R.string.filter_pincode), options.pincodes, filters.pincode) { onChange(filters.copy(pincode = it)) }
-
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_done)) }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(12.dp))
         }
+
+        HorizontalDivider()
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp + bottomInset),
+        ) { Text(stringResource(R.string.action_done)) }
     }
 }
 

@@ -3,7 +3,7 @@
     <string name="app_name">PIN Beat Finder</string>
     <string name="tab_online">अखिल भारत</string>
     <string name="tab_local">स्थानीय बीट</string>
-    <string name="search_online_hint">पिन कोड या डाकघर का नाम</string>
+    <string name="search_online_hint">पिन या डाकघर का नाम</string>
     <string name="search_local_hint">गाँव या मोहल्ला खोजें</string>
     <string name="add_beat">बीट रिकॉर्ड जोड़ें</string>
 
@@ -52,14 +52,10 @@
     <string name="online_no_results_title">कोई परिणाम नहीं</string>
     <string name="online_no_results_message">“%1$s” से कुछ नहीं मिला।</string>
     <string name="online_filtered_out_title">फ़िल्टर से कोई परिणाम नहीं मिला</string>
-    <string name="online_filtered_out_message">सभी %1$d परिणाम देखने के लिए राज्य/ज़िला फ़िल्टर हटाएँ।</string>
     <string name="online_lookup_failed">खोज विफल</string>
-    <string name="online_count">“%2$s” के लिए %1$d डाकघर</string>
-    <string name="online_count_filtered">“%3$s” के लिए %2$d में से %1$d डाकघर</string>
     <string name="online_source">स्रोत: %1$s • विवरण के लिए कार्ड पर टैप करें</string>
     <string name="online_cached">सहेजा हुआ</string>
     <string name="online_offline_banner">आप ऑफ़लाइन हैं — अंतर्निहित निर्देशिका और सहेजे हुए परिणाम उपयोग हो रहे हैं।</string>
-    <string name="online_local_count">इस पिन के %1$d स्थानीय बीट रिकॉर्ड  ›</string>
     <string name="recents_title">हाल की खोजें</string>
     <string name="recents_searched_times">%1$d बार खोजा गया</string>
     <string name="error_offline">आप ऑफ़लाइन हैं। अखिल भारतीय खोज के लिए इंटरनेट से जुड़ें, या स्थानीय बीट टैब का उपयोग करें।</string>
@@ -71,7 +67,6 @@
 
     <string name="detail_pin">पिन %1$s</string>
     <string name="detail_source">स्रोत: %1$s</string>
-    <string name="detail_show_local">इस पिन के %1$d स्थानीय बीट रिकॉर्ड दिखाएँ</string>
     <string name="detail_add_local">स्थानीय निर्देशिका में जोड़ें</string>
     <string name="share_office_title">डाकघर साझा करें</string>
     <string name="share_subject">%1$s – पिन %2$s</string>
@@ -86,7 +81,6 @@
 
     <string name="local_view_search">खोज</string>
     <string name="local_view_by_beat">बीट के अनुसार</string>
-    <string name="local_supporting">%1$d रिकॉर्ड ऑफ़लाइन • गलत वर्तनी भी चलेगी • बीट या पिन से भी • चुनने के लिए दबाए रखें</string>
     <string name="local_selected">%1$d चुने गए</string>
     <string name="local_cancel_selection">चयन रद्द करें</string>
     <string name="local_no_matches_title">कोई मिलान नहीं</string>
@@ -95,18 +89,13 @@
     <string name="local_no_beats_title">दिखाने के लिए कोई बीट नहीं</string>
     <string name="local_no_beats_filtered">मौजूदा राज्य/ज़िला फ़िल्टर से कोई रिकॉर्ड नहीं मिला।</string>
     <string name="local_loading">लोड हो रहा है…</string>
-    <string name="local_beats_summary">%1$d बीट • %2$d गाँव</string>
-    <string name="local_offices_summary">%1$d डाकघर • %2$d गाँव • डाकघर पर टैप करें, या सभी गाँवों में खोजने के लिए लिखें</string>
     <string name="local_no_offices_title">दिखाने के लिए कोई डाकघर नहीं</string>
-    <string name="office_card_counts">%1$d बीट • %2$d गाँव</string>
     <string name="action_open_office">डाकघर खोलें</string>
-    <string name="office_beat_header">बीट %1$s • %2$d गाँव</string>
     <string name="office_no_records_title">इस डाकघर के अंतर्गत कोई गाँव नहीं</string>
     <string name="office_no_records_message">नीचे दिए बटन से पहला गाँव जोड़ें।</string>
     <string name="local_beat_title">बीट %1$s</string>
     <string name="local_beat_subtitle_account">लेखा डाकघर %1$s</string>
     <string name="local_beat_subtitle_pin">पिन %1$s</string>
-    <string name="local_villages">गाँव</string>
     <string name="chip_beat">बीट %1$s</string>
     <string name="chip_office">डाकघर: %1$s</string>
     <string name="card_account">लेखा %1$s</string>
@@ -117,26 +106,15 @@
 
     <string name="delete_title">रिकॉर्ड हटाएँ?</string>
     <string name="delete_message">“%1$s” (बीट %2$s, %3$s) हटा दिया जाएगा। आप तुरंत बाद पूर्ववत कर सकते हैं।</string>
-    <string name="bulk_delete_title">%1$d रिकॉर्ड हटाएँ?</string>
     <string name="bulk_delete_message">चुने गए गाँव स्थानीय निर्देशिका से हटा दिए जाएँगे। इसे पूर्ववत नहीं किया जा सकता।</string>
     <string name="replace_title">पूरी निर्देशिका बदलें?</string>
-    <string name="replace_message">सभी %1$d मौजूदा रिकॉर्ड हटाकर चुनी गई स्प्रेडशीट की पंक्तियों से बदल दिए जाएँगे। कुछ भी लिखने से पहले आपको पूर्वावलोकन दिखेगा।</string>
     <string name="preview_title_replace">निर्देशिका बदलें?</string>
     <string name="preview_title_import">ये पंक्तियाँ आयात करें?</string>
-    <string name="preview_existing_deleted">• पहले %1$d मौजूदा रिकॉर्ड हटाए जाएँगे</string>
-    <string name="preview_will_add">• %1$d पंक्तियाँ जोड़ी जाएँगी</string>
-    <string name="preview_duplicates">• %1$d दोहराव छोड़े जाएँगे</string>
-    <string name="preview_blank">• %1$d खाली पंक्तियाँ अनदेखी</string>
-    <string name="preview_errors">• %1$d पंक्तियों में त्रुटि है, वे छोड़ी जाएँगी</string>
     <string name="preview_nothing">आयात के लिए कुछ नहीं।</string>
     <string name="rows_with_errors">त्रुटि वाली पंक्तियाँ:</string>
     <string name="row_error">पंक्ति %1$d: %2$s</string>
     <string name="report_title_issues">आयात समस्याओं के साथ पूरा हुआ</string>
     <string name="report_title_ok">आयात पूरा</string>
-    <string name="report_imported">%1$d रिकॉर्ड आयात हुए</string>
-    <string name="report_duplicates">%1$d दोहराव छोड़े गए</string>
-    <string name="report_rejected">%1$d पंक्तियाँ अस्वीकृत</string>
-    <string name="report_blank">%1$d खाली पंक्तियाँ अनदेखी।</string>
     <string name="busy_reading">स्प्रेडशीट पढ़ी जा रही है…</string>
     <string name="busy_importing">आयात हो रहा है…</string>
     <string name="busy_replacing">निर्देशिका बदली जा रही है…</string>
@@ -151,13 +129,13 @@
     <string name="onboarding_template">पहले खाली टेम्पलेट लें</string>
     <string name="onboarding_add">पहला गाँव हाथ से जोड़ें</string>
 
-    <string name="menu_import_append">Excel से आयात (पंक्तियाँ जोड़ें)</string>
-    <string name="menu_import_replace">Excel से आयात (सब बदलें)</string>
-    <string name="menu_share_backup">बैकअप साझा करें (.xlsx)</string>
-    <string name="menu_save_backup">बैकअप डिवाइस में सहेजें…</string>
-    <string name="menu_share_template">खाली टेम्पलेट साझा करें</string>
-    <string name="menu_save_template">खाली टेम्पलेट डिवाइस में सहेजें…</string>
-    <string name="menu_find_duplicates">दोहराए गए गाँव खोजें</string>
+    <string name="menu_import_append">आयात (पंक्तियाँ जोड़ें)</string>
+    <string name="menu_import_replace">आयात (सब बदलें)</string>
+    <string name="menu_share_backup">बैकअप साझा करें</string>
+    <string name="menu_save_backup">बैकअप सहेजें…</string>
+    <string name="menu_share_template">टेम्पलेट साझा करें</string>
+    <string name="menu_save_template">टेम्पलेट सहेजें…</string>
+    <string name="menu_find_duplicates">दोहराव खोजें</string>
     <string name="share_backup_title">बीट निर्देशिका बैकअप साझा करें</string>
     <string name="share_template_title">आयात टेम्पलेट साझा करें</string>
 
@@ -168,7 +146,6 @@
     <string name="msg_restored">%1$s वापस लाया गया।</string>
     <string name="msg_restore_failed">वापस नहीं ला सके: %1$s</string>
     <string name="msg_delete_failed">हटा नहीं सके: %1$s</string>
-    <string name="msg_deleted_n">%1$d रिकॉर्ड हटाए गए।</string>
     <string name="msg_backup_saved">बैकअप सहेजा गया।</string>
     <string name="msg_template_saved">टेम्पलेट सहेजा गया।</string>
     <string name="msg_file_failed">फ़ाइल कार्रवाई विफल: %1$s</string>
@@ -199,32 +176,28 @@
     <string name="fetch_no_offices">अंतर्निहित निर्देशिका में पिन %1$s के लिए कोई डाकघर नहीं मिला।</string>
     <string name="fetch_directory_not_ready">अंतर्निहित निर्देशिका अभी लोड हो रही है। थोड़ी देर बाद फिर कोशिश करें।</string>
     <string name="office_suggestion_subtitle">पिन %1$s • %2$s, %3$s</string>
-    <string name="picker_local_stats">स्थानीय बीट में पहले से: %1$d बीट, %2$d गाँव</string>
+    <string name="picker_local_stats">स्थानीय बीट में पहले से: %1$s</string>
     <string name="action_fix_office_types">डाकघर प्रकार</string>
     <string name="action_done">हो गया</string>
     <string name="office_types_title">डाकघर प्रकार सुधारें</string>
     <string name="office_types_hint">यहाँ प्रकार बदलने से उस डाकघर के सभी रिकॉर्ड बदल जाते हैं। जिन डाकघरों के रिकॉर्ड में प्रकार अलग-अलग हैं, वे चिह्नित हैं।</string>
-    <string name="office_summary_line">%1$d गाँव • %2$d बीट • पिन %3$s</string>
     <string name="office_summary_mixed">मिश्रित प्रकार — सही प्रकार चुनें</string>
-    <string name="msg_office_type_updated">%2$d रिकॉर्ड के लिए डाकघर प्रकार %1$s किया गया।</string>
     <string name="fetch_offices_batch_hint">जिन डाकघरों को एक के बाद एक भरना है उन्हें टिक करें, फिर “जोड़ें” दबाएँ।</string>
-    <string name="action_add_n_offices">%1$d डाकघर जोड़ें</string>
     <string name="editor_batch_progress">डाकघर %1$d / %2$d</string>
     <string name="action_skip">छोड़ें</string>
     <string name="action_save_next">सहेजें और अगला</string>
-    <string name="share_this_beat">यह बीट (%1$d गाँव)</string>
-    <string name="share_whole_office">%1$s की सभी बीट</string>
+    <string name="share_this_beat">यह बीट साझा करें</string>
+    <string name="share_whole_office">पूरा डाकघर साझा करें</string>
     <string name="share_export_title">बीट सूची साझा करें</string>
     <string name="msg_nothing_to_share">साझा करने के लिए कुछ नहीं है।</string>
     <string name="busy_pdf">PDF तैयार हो रही है…</string>
     <string name="share_pdf_title">बीट शीट (PDF) साझा करें</string>
-    <string name="print_this_beat">यह बीट PDF के रूप में</string>
-    <string name="print_whole_office">%1$s की सभी बीट PDF के रूप में</string>
+    <string name="print_this_beat">यह बीट PDF में</string>
+    <string name="print_whole_office">पूरा डाकघर PDF में</string>
     <string name="editor_similar_title">निर्देशिका में पहले से है — दोबारा जोड़ने के बजाय खोलने के लिए टैप करें</string>
     <string name="editor_similar_row">%1$s • बीट %2$s • %3$s • %4$s</string>
     <string name="duplicates_title">दोहराए गए गाँव</string>
     <string name="duplicates_none">कोई संभावित दोहराव नहीं मिला। केवल एक ही बीट, डाकघर और पिन के गाँवों की तुलना की जाती है।</string>
-    <string name="duplicates_hint">%1$d जोड़ी एक ही गाँव दो बार दर्ज लगती है। एक को रखने पर दूसरा हट जाता है; रखे गए में टिप्पणी न हो तो दूसरे की टिप्पणी ले ली जाती है। संपादित करने के लिए नाम पर टैप करें।</string>
     <string name="duplicates_context">बीट %1$s • %2$s • %3$s</string>
     <string name="duplicates_reason_same">एक ही नाम</string>
     <string name="duplicates_reason_sounds">एक जैसा उच्चारण</string>
@@ -270,8 +243,8 @@
     <string name="online_expand_all">सभी राज्य खोलें</string>
     <string name="settings_high_contrast">उच्च कंट्रास्ट</string>
     <string name="settings_high_contrast_desc">तेज़ धूप के लिए काले-सफ़ेद सतहें और गहरे रंग।</string>
-    <string name="settings_sources">ऑनलाइन डेटा स्रोत</string>
-    <string name="settings_sources_desc">सभी स्रोतों से एक साथ पूछा जाता है और सबसे तेज़ उत्तर चुना जाता है। स्थिति पिछले प्रयास की है।</string>
+    <string name="settings_sources">खोज स्रोत</string>
+    <string name="settings_sources_desc">पहले अंतर्निहित निर्देशिका उत्तर देती है; ऑनलाइन स्रोतों से एक साथ पूछा जाता है और सबसे तेज़ उत्तर चुना जाता है। स्थिति पिछले प्रयास की है।</string>
     <string name="source_test_now">अभी जाँचें</string>
     <string name="source_status_ok">चालू • %1$d ms</string>
     <string name="source_status_failed">जवाब नहीं (%1$s)</string>
@@ -310,4 +283,112 @@
     <string name="crash_delete">रिपोर्ट हटाएँ</string>
     <string name="crash_share_title">क्रैश रिपोर्ट साझा करें</string>
     <string name="crash_snackbar">पिछली बार ऐप क्रैश हुआ था। आप सेटिंग से रिपोर्ट साझा कर सकते हैं।</string>
+
+    <!-- UI redesign phase 1: display-only strings -->
+    <string name="online_unknown_state">अज्ञात राज्य</string>
+    <string name="local_offices_hint">डाकघर पर टैप करें, या सभी गाँवों में खोजने के लिए लिखें</string>
+    <string name="settings_section_appearance">रूप-रंग</string>
+    <string name="settings_section_app">ऐप</string>
+    <string name="settings_section_data">डेटा</string>
+    <string name="settings_api_key_hint">अपनी कुंजी यहाँ चिपकाएँ</string>
+    <string name="settings_disclaimer">अनौपचारिक ऐप। डाक विभाग से संबद्ध या उसके द्वारा अनुमोदित नहीं।</string>
+    <string name="launcher_label">PIN Beat</string>
+
+    <!-- Quantity strings; the count is always the first argument -->
+    <plurals name="count_beats">
+        <item quantity="one">%1$d बीट</item>
+        <item quantity="other">%1$d बीट</item>
+    </plurals>
+    <plurals name="count_villages">
+        <item quantity="one">%1$d गाँव</item>
+        <item quantity="other">%1$d गाँव</item>
+    </plurals>
+    <plurals name="count_offices">
+        <item quantity="one">%1$d डाकघर</item>
+        <item quantity="other">%1$d डाकघर</item>
+    </plurals>
+    <plurals name="local_supporting">
+        <item quantity="one">%1$d रिकॉर्ड ऑफ़लाइन • बीट या पिन से भी खोजें • चुनने के लिए कार्ड दबाए रखें</item>
+        <item quantity="other">%1$d रिकॉर्ड ऑफ़लाइन • बीट या पिन से भी खोजें • चुनने के लिए कार्ड दबाए रखें</item>
+    </plurals>
+    <plurals name="online_filtered_out_message">
+        <item quantity="one">छिपा हुआ %1$d परिणाम देखने के लिए राज्य/ज़िला फ़िल्टर हटाएँ।</item>
+        <item quantity="other">सभी %1$d परिणाम देखने के लिए राज्य/ज़िला फ़िल्टर हटाएँ।</item>
+    </plurals>
+    <plurals name="online_count">
+        <item quantity="one">“%2$s” के लिए %1$d डाकघर</item>
+        <item quantity="other">“%2$s” के लिए %1$d डाकघर</item>
+    </plurals>
+    <plurals name="online_count_filtered">
+        <item quantity="one">“%3$s” के लिए %2$d में से %1$d डाकघर</item>
+        <item quantity="other">“%3$s” के लिए %2$d में से %1$d डाकघर</item>
+    </plurals>
+    <plurals name="online_local_count">
+        <item quantity="one">इस पिन का %1$d स्थानीय बीट रिकॉर्ड  ›</item>
+        <item quantity="other">इस पिन के %1$d स्थानीय बीट रिकॉर्ड  ›</item>
+    </plurals>
+    <plurals name="detail_show_local">
+        <item quantity="one">इस पिन का %1$d स्थानीय बीट रिकॉर्ड दिखाएँ</item>
+        <item quantity="other">इस पिन के %1$d स्थानीय बीट रिकॉर्ड दिखाएँ</item>
+    </plurals>
+    <plurals name="bulk_delete_title">
+        <item quantity="one">%1$d रिकॉर्ड हटाएँ?</item>
+        <item quantity="other">%1$d रिकॉर्ड हटाएँ?</item>
+    </plurals>
+    <plurals name="replace_message">
+        <item quantity="one">मौजूदा %1$d रिकॉर्ड हटाकर चुनी गई स्प्रेडशीट की पंक्तियों से बदल दिया जाएगा। कुछ भी लिखने से पहले आपको पूर्वावलोकन दिखेगा।</item>
+        <item quantity="other">सभी %1$d मौजूदा रिकॉर्ड हटाकर चुनी गई स्प्रेडशीट की पंक्तियों से बदल दिए जाएँगे। कुछ भी लिखने से पहले आपको पूर्वावलोकन दिखेगा।</item>
+    </plurals>
+    <plurals name="preview_existing_deleted">
+        <item quantity="one">• पहले %1$d मौजूदा रिकॉर्ड हटाया जाएगा</item>
+        <item quantity="other">• पहले %1$d मौजूदा रिकॉर्ड हटाए जाएँगे</item>
+    </plurals>
+    <plurals name="preview_will_add">
+        <item quantity="one">• %1$d पंक्ति जोड़ी जाएगी</item>
+        <item quantity="other">• %1$d पंक्तियाँ जोड़ी जाएँगी</item>
+    </plurals>
+    <plurals name="preview_duplicates">
+        <item quantity="one">• %1$d दोहराव छोड़ा जाएगा</item>
+        <item quantity="other">• %1$d दोहराव छोड़े जाएँगे</item>
+    </plurals>
+    <plurals name="preview_blank">
+        <item quantity="one">• %1$d खाली पंक्ति अनदेखी</item>
+        <item quantity="other">• %1$d खाली पंक्तियाँ अनदेखी</item>
+    </plurals>
+    <plurals name="preview_errors">
+        <item quantity="one">• %1$d पंक्ति में त्रुटि है, वह छोड़ी जाएगी</item>
+        <item quantity="other">• %1$d पंक्तियों में त्रुटि है, वे छोड़ी जाएँगी</item>
+    </plurals>
+    <plurals name="report_imported">
+        <item quantity="one">%1$d रिकॉर्ड आयात हुआ</item>
+        <item quantity="other">%1$d रिकॉर्ड आयात हुए</item>
+    </plurals>
+    <plurals name="report_duplicates">
+        <item quantity="one">%1$d दोहराव छोड़ा गया</item>
+        <item quantity="other">%1$d दोहराव छोड़े गए</item>
+    </plurals>
+    <plurals name="report_rejected">
+        <item quantity="one">%1$d पंक्ति अस्वीकृत</item>
+        <item quantity="other">%1$d पंक्तियाँ अस्वीकृत</item>
+    </plurals>
+    <plurals name="report_blank">
+        <item quantity="one">%1$d खाली पंक्ति अनदेखी।</item>
+        <item quantity="other">%1$d खाली पंक्तियाँ अनदेखी।</item>
+    </plurals>
+    <plurals name="msg_deleted_n">
+        <item quantity="one">%1$d रिकॉर्ड हटाया गया।</item>
+        <item quantity="other">%1$d रिकॉर्ड हटाए गए।</item>
+    </plurals>
+    <plurals name="msg_office_type_updated">
+        <item quantity="one">%1$d रिकॉर्ड के लिए डाकघर प्रकार %2$s किया गया।</item>
+        <item quantity="other">%1$d रिकॉर्ड के लिए डाकघर प्रकार %2$s किया गया।</item>
+    </plurals>
+    <plurals name="action_add_n_offices">
+        <item quantity="one">%1$d डाकघर जोड़ें</item>
+        <item quantity="other">%1$d डाकघर जोड़ें</item>
+    </plurals>
+    <plurals name="duplicates_hint">
+        <item quantity="one">%1$d जोड़ी एक ही गाँव दो बार दर्ज लगती है। एक को रखने पर दूसरा हट जाता है; रखे गए में टिप्पणी न हो तो दूसरे की टिप्पणी ले ली जाती है। संपादित करने के लिए नाम पर टैप करें।</item>
+        <item quantity="other">%1$d जोड़ियाँ एक ही गाँव दो बार दर्ज लगती हैं। एक को रखने पर दूसरा हट जाता है; रखे गए में टिप्पणी न हो तो दूसरे की टिप्पणी ले ली जाती है। संपादित करने के लिए नाम पर टैप करें।</item>
+    </plurals>
 </resources>
