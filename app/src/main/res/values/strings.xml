@@ -292,13 +292,16 @@
 
     <!-- UI redesign phase 1: display-only strings -->
     <string name="online_unknown_state">Unknown state</string>
-    <string name="local_offices_hint">Tap an office to browse, or type to search all villages</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_app">App</string>
     <string name="settings_section_data">Data</string>
     <string name="settings_api_key_hint">Paste your key here</string>
     <string name="settings_disclaimer">Unofficial app. Not affiliated with or endorsed by the Department of Posts.</string>
     <string name="launcher_label">PIN Beat</string>
+    <string name="local_switch_to_beats">View by beat</string>
+    <string name="local_switch_to_offices">View offices</string>
+    <string name="office_overflow">Office options</string>
+    <string name="record_overflow">More for this village</string>
 
     <!-- Quantity strings; the count is always the first argument -->
     <plurals name="count_beats">

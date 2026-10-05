@@ -3,46 +3,28 @@ package com.pinbeatfinder.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.LocalActivity
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,41 +33,38 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.pinbeatfinder.R
-import com.pinbeatfinder.data.update.UpdateInstaller
-import com.pinbeatfinder.ui.components.UpdateBanner
 import com.pinbeatfinder.appContainer
 import com.pinbeatfinder.data.prefs.DefaultTab
+import com.pinbeatfinder.data.update.UpdateInstaller
+import com.pinbeatfinder.ui.components.AddFab
+import com.pinbeatfinder.ui.components.UpdateBanner
 import com.pinbeatfinder.ui.local.LocalBeatsIntent
-import com.pinbeatfinder.ui.local.LocalBeatsMenuAction
 import com.pinbeatfinder.ui.local.LocalBeatsScreen
 import com.pinbeatfinder.ui.local.LocalBeatsViewModel
 import com.pinbeatfinder.ui.online.OnlineBridge
 import com.pinbeatfinder.ui.online.OnlineSearchScreen
 import com.pinbeatfinder.ui.online.OnlineSearchViewModel
 import com.pinbeatfinder.ui.settings.SettingsScreen
-import com.pinbeatfinder.ui.theme.OnPostBoxRed
-import com.pinbeatfinder.ui.theme.PostBoxRed
+import com.pinbeatfinder.ui.theme.LocalExtraColors
 
 private enum class MainTab(val labelRes: Int) {
     ONLINE(R.string.tab_online),
     LOCAL(R.string.tab_local),
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Host of the two main screens. "Night Mail" has no app bar: each screen draws its own large
+ * title, and the tabs live in a bottom navigation bar with a pill behind the active icon.
+ */
 @Composable
 fun MainScreen() {
     val container = LocalContext.current.appContainer
@@ -114,23 +93,7 @@ fun MainScreen() {
     var selectedTab by rememberSaveable { mutableIntStateOf(initialTab.ordinal) }
     val tab = MainTab.entries[selectedTab]
     val snackbarHostState = remember { SnackbarHostState() }
-    var menuExpanded by remember { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
-    // The menu lives in the top bar but its actions belong to the local tab; bridge via callback.
-    var menuActionHandler by remember { mutableStateOf<(LocalBeatsMenuAction) -> Unit>({}) }
-
-    // The "Add beat record" button shrinks to its icon while the list scrolls up (so it covers
-    // less of the last rows) and grows back as soon as the list scrolls down or the tab changes.
-    var fabExpanded by remember { mutableStateOf(true) }
-    val fabScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -2f) fabExpanded = false else if (available.y > 2f) fabExpanded = true
-                return Offset.Zero
-            }
-        }
-    }
-    LaunchedEffect(tab) { fabExpanded = true }
 
     // Cross-tab bridge: each side asks the host to switch tabs and hand over a query/draft.
     val onlineBridge = remember(onlineViewModel, localViewModel) {
@@ -180,53 +143,37 @@ fun MainScreen() {
         )
     }
 
+    val extra = LocalExtraColors.current
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PostBoxRed,
-                    titleContentColor = OnPostBoxRed,
-                    actionIconContentColor = OnPostBoxRed,
-                ),
-                actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.action_settings))
-                    }
-                    if (tab == MainTab.LOCAL) {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.action_more_options))
-                        }
-                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                            LocalBeatsMenuAction.entries.forEachIndexed { index, action ->
-                                if (index == 2 || index == 4) HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(action.labelRes), maxLines = 1) },
-                                    leadingIcon = { Icon(action.icon, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        menuActionHandler(action)
-                                    },
-                                )
-                            }
-                        }
-                    }
-                },
-            )
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            NavigationBar(containerColor = extra.bottomBar, contentColor = MaterialTheme.colorScheme.onSurface) {
+                MainTab.entries.forEach { t ->
+                    NavigationBarItem(
+                        selected = t == tab,
+                        onClick = { selectedTab = t.ordinal },
+                        icon = {
+                            // A globe, not a cloud: the All-India tab works offline from the built-in directory.
+                            Icon(if (t == MainTab.ONLINE) Icons.Default.Public else Icons.Default.Storage, contentDescription = null)
+                        },
+                        label = { Text(stringResource(t.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    )
+                }
+            }
         },
         floatingActionButton = {
-            if (tab == MainTab.LOCAL) {
-                ExtendedFloatingActionButton(
-                    onClick = { localViewModel.onIntent(LocalBeatsIntent.OpenEditor()) },
-                    expanded = fabExpanded,
-                    icon = { Icon(Icons.Default.Add, contentDescription = if (fabExpanded) null else stringResource(R.string.add_beat)) },
-                    text = { Text(stringResource(R.string.add_beat), maxLines = 1) },
-                )
-            }
+            if (tab == MainTab.LOCAL) AddFab(onClick = { localViewModel.onIntent(LocalBeatsIntent.OpenEditor()) })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).nestedScroll(fabScrollConnection)) {
+        Column(Modifier.fillMaxSize().padding(padding)) {
             updateState.available?.takeIf { updateState.shouldShowBanner }?.let { release ->
                 val downloadState by container.apkDownloader.state.collectAsStateWithLifecycle()
                 // A finished download survives the "allow installs" settings detour and a re-open.
@@ -257,43 +204,20 @@ fun MainScreen() {
                     onOpenBrowser = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.apkUrl ?: release.pageUrl))) },
                 )
             }
-            TabRow(selectedTabIndex = selectedTab) {
-                MainTab.entries.forEach { t ->
-                    // Icon inline with the label: a 48dp tab instead of the 72dp icon-over-text one.
-                    Tab(
-                        selected = t == tab,
-                        onClick = { selectedTab = t.ordinal },
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    // A globe, not a cloud: this tab works offline from the built-in directory.
-                                    if (t == MainTab.ONLINE) Icons.Default.Public else Icons.Default.Storage,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(t.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        },
-                    )
-                }
-            }
             when (tab) {
                 MainTab.ONLINE -> OnlineSearchScreen(
                     viewModel = onlineViewModel,
                     snackbarHostState = snackbarHostState,
                     bridge = onlineBridge,
+                    onOpenSettings = { showSettings = true },
                 )
-                MainTab.LOCAL -> {
-                    val activity = LocalActivity.current
-                    LocalBeatsScreen(
-                        viewModel = localViewModel,
-                        snackbarHostState = snackbarHostState,
-                        registerMenuHandler = { handler -> menuActionHandler = handler },
-                        launchIntent = { intent -> activity?.startActivity(intent) },
-                        onLookupOnline = lookupOnline,
-                    )
-                }
+                MainTab.LOCAL -> LocalBeatsScreen(
+                    viewModel = localViewModel,
+                    snackbarHostState = snackbarHostState,
+                    launchIntent = { intent -> activity?.startActivity(intent) },
+                    onLookupOnline = lookupOnline,
+                    onOpenSettings = { showSettings = true },
+                )
             }
         }
     }

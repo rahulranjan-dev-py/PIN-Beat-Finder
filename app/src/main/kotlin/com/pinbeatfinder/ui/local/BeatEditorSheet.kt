@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.pinbeatfinder.R
+import com.pinbeatfinder.ui.components.PrimaryButton
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatRecord
 import com.pinbeatfinder.domain.model.BeatSearchHit
@@ -185,7 +185,7 @@ fun BeatEditorSheet(
             ) {
                 TextButton(onClick = onDismiss, enabled = !editor.isSaving) { Text(stringResource(R.string.action_cancel)) }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onSave, enabled = !editor.isSaving) {
+                PrimaryButton(onClick = onSave, enabled = !editor.isSaving) {
                     if (editor.isSaving) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
@@ -405,7 +405,7 @@ private fun OfficePickerDialog(
         },
         confirmButton = {
             if (batch) {
-                Button(onClick = onConfirmSelection) { Text(pluralStringResource(R.plurals.action_add_n_offices, selection.size, selection.size)) }
+                PrimaryButton(onClick = onConfirmSelection) { Text(pluralStringResource(R.plurals.action_add_n_offices, selection.size, selection.size)) }
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },

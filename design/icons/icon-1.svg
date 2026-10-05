@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
-  <title>White pin on post-box red</title>
-  <rect width="108" height="108" fill="#B3261E"/>
-  <!-- Glyph from ic_launcher_monochrome.xml; stays inside the 66dp safe zone (circle r=33 at 54,54). -->
-  <path d="M54,22c-13.3,0 -24,10.7 -24,24c0,17.5 24,40 24,40s24,-22.5 24,-40c0,-13.3 -10.7,-24 -24,-24zM42,36h24a3,3 0,0 1,3 3v14a3,3 0,0 1,-3 3H42a3,3 0,0 1,-3 -3V39a3,3 0,0 1,3 -3z" fill="#FFFFFF" fill-rule="evenodd"/>
-  <path d="M40.5,38.5 L54,48 L67.5,38.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>

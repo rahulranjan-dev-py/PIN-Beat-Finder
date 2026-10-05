@@ -286,13 +286,16 @@
 
     <!-- UI redesign phase 1: display-only strings -->
     <string name="online_unknown_state">अज्ञात राज्य</string>
-    <string name="local_offices_hint">डाकघर पर टैप करें, या सभी गाँवों में खोजने के लिए लिखें</string>
     <string name="settings_section_appearance">रूप-रंग</string>
     <string name="settings_section_app">ऐप</string>
     <string name="settings_section_data">डेटा</string>
     <string name="settings_api_key_hint">अपनी कुंजी यहाँ चिपकाएँ</string>
     <string name="settings_disclaimer">अनौपचारिक ऐप। डाक विभाग से संबद्ध या उसके द्वारा अनुमोदित नहीं।</string>
     <string name="launcher_label">PIN Beat</string>
+    <string name="local_switch_to_beats">बीट के अनुसार देखें</string>
+    <string name="local_switch_to_offices">डाकघर देखें</string>
+    <string name="office_overflow">डाकघर के विकल्प</string>
+    <string name="record_overflow">इस गाँव के लिए और</string>
 
     <!-- Quantity strings; the count is always the first argument -->
     <plurals name="count_beats">

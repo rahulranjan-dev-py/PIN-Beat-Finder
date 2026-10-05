@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -36,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.pinbeatfinder.R
+import com.pinbeatfinder.ui.components.PrimaryButton
 import com.pinbeatfinder.domain.model.BeatSearchFilters
 import com.pinbeatfinder.domain.model.FilterOptions
 import com.pinbeatfinder.domain.model.OfficeType
@@ -53,25 +53,30 @@ fun FilterBar(
     onChange: (BeatSearchFilters) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    /** False when another control (the round Filters button) opens the sheet: only active chips are shown. */
+    showButton: Boolean = true,
 ) {
+    if (!showButton && filters.isEmpty) return
     Row(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 2.dp),
+            .padding(horizontal = 20.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AssistChip(
-            onClick = onOpen,
-            label = { Text(if (filters.isEmpty) stringResource(R.string.filter_button) else stringResource(R.string.filter_button_n, filters.count)) },
-            leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
-            colors = if (filters.isEmpty) AssistChipDefaults.assistChipColors() else AssistChipDefaults.assistChipColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            ),
-        )
+        if (showButton) {
+            AssistChip(
+                onClick = onOpen,
+                label = { Text(if (filters.isEmpty) stringResource(R.string.filter_button) else stringResource(R.string.filter_button_n, filters.count)) },
+                leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
+                colors = if (filters.isEmpty) AssistChipDefaults.assistChipColors() else AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+            )
+        }
         filters.state?.let { ActiveChip(it.displayCase()) { onChange(filters.copy(state = null, district = null)) } }
         filters.district?.let { ActiveChip(it.displayCase()) { onChange(filters.copy(district = null)) } }
         filters.officeType?.let { ActiveChip(it.code) { onChange(filters.copy(officeType = null)) } }
@@ -79,7 +84,7 @@ fun FilterBar(
         filters.beatNumber?.let { ActiveChip(stringResource(R.string.chip_beat, it)) { onChange(filters.copy(beatNumber = null)) } }
         filters.pincode?.let { ActiveChip(it) { onChange(filters.copy(pincode = null)) } }
         if (!filters.isEmpty) {
-            TextButton(onClick = onClear) { Text(stringResource(R.string.action_clear_filters)) }
+            TextButton(onClick = onClear) { Text(stringResource(R.string.action_clear), maxLines = 1) }
         }
     }
 }
@@ -141,7 +146,7 @@ fun FilterSheet(
         }
 
         HorizontalDivider()
-        Button(
+        PrimaryButton(
             onClick = onDismiss,
             modifier = Modifier
                 .fillMaxWidth()

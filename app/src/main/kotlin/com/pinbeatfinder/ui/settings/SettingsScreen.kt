@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -43,8 +43,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,8 +68,8 @@ import com.pinbeatfinder.data.prefs.DefaultTab
 import com.pinbeatfinder.data.prefs.TextScale
 import com.pinbeatfinder.data.prefs.ThemeMode
 import com.pinbeatfinder.data.remote.ProviderHealth
-import com.pinbeatfinder.ui.theme.OnPostBoxRed
-import com.pinbeatfinder.ui.theme.PostBoxRed
+import com.pinbeatfinder.ui.components.PrimaryButton
+import com.pinbeatfinder.ui.components.ScreenTitleBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -99,19 +97,16 @@ fun SettingsScreen(onBack: () -> Unit) {
     val language = AppLanguage.entries.firstOrNull { it.tag.isNotEmpty() && it.tag == settings.language } ?: AppLanguage.SYSTEM
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+            ScreenTitleBar(
+                title = stringResource(R.string.settings_title),
+                modifier = Modifier.statusBarsPadding(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PostBoxRed,
-                    titleContentColor = OnPostBoxRed,
-                    navigationIconContentColor = OnPostBoxRed,
-                ),
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -197,7 +192,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 update.available?.let { rel ->
                     Text(stringResource(R.string.update_available, rel.tag), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
-                    Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rel.apkUrl ?: rel.pageUrl))) }) {
+                    PrimaryButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rel.apkUrl ?: rel.pageUrl))) }) {
                         Text(stringResource(R.string.update_download))
                     }
                     Spacer(Modifier.height(6.dp))
@@ -236,7 +231,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text(stringResource(R.string.crash_latest, crashStampText(latest!!.nameWithoutExtension)), style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = {
+                        PrimaryButton(onClick = {
                             context.startActivity(container.crashReporter.shareIntent(latest!!, context.getString(R.string.crash_share_title)))
                         }) {
                             Icon(Icons.Default.Share, contentDescription = null)
@@ -311,7 +306,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 )
                 Spacer(Modifier.height(8.dp))
-                Button(
+                PrimaryButton(
                     onClick = {
                         repo.update { it.copy(dataGovInApiKey = apiKeyDraft) }
                         scope.launch { snackbar.showSnackbar(context.getString(R.string.settings_api_key_saved)) }

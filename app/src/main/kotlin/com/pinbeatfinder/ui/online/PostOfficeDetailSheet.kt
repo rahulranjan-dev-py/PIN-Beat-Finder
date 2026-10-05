@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -32,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pinbeatfinder.R
+import com.pinbeatfinder.ui.components.PrimaryButton
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.AppBottomSheet
 import com.pinbeatfinder.ui.components.LabeledValue
@@ -69,7 +69,7 @@ fun PostOfficeDetailSheet(
                 Text(
                     stringResource(R.string.detail_pin, office.pincode),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.tertiary,
                     fontWeight = FontWeight.Bold,
                 )
                 if (office.branchType.isNotBlank()) {
@@ -121,7 +121,7 @@ fun PostOfficeDetailSheet(
                 }
                 Spacer(Modifier.height(10.dp))
             }
-            Button(onClick = onAddToLocal, modifier = Modifier.fillMaxWidth()) {
+            PrimaryButton(onClick = onAddToLocal, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.detail_add_local))
