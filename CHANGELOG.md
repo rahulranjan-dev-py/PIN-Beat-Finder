@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.18.0 — "Night Mail" redesign and large-font fixes
+
+### Changed
+- **New look, "Night Mail".** Dark charcoal surfaces as the reference design with a matching
+  light theme and both high-contrast modes; every text colour reaches 4.5:1. Anek typeface for
+  English and Hindi.
+- **Bottom navigation.** All-India and Local Beats moved from a tab row under a red bar to a
+  bottom bar; each screen starts with a large title and the Settings button.
+- **Local Beats.** Office cards show name, PIN and account office, then beat and village counts.
+  Inside an office the villages are compact rows with the PIN, a look-up button and a menu for
+  edit and delete; beats start with a pill and a share button. By beat cards are titled
+  "Office, Beat N". The search field is a pill with a round Filters button beside it.
+- **All-India.** Result cards show name, PIN, type and delivery, then district, state and
+  division; the full record stays in the sheet with aligned labels.
+- **Settings** grouped into Appearance, App and Data; dates shown as "5 Oct 2026, 14:30";
+  "Lookup sources" and the API key at the bottom.
+- **New launcher icon.** White pin-with-envelope on post-box red, as a vector adaptive icon;
+  launcher label shortened to "PIN Beat".
+
+### Fixed
+- Text no longer cut mid-letter while the search block collapses; it settles fully open or
+  closed.
+- Sheets (filters, add/edit, post office details) no longer draw under the status bar; the Filter
+  sheet's Done button stays at the bottom.
+- "Delivery" and similar items wrap whole instead of mid-word at large font sizes.
+- A result group with no state name shows "Unknown state".
+- Counts read "1 beat", "2 beats", "1 village", "3 villages" in English and Hindi instead of
+  "beat(s)".
+- Region is hidden when the dataset has no value; ALL-CAPS district and state names are shown in
+  title case. Display only; stored data is unchanged.
+- Menu labels shortened so they never wrap; every share menu item has an icon.
+- The Add button no longer covers the last row of any list.
+
 ## v0.17.0 — new icon, bug and security fixes
 
 ### Changed
