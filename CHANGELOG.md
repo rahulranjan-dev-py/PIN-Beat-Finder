@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.20.1 — QR code downloads the APK directly
+
+### Changed
+- The QR code in Settings → About now points at a direct download of the latest APK instead of
+  the release page, so scanning it with any phone camera starts the download at once. Each release
+  publishes the same APK under the fixed name `pin-beat-finder-latest.apk` for this.
+
 ## v0.20.0 — quick add, voice search, health card, backup reminder, tablets
 
 ### Added

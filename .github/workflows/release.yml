@@ -126,6 +126,9 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/pin-beat-finder-$TAG-release.apk"
           cp app/build/outputs/bundle/release/app-release.aab "dist/pin-beat-finder-$TAG-release.aab"
+          # Same APK under a fixed name, so .../releases/latest/download/pin-beat-finder-latest.apk
+          # (the QR code in Settings > About) always downloads the newest release directly.
+          cp app/build/outputs/apk/release/app-release.apk "dist/pin-beat-finder-latest.apk"
 
       # The build must never have fallen back to the checked-in debug keystore.
       - name: Confirm the APK carries the release key
@@ -133,10 +136,11 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
           norm() { tr -d ': \n' | tr 'A-F' 'a-f'; }
           want=$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>/dev/null | grep -m1 'SHA256:' | sed 's/.*SHA256: *//' | norm)
-          apk=$(ls dist/*-release.apk)
+          apk=$(ls dist/*-"$TAG"-release.apk)
           apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
           if [ -n "$apksigner" ]; then
             have=$("$apksigner" verify --print-certs "$apk" | grep -m1 'SHA-256 digest' | sed 's/.*: *//' | norm)

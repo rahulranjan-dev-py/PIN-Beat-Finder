@@ -115,7 +115,8 @@ class UpdateChecker(
                 ReleaseInfo(
                     tag = tag,
                     pageUrl = (o["html_url"] as? JsonPrimitive)?.content.orEmpty(),
-                    apkUrl = assetUrls.firstOrNull { it.endsWith(".apk", ignoreCase = true) },
+                    // Releases carry the APK twice (versioned, and a fixed "-latest" name for the QR code); prefer the versioned file.
+                    apkUrl = assetUrls.filter { it.endsWith(".apk", ignoreCase = true) }.let { apks -> apks.firstOrNull { !it.contains("-latest.apk") } ?: apks.firstOrNull() },
                     notes = (o["body"] as? JsonPrimitive)?.content.orEmpty(),
                     checksumsUrl = assetUrls.firstOrNull { it.endsWith("SHA256SUMS.txt", ignoreCase = true) },
                 )

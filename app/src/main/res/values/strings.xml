@@ -477,8 +477,8 @@
     <string name="share_image_title">Share beat as image</string>
     <string name="action_share_image">Share as image</string>
     <string name="settings_qr_title">Share the app</string>
-    <string name="settings_qr_desc">Scan to open the download page for the latest release.</string>
-    <string name="settings_qr_content_description">QR code for the download page</string>
+    <string name="settings_qr_desc">Scan with any phone camera: the latest APK downloads straight away.</string>
+    <string name="settings_qr_content_description">QR code that downloads the latest APK</string>
     <string name="action_share_link">Share link</string>
     <string name="share_link_text">PIN Beat Finder – offline beat directory for India Post mail branches. Download: %1$s</string>
     <string name="share_link_title">Share download link</string>
