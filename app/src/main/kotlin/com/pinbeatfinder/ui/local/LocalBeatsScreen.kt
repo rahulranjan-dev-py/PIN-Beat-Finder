@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -44,6 +43,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FindReplace
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Summarize
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Inventory2
@@ -79,6 +84,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -94,7 +100,11 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -129,6 +139,12 @@ import com.pinbeatfinder.ui.components.RoundIconButton
 import com.pinbeatfinder.ui.components.ScreenTitleBar
 import com.pinbeatfinder.ui.components.CollapsingHeader
 import com.pinbeatfinder.ui.components.EmptyState
+import com.pinbeatfinder.ui.components.MotionVisibility
+import com.pinbeatfinder.ui.components.VoiceSearchButton
+import com.pinbeatfinder.data.prefs.BackupReminder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.pinbeatfinder.ui.components.LocalListBottomPadding
 import com.pinbeatfinder.ui.components.message
 import com.pinbeatfinder.ui.components.placeLine
@@ -142,6 +158,7 @@ enum class LocalBeatsMenuAction(val labelRes: Int, val icon: ImageVector) {
     SAVE_BACKUP(R.string.menu_save_backup, Icons.Default.Save),
     SHARE_TEMPLATE(R.string.menu_share_template, Icons.Default.Share),
     SAVE_TEMPLATE(R.string.menu_save_template, Icons.Default.Download),
+    OFFICE_SUMMARY_PDF(R.string.menu_office_summary, Icons.Default.Summarize),
     FIND_DUPLICATES(R.string.menu_find_duplicates, Icons.Default.FindReplace),
 }
 
@@ -189,6 +206,7 @@ fun LocalBeatsScreen(
             LocalBeatsMenuAction.SAVE_BACKUP -> backupSaver.launch(ExcelCodec.backupFileName())
             LocalBeatsMenuAction.SHARE_TEMPLATE -> onIntent(LocalBeatsIntent.ShareTemplate)
             LocalBeatsMenuAction.SAVE_TEMPLATE -> templateSaver.launch(ExcelCodec.TEMPLATE_FILE_NAME)
+            LocalBeatsMenuAction.OFFICE_SUMMARY_PDF -> onIntent(LocalBeatsIntent.PrintOfficeSummary)
             LocalBeatsMenuAction.FIND_DUPLICATES -> onIntent(LocalBeatsIntent.FindDuplicates)
         }
     }
@@ -312,6 +330,15 @@ fun LocalBeatsScreen(
         }
     }
 
+    state.healthIssue?.let { issue ->
+        HealthIssueDialog(
+            issue = issue,
+            report = state.health ?: HealthReport(),
+            onEdit = { onIntent(LocalBeatsIntent.ClearHealthIssue); onIntent(LocalBeatsIntent.OpenEditor(it)) },
+            onDismiss = { onIntent(LocalBeatsIntent.ClearHealthIssue) },
+        )
+    }
+
     state.duplicates?.let { pairs ->
         DuplicatesDialog(
             pairs = pairs,
@@ -408,17 +435,56 @@ fun LocalBeatsContent(
     val officeListState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
 
     val openOffice = state.openOffice
-    if (openOffice != null) {
-        BackHandler { onIntent(LocalBeatsIntent.CloseOffice) }
-        OfficeScreen(office = openOffice, state = state, onIntent = onIntent, onLookupOnline = onLookupOnline)
+    if (openOffice != null) BackHandler { onIntent(LocalBeatsIntent.CloseOffice) }
+
+    // Tablets and landscape phones: the office list on the left, the open office on the right.
+    val twoPane = LocalConfiguration.current.screenWidthDp >= TWO_PANE_MIN_WIDTH_DP
+    if (twoPane) {
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(0.42f).fillMaxSize()) {
+                MainList(state, officeListState, onIntent, onLookupOnline, onOpenSettings, onMenuAction)
+            }
+            VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Box(Modifier.weight(0.58f).fillMaxSize()) {
+                if (openOffice != null) {
+                    OfficeScreen(office = openOffice, state = state, onIntent = onIntent, onLookupOnline = onLookupOnline)
+                } else {
+                    EmptyState(
+                        icon = Icons.Default.Route,
+                        title = stringResource(R.string.local_no_offices_title),
+                        message = stringResource(R.string.tablet_pick_office),
+                    )
+                }
+            }
+        }
         return
     }
 
+    if (openOffice != null) {
+        OfficeScreen(office = openOffice, state = state, onIntent = onIntent, onLookupOnline = onLookupOnline)
+        return
+    }
+    MainList(state, officeListState, onIntent, onLookupOnline, onOpenSettings, onMenuAction)
+}
+
+/** Width from which Local Beats shows the office list and the open office side by side. */
+private const val TWO_PANE_MIN_WIDTH_DP = 720
+
+/** Title, collapsing search header and the office cards / search results / beat groups. */
+@Composable
+private fun MainList(
+    state: LocalBeatsState,
+    officeListState: LazyListState,
+    onIntent: (LocalBeatsIntent) -> Unit,
+    onLookupOnline: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+    onMenuAction: (LocalBeatsMenuAction) -> Unit,
+) {
     Column(Modifier.fillMaxSize()) {
         LocalTitleBar(onOpenSettings = onOpenSettings, onMenuAction = onMenuAction)
         CollapsingHeader(
             modifier = Modifier.fillMaxSize(),
-            revealKey = listOf(state.query, state.filters, state.viewMode, state.hits.size, state.records.size),
+            revealKey = listOf(state.query, state.filters, state.viewMode, state.hits.size, state.records.size, state.backupDue),
             header = { LocalHeader(state, onIntent) },
         ) {
             Column(Modifier.fillMaxSize()) {
@@ -449,7 +515,7 @@ private fun LocalTitleBar(onOpenSettings: () -> Unit, onMenuAction: (LocalBeatsM
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     LocalBeatsMenuAction.entries.forEachIndexed { index, action ->
-                        if (index == 2 || index == 4) HorizontalDivider()
+                        if (index == 2 || index == 4 || index == 6) HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text(stringResource(action.labelRes), maxLines = 1) },
                             leadingIcon = { Icon(action.icon, contentDescription = null) },
@@ -485,18 +551,145 @@ private fun OfficeCardsList(state: LocalBeatsState, listState: LazyListState, on
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = LocalListBottomPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        state.health?.let { report ->
+            item(key = "health") { HealthCard(report, onIntent) }
+        }
         items(state.officeSummaries, key = { it.key }) { office ->
-            OfficeCard(office = office, accountOffice = state.records.firstOrNull { it.officeName.equals(office.officeName, true) && it.pincode in office.pincodes }?.accountOffice.orEmpty()) {
-                onIntent(LocalBeatsIntent.OpenOffice(office))
+            OfficeCard(
+                office = office,
+                accountOffice = state.records.firstOrNull { it.officeName.equals(office.officeName, true) && it.pincode in office.pincodes }?.accountOffice.orEmpty(),
+                selected = state.openOffice?.key == office.key,
+            ) { onIntent(LocalBeatsIntent.OpenOffice(office)) }
+        }
+    }
+}
+
+/**
+ * Directory health: one line per finding with a Fix action, or a single "no problems" line.
+ * Mixed office types go to the existing bulk fixer; the other two open a list of the villages.
+ */
+@Composable
+private fun HealthCard(report: HealthReport, onIntent: (LocalBeatsIntent) -> Unit) {
+    if (report.isClean) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp).semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.health_title) + ": " + stringResource(R.string.health_all_good),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        return
+    }
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.HealthAndSafety, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.health_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            if (report.blankAccount.isNotEmpty()) {
+                HealthLine(pluralStringResource(R.plurals.health_blank_account_n, report.blankAccount.size, report.blankAccount.size)) {
+                    onIntent(LocalBeatsIntent.ShowHealthIssue(HealthIssue.BLANK_ACCOUNT))
+                }
+            }
+            if (report.mixedOffices > 0) {
+                HealthLine(pluralStringResource(R.plurals.health_mixed_offices_n, report.mixedOffices, report.mixedOffices)) {
+                    onIntent(LocalBeatsIntent.ShowOfficeTypes)
+                }
+            }
+            if (report.unknownPinRecords.isNotEmpty()) {
+                HealthLine(pluralStringResource(R.plurals.health_unknown_pins_n, report.unknownPinRecords.size, report.unknownPinRecords.size)) {
+                    onIntent(LocalBeatsIntent.ShowHealthIssue(HealthIssue.UNKNOWN_PIN))
+                }
             }
         }
     }
 }
 
+@Composable
+private fun HealthLine(text: String, onFix: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        TextButton(onClick = onFix, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.tertiary)) {
+            Text(stringResource(R.string.health_fix), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** The villages behind one health finding; tapping one opens it in the editor. */
+@Composable
+private fun HealthIssueDialog(issue: HealthIssue, report: HealthReport, onEdit: (BeatRecord) -> Unit, onDismiss: () -> Unit) {
+    val records = when (issue) {
+        HealthIssue.BLANK_ACCOUNT -> report.blankAccount
+        HealthIssue.UNKNOWN_PIN -> report.unknownPinRecords
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.HealthAndSafety, contentDescription = null) },
+        title = {
+            Text(stringResource(if (issue == HealthIssue.BLANK_ACCOUNT) R.string.health_issue_blank_account_title else R.string.health_issue_unknown_pin_title))
+        },
+        text = {
+            Column {
+                Text(stringResource(R.string.health_issue_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.heightIn(max = 360.dp)) {
+                    LazyColumn {
+                        items(records, key = { it.id }) { r ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .combinedClickableCompat(onClick = { onEdit(r) })
+                                    .heightIn(min = 48.dp)
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(r.localityName, style = MaterialTheme.typography.bodyLarge)
+                                    Text(r.officeDisplay + " · " + stringResource(R.string.local_beat_title, r.beatNumber), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                PinText(r.pincode, style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+    )
+}
+
+/** A PIN in the accent colour; screen readers hear "PIN 828201" instead of six digits. */
+@Composable
+private fun PinText(pincode: String, style: androidx.compose.ui.text.TextStyle, modifier: Modifier = Modifier) {
+    val label = stringResource(R.string.a11y_pin, pincode)
+    Text(
+        pincode,
+        style = style,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.tertiary,
+        modifier = modifier.semantics { contentDescription = label },
+    )
+}
+
 /** Name; PIN and account office; beat and village counts. Nothing on the right: the whole card opens the office. */
 @Composable
-private fun OfficeCard(office: OfficeSummary, accountOffice: String, onOpen: () -> Unit) {
-    AppCard(modifier = Modifier.fillMaxWidth(), onClick = onOpen) {
+private fun OfficeCard(office: OfficeSummary, accountOffice: String, selected: Boolean = false, onOpen: () -> Unit) {
+    val description = stringResource(R.string.a11y_office_card, office.officeDisplay, office.pincodes.joinToString(", "), beatsAndVillages(office.beatCount, office.recordCount))
+    AppCard(
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = description },
+        onClick = onOpen,
+        containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+    ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
             Text(office.officeDisplay, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
@@ -516,12 +709,7 @@ private fun OfficeCard(office: OfficeSummary, accountOffice: String, onOpen: () 
 @Composable
 private fun PinAndAccount(pincodes: List<String>, accountOffice: String, modifier: Modifier = Modifier) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            pincodes.joinToString(", "),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.tertiary,
-        )
+        PinText(pincodes.joinToString(", "), style = MaterialTheme.typography.titleSmall)
         if (accountOffice.isNotBlank()) {
             Spacer(Modifier.width(10.dp))
             Text(
@@ -598,7 +786,7 @@ private fun OfficeScreen(
                 }
             },
         )
-        AnimatedVisibility(visible = state.isSelecting) { SelectionBar(state, onIntent) }
+        MotionVisibility(visible = state.isSelecting) { SelectionBar(state, onIntent) }
         if (state.officeGroups.isEmpty()) {
             EmptyState(
                 icon = Icons.Default.Route,
@@ -764,6 +952,7 @@ private fun VillageRow(
 ) {
     val haptic = rememberHaptic()
     var menu by remember { mutableStateOf(false) }
+    val selectedLabel = stringResource(R.string.a11y_selected)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -775,6 +964,7 @@ private fun VillageRow(
                     onToggleSelect()
                 },
             )
+            .semantics { if (selected) stateDescription = selectedLabel }
             .heightIn(min = 56.dp)
             .padding(start = 18.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -789,13 +979,7 @@ private fun VillageRow(
                 Text(record.remarks, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        Text(
-            record.pincode,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.tertiary,
-            modifier = Modifier.padding(horizontal = 8.dp),
-        )
+        PinText(record.pincode, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 8.dp))
         IconButton(onClick = onLookupOnline) {
             Icon(Icons.Default.TravelExplore, contentDescription = stringResource(R.string.action_look_up_online), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -845,6 +1029,11 @@ private fun BeatHeaderRow(group: BeatGroup, onIntent: (LocalBeatsIntent) -> Unit
                     leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                     onClick = { menu = false; onIntent(LocalBeatsIntent.PrintBeat(group)) },
                 )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_share_image), maxLines = 1) },
+                    leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
+                    onClick = { menu = false; onIntent(LocalBeatsIntent.ShareBeatImage(group)) },
+                )
                 HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_merge_beat), maxLines = 1) },
@@ -864,7 +1053,12 @@ private fun BeatHeaderRow(group: BeatGroup, onIntent: (LocalBeatsIntent) -> Unit
 @Composable
 private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> Unit) {
     Column(Modifier.fillMaxWidth()) {
-        AnimatedVisibility(visible = state.isSelecting) { SelectionBar(state, onIntent) }
+        MotionVisibility(visible = state.isSelecting) { SelectionBar(state, onIntent) }
+        if (state.backupDue) {
+            state.backupStatus?.let { status ->
+                BackupNudge(status, onBackup = { onIntent(LocalBeatsIntent.ShareBackup) }, onLater = { onIntent(LocalBeatsIntent.SnoozeBackupReminder) })
+            }
+        }
 
         Row(
             modifier = Modifier
@@ -879,6 +1073,7 @@ private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> 
                     placeholder = stringResource(R.string.search_local_hint),
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    trailing = { VoiceSearchButton(onResult = { onIntent(LocalBeatsIntent.QueryChanged(it)) }) },
                 )
             } else {
                 AssistChip(
@@ -963,6 +1158,36 @@ private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> 
     }
 }
 
+/** "Back up your directory": shown once enough edits have piled up since the last backup. */
+@Composable
+private fun BackupNudge(status: BackupReminder.Status, onBackup: () -> Unit, onLater: () -> Unit) {
+    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val message = status.lastBackupAt?.let { last ->
+        stringResource(R.string.backup_due_old, status.editsSinceBackup, SimpleDateFormat("d MMM yyyy", locale).format(Date(last)))
+    } ?: stringResource(R.string.backup_due_never, status.editsSinceBackup)
+    AppCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Column(Modifier.padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Backup, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.backup_due_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            }
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(top = 4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onLater, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
+                    Text(stringResource(R.string.backup_later))
+                }
+                TextButton(onClick = onBackup, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSecondaryContainer)) {
+                    Text(stringResource(R.string.backup_now), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
 /** "3 beats · 42 villages", each half pluralised on its own. */
 @Composable
 private fun beatsAndVillages(beats: Int, villages: Int): String =
@@ -973,12 +1198,15 @@ private fun beatsAndVillages(beats: Int, villages: Int): String =
 @Composable
 private fun SearchResults(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> Unit, onLookupOnline: (String) -> Unit) {
     if (state.hits.isEmpty() && !state.isSearching) {
+        val quickAddName = (state.addressQuery?.candidates?.firstOrNull() ?: state.query).trim()
         EmptyState(
             icon = Icons.Default.SearchOff,
             title = stringResource(R.string.local_no_matches_title),
             message = stringResource(if (state.hasFilters) R.string.local_no_matches_filtered else R.string.local_no_matches_hint),
             actionLabel = if (state.hasFilters) stringResource(R.string.action_clear_filters) else null,
             onAction = { onIntent(LocalBeatsIntent.ClearFilters) },
+            secondaryLabel = quickAddName.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.quick_add_village, it) },
+            onSecondary = { onIntent(LocalBeatsIntent.AddFromQuery) },
         )
         return
     }
@@ -1310,6 +1538,7 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
                 onPrintBeat = { onIntent(LocalBeatsIntent.PrintBeat(group)) },
                 onPrintOffice = { onIntent(LocalBeatsIntent.PrintOffice(group)) },
                 onMergeBeat = { onIntent(LocalBeatsIntent.RequestMergeBeat(group)) },
+                onShareImage = { onIntent(LocalBeatsIntent.ShareBeatImage(group)) },
             )
         }
     }
@@ -1329,6 +1558,7 @@ private fun BeatGroupCard(
     onPrintBeat: () -> Unit,
     onPrintOffice: () -> Unit,
     onMergeBeat: () -> Unit = {},
+    onShareImage: () -> Unit = {},
 ) {
     var shareMenu by remember { mutableStateOf(false) }
     AppCard(modifier = modifier.fillMaxWidth(), onClick = onToggle) {
@@ -1375,6 +1605,11 @@ private fun BeatGroupCard(
                             leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                             onClick = { shareMenu = false; onPrintOffice() },
                         )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_share_image), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
+                            onClick = { shareMenu = false; onShareImage() },
+                        )
                         HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.action_merge_beat), maxLines = 1) },
@@ -1391,7 +1626,7 @@ private fun BeatGroupCard(
                     )
                 }
             }
-            AnimatedVisibility(visible = expanded) {
+            MotionVisibility(visible = expanded) {
                 Column(Modifier.padding(top = 8.dp, end = 12.dp)) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     group.records.forEach { record ->
@@ -1409,7 +1644,7 @@ private fun BeatGroupCard(
                                     Text(record.remarks, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
-                            Text(record.pincode, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+                            PinText(record.pincode, style = MaterialTheme.typography.labelLarge)
                             IconButton(onClick = { onLookupOnline(record.pincode) }) {
                                 Icon(Icons.Default.TravelExplore, contentDescription = stringResource(R.string.action_look_up_online), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -1481,6 +1716,7 @@ private fun ImportPreviewDialog(preview: ImportPreview, onConfirm: () -> Unit, o
                 if (preview.duplicatesSkipped > 0) Text(pluralStringResource(R.plurals.preview_duplicates, preview.duplicatesSkipped, preview.duplicatesSkipped))
                 if (preview.blankRowsSkipped > 0) Text(pluralStringResource(R.plurals.preview_blank, preview.blankRowsSkipped, preview.blankRowsSkipped))
                 if (preview.hasErrors) Text(pluralStringResource(R.plurals.preview_errors, preview.errors.size, preview.errors.size), color = MaterialTheme.colorScheme.error)
+                ImportDiff(preview)
                 if (preview.hasErrors) {
                     Spacer(Modifier.height(10.dp))
                     RowErrorList(preview.errors)
@@ -1498,6 +1734,33 @@ private fun ImportPreviewDialog(preview: ImportPreview, onConfirm: () -> Unit, o
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } },
     )
+}
+
+/** What the import changes village by village: removed (replace all), kept, and a few new names. */
+@Composable
+private fun ImportDiff(preview: ImportPreview) {
+    val hasDiff = preview.removedCount > 0 || preview.unchangedCount > 0 || preview.addedSamples.isNotEmpty()
+    if (!hasDiff) return
+    Spacer(Modifier.height(10.dp))
+    Text(stringResource(R.string.preview_section_changes), style = MaterialTheme.typography.labelLarge)
+    Spacer(Modifier.height(4.dp))
+    if (preview.removedCount > 0) {
+        Text(pluralStringResource(R.plurals.preview_removed, preview.removedCount, preview.removedCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        Text(stringResource(R.string.preview_removed_samples, sampleNames(preview.removedSamples, preview.removedCount)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (preview.unchangedCount > 0) {
+        Text(pluralStringResource(R.plurals.preview_unchanged_n, preview.unchangedCount, preview.unchangedCount), style = MaterialTheme.typography.bodySmall)
+    }
+    if (preview.addedSamples.isNotEmpty()) {
+        Text(stringResource(R.string.preview_added_samples, sampleNames(preview.addedSamples, preview.willInsert)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** "Ambona, Baliapur, Rampur and 12 more". */
+@Composable
+private fun sampleNames(samples: List<String>, total: Int): String {
+    val more = total - samples.size
+    return if (more > 0) samples.joinToString(", ") + " " + stringResource(R.string.preview_more, more) else samples.joinToString(", ")
 }
 
 @Composable

@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.20.0 — quick add, voice search, health card, backup reminder, tablets
+
+### Added
+- **Add from a search miss.** When Local Beats finds nothing, a button offers "Add “Ambona” as a
+  new village": the editor opens with the name filled in and the office fields taken from the
+  office you last opened (or the active filters).
+- **Voice search.** A microphone in both search fields dictates a village name or PIN through the
+  phone's speech recogniser (Indian English, or Hindi when the app is in Hindi).
+- **Import preview shows the difference.** Before an import runs, the preview lists how many
+  villages will be removed (replace all), how many stay, and a few of the new names.
+- **Directory health card.** Above the office cards: villages without an account office, offices
+  with mixed office types, and villages on a PIN the All-India directory does not know, each with
+  a Fix button.
+- **Backup reminder.** After 10 edits with no backup ever, or 25 edits (or 30 days) since the last
+  one, a card offers "Back up" or "Later" (one week). Settings → Data shows the last backup time.
+- **Office summary PDF.** ⋮ → Office summary (PDF): one page per office with its beats and village
+  names, for the branch wall.
+- **Share a beat as an image.** Beat share menus gain "Share as image": a PNG list for WhatsApp
+  groups where a PDF is awkward to open.
+- **QR code in About.** Scan to open the download page; a "Share link" button sends the URL.
+- **Launcher shortcuts.** Long-press the app icon for "All-India" search or "Add village".
+- **Tablet and landscape layout.** From 720 dp wide, the office list and the open office sit side
+  by side.
+
+### Changed
+- Accessibility: PINs are read as "PIN 828201", office cards describe themselves in one phrase,
+  selected villages announce "Selected", and the collapsing header and selection bar stop
+  animating when the system "Remove animations" setting is on.
+
 ## v0.19.0 — address search, merge and rename tools, Hindi everywhere
 
 ### Added

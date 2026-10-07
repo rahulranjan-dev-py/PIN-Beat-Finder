@@ -8,6 +8,7 @@ import com.pinbeatfinder.data.excel.ImportReport
 import com.pinbeatfinder.core.dedupe.DuplicatePair
 import com.pinbeatfinder.core.util.AddressParser
 import com.pinbeatfinder.data.local.OfficeStats
+import com.pinbeatfinder.data.prefs.BackupReminder
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
 import com.pinbeatfinder.domain.model.BeatGroup
@@ -23,6 +24,22 @@ import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.UiText
 
 enum class LocalViewMode { SEARCH, BY_BEAT }
+
+/** What the health card can point at: villages that need a look. */
+enum class HealthIssue { BLANK_ACCOUNT, UNKNOWN_PIN }
+
+/**
+ * A quick audit of the local directory: records with no account office, offices whose records
+ * disagree about the office type, and records on a PIN the All-India directory does not know.
+ */
+data class HealthReport(
+    val blankAccount: List<BeatRecord> = emptyList(),
+    val mixedOffices: Int = 0,
+    val unknownPinRecords: List<BeatRecord> = emptyList(),
+) {
+    val unknownPins: Int get() = unknownPinRecords.map { it.pincode }.distinct().size
+    val isClean: Boolean get() = blankAccount.isEmpty() && mixedOffices == 0 && unknownPinRecords.isEmpty()
+}
 
 data class EditorState(
     val draft: BeatDraft,
@@ -99,6 +116,16 @@ data class LocalBeatsState(
     val mergeSource: BeatGroup? = null,
     /** "Rename office" dialog for the open office. */
     val showRenameOffice: Boolean = false,
+    /** The office most recently opened; a quick-add from a search miss files the village there. */
+    val lastOffice: OfficeSummary? = null,
+    /** Audit of the filtered directory for the health card; null until computed. */
+    val health: HealthReport? = null,
+    /** Which health list is open in a dialog, if any. */
+    val healthIssue: HealthIssue? = null,
+    /** Edits since the last backup, for the "back up" nudge; null when no reminder is wired. */
+    val backupStatus: BackupReminder.Status? = null,
+    /** True while the nudge should be on screen (recomputed from [backupStatus] and the clock). */
+    val backupDue: Boolean = false,
 ) {
     val hasFilters: Boolean get() = !filters.isEmpty
     val filterOptions: FilterOptions get() = FilterOptions.from(facets, filters)
@@ -190,6 +217,18 @@ sealed interface LocalBeatsIntent {
     data class RenameOffice(val office: OfficeSummary, val newName: String) : LocalBeatsIntent
     /** Reverts the last move, merge or rename. */
     data object UndoLastChange : LocalBeatsIntent
+
+    /** A search found nothing: open the editor with the typed name as the locality. */
+    data object AddFromQuery : LocalBeatsIntent
+    /** Health card: list the villages behind one finding. */
+    data class ShowHealthIssue(val issue: HealthIssue) : LocalBeatsIntent
+    data object ClearHealthIssue : LocalBeatsIntent
+    /** "Later" on the backup nudge: hide it for a week. */
+    data object SnoozeBackupReminder : LocalBeatsIntent
+    /** One page per office with its beats and villages, as a PDF. */
+    data object PrintOfficeSummary : LocalBeatsIntent
+    /** One beat as a PNG for chat groups. */
+    data class ShareBeatImage(val group: BeatGroup) : LocalBeatsIntent
 
     data class ImportFile(val uri: Uri, val mode: ImportMode) : LocalBeatsIntent
     data object ConfirmImport : LocalBeatsIntent

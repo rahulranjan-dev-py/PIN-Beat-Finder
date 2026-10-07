@@ -8,6 +8,13 @@
     <!-- In-app update: hand a downloaded release APK to the system installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Voice search: lets the app see whether a speech recogniser is installed (API 30+). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:name=".BeatFinderApp"
         android:allowBackup="true"
@@ -25,12 +32,17 @@
             android:label="@string/launcher_label"
             android:exported="true"
             android:configChanges="locale|layoutDirection"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.PinBeatFinder">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Long-press launcher shortcuts (All-India search, Add village). -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- Lets AppCompat persist the per-app language chosen in Settings (API < 33). -->

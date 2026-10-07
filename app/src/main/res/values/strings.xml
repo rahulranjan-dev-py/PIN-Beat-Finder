@@ -449,4 +449,65 @@
         <item quantity="one">%1$d locality</item>
         <item quantity="other">%1$d localities</item>
     </plurals>
+    <!-- v0.20.0: quick add, voice, import diff, health, backup reminder, office summary, image share, QR, shortcuts, tablet -->
+    <string name="quick_add_village">Add “%1$s” as a new village</string>
+    <string name="voice_search">Search by voice</string>
+    <string name="voice_search_prompt">Say the village or PIN</string>
+    <string name="voice_search_unavailable">Voice input is not available on this phone.</string>
+    <string name="preview_section_changes">What changes</string>
+    <string name="preview_added_samples">New: %1$s</string>
+    <string name="preview_removed_samples">Removed: %1$s</string>
+    <string name="preview_more">and %1$d more</string>
+    <string name="health_title">Directory health</string>
+    <string name="health_all_good">No problems found. Every village has an account office, a known PIN and one office type per office.</string>
+    <string name="health_fix">Fix</string>
+    <string name="health_issue_blank_account_title">Villages without an account office</string>
+    <string name="health_issue_unknown_pin_title">Villages on an unknown PIN</string>
+    <string name="health_issue_hint">Tap a village to edit it.</string>
+    <string name="backup_due_title">Back up your directory</string>
+    <string name="backup_due_never">You have made %1$d changes and never saved a backup. A backup is one spreadsheet you can restore from.</string>
+    <string name="backup_due_old">%1$d changes since the last backup (%2$s).</string>
+    <string name="backup_now">Back up</string>
+    <string name="backup_later">Later</string>
+    <string name="settings_last_backup">Last backup: %1$s</string>
+    <string name="settings_last_backup_never">Last backup: never</string>
+    <string name="menu_office_summary">Office summary (PDF)</string>
+    <string name="pdf_office_summary">Office summary • PIN Beat Finder</string>
+    <string name="share_summary_title">Share office summary (PDF)</string>
+    <string name="share_image_title">Share beat as image</string>
+    <string name="action_share_image">Share as image</string>
+    <string name="settings_qr_title">Share the app</string>
+    <string name="settings_qr_desc">Scan to open the download page for the latest release.</string>
+    <string name="settings_qr_content_description">QR code for the download page</string>
+    <string name="action_share_link">Share link</string>
+    <string name="share_link_text">PIN Beat Finder – offline beat directory for India Post mail branches. Download: %1$s</string>
+    <string name="share_link_title">Share download link</string>
+    <string name="shortcut_online_short">All-India</string>
+    <string name="shortcut_online_long">Search All-India PIN directory</string>
+    <string name="shortcut_add_short">Add village</string>
+    <string name="shortcut_add_long">Add a village to Local Beats</string>
+    <string name="tablet_pick_office">Pick an office on the left to see its beats here.</string>
+    <string name="a11y_pin">PIN %1$s</string>
+    <string name="a11y_office_card">%1$s, PIN %2$s, %3$s. Opens the office.</string>
+    <string name="a11y_selected">Selected</string>
+    <plurals name="health_blank_account_n">
+        <item quantity="one">%1$d village without an account office</item>
+        <item quantity="other">%1$d villages without an account office</item>
+    </plurals>
+    <plurals name="health_mixed_offices_n">
+        <item quantity="one">%1$d office with mixed office types</item>
+        <item quantity="other">%1$d offices with mixed office types</item>
+    </plurals>
+    <plurals name="health_unknown_pins_n">
+        <item quantity="one">%1$d village on a PIN not in the All-India directory</item>
+        <item quantity="other">%1$d villages on a PIN not in the All-India directory</item>
+    </plurals>
+    <plurals name="preview_removed">
+        <item quantity="one">%1$d village in the directory is not in this file and will be removed</item>
+        <item quantity="other">%1$d villages in the directory are not in this file and will be removed</item>
+    </plurals>
+    <plurals name="preview_unchanged_n">
+        <item quantity="one">%1$d village already in the directory stays</item>
+        <item quantity="other">%1$d villages already in the directory stay</item>
+    </plurals>
 </resources>

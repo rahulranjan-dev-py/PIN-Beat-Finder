@@ -10,6 +10,9 @@ import com.pinbeatfinder.core.util.PinCodeValidator
 import com.pinbeatfinder.data.excel.ExcelFormatException
 import com.pinbeatfinder.data.excel.ExcelSyncManager
 import com.pinbeatfinder.data.excel.ImportMode
+import com.pinbeatfinder.data.prefs.BackupReminder
+import com.pinbeatfinder.data.print.BeatSheetImage
+import com.pinbeatfinder.data.print.BeatSheetPdf
 import com.pinbeatfinder.data.remote.LocalDirectorySource
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatDraft
@@ -59,6 +62,8 @@ class LocalBeatsViewModel(
     /** Built-in All-India directory, used by the editor's "Fetch offices for this PIN" action. */
     private val directory: LocalDirectorySource,
     private val duplicateFinder: DuplicateFinder = DuplicateFinder(),
+    /** Edits-since-backup counter; null in tests and previews that have no store. */
+    private val backupReminder: BackupReminder? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LocalBeatsState())
@@ -71,6 +76,9 @@ class LocalBeatsViewModel(
 
     private data class SearchKey(val query: String, val filters: BeatSearchFilters, val version: Int)
     private data class GroupKey(val filters: BeatSearchFilters, val version: Int, val active: Boolean)
+
+    /** PIN → whether the All-India directory knows it; declared before `init` because the audit flow may run at once. */
+    private val knownPins = HashMap<String, Boolean>()
 
     init {
         combine(
@@ -163,7 +171,33 @@ class LocalBeatsViewModel(
             .onEach { count -> _state.update { it.copy(totalRecords = count) } }
             .launchIn(viewModelScope)
 
+        // Health card: blank account offices and mixed office types come straight from the
+        // listing; unknown PINs need the All-India directory, so they are looked up off the
+        // main thread with a per-PIN cache.
+        _state.map { it.records }.distinctUntilChanged()
+            .mapLatest { records -> auditHealth(records) }
+            .onEach { report -> _state.update { it.copy(health = report) } }
+            .launchIn(viewModelScope)
+
+        backupReminder?.state
+            ?.onEach { status -> _state.update { it.copy(backupStatus = status, backupDue = status.isDue(System.currentTimeMillis())) } }
+            ?.launchIn(viewModelScope)
+
         viewModelScope.launch { runCatching { excel.pruneOldExports() } }
+    }
+
+    private suspend fun auditHealth(records: List<BeatRecord>): HealthReport {
+        val blank = records.filter { it.accountOffice.isBlank() }
+        val mixed = BeatGrouping.summarizeOffices(records).count { it.isMixed }
+        val unknown = ArrayList<BeatRecord>()
+        val ready = runCatching { directory.isReady() }.getOrDefault(false)
+        if (ready) {
+            for (pin in records.map { it.pincode }.distinct()) {
+                val known = knownPins.getOrPut(pin) { runCatching { directory.search(pin, isPincode = true).isNotEmpty() }.getOrDefault(true) }
+                if (!known) unknown += records.filter { it.pincode == pin }
+            }
+        }
+        return HealthReport(blankAccount = blank, mixedOffices = mixed, unknownPinRecords = unknown)
     }
 
     fun onIntent(intent: LocalBeatsIntent) {
@@ -283,6 +317,20 @@ class LocalBeatsViewModel(
             LocalBeatsIntent.CancelRenameOffice -> _state.update { it.copy(showRenameOffice = false) }
             is LocalBeatsIntent.RenameOffice -> renameOffice(intent.office, intent.newName)
             LocalBeatsIntent.UndoLastChange -> undoLastChange()
+            LocalBeatsIntent.AddFromQuery -> addFromQuery()
+            is LocalBeatsIntent.ShowHealthIssue -> _state.update { it.copy(healthIssue = intent.issue) }
+            LocalBeatsIntent.ClearHealthIssue -> _state.update { it.copy(healthIssue = null) }
+            LocalBeatsIntent.SnoozeBackupReminder -> backupReminder?.snooze()
+            LocalBeatsIntent.PrintOfficeSummary -> fileOperation(UiText.Res(R.string.busy_pdf)) { printOfficeSummary() }
+            is LocalBeatsIntent.ShareBeatImage -> fileOperation(UiText.Res(R.string.busy_pdf)) {
+                val g = intent.group
+                if (g.records.isEmpty()) {
+                    _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_nothing_to_share)))
+                    return@fileOperation
+                }
+                val file = excel.exportImage(g.records, "${g.officeDisplay} beat ${g.beatNumber}", "${g.officeDisplay} • " + excel.string(R.string.local_beat_title, g.beatNumber), subtitleFor(g))
+                _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_image_title), BeatSheetImage.MIME_TYPE)))
+            }
             LocalBeatsIntent.CancelBulkDelete -> _state.update { it.copy(confirmBulkDelete = false) }
             LocalBeatsIntent.ConfirmBulkDelete -> bulkDelete()
 
@@ -292,10 +340,12 @@ class LocalBeatsViewModel(
             LocalBeatsIntent.DismissImportReport -> _state.update { it.copy(importReport = null) }
             LocalBeatsIntent.ShareBackup -> fileOperation(UiText.Res(R.string.busy_backup)) {
                 val file = excel.exportBackup()
+                backupReminder?.recordBackup()
                 _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_backup_title))))
             }
             is LocalBeatsIntent.SaveBackupTo -> fileOperation(UiText.Res(R.string.busy_saving_backup)) {
                 excel.saveBackupTo(intent.uri)
+                backupReminder?.recordBackup()
                 _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_backup_saved)))
             }
             LocalBeatsIntent.ShareTemplate -> fileOperation(UiText.Res(R.string.busy_template)) {
@@ -334,6 +384,7 @@ class LocalBeatsViewModel(
         _state.update {
             it.copy(
                 openOffice = office,
+                lastOffice = office,
                 officeGroups = BeatGrouping.group(BeatGrouping.recordsOf(it.records, office)),
                 selectedIds = emptySet(),
             )
@@ -447,6 +498,60 @@ class LocalBeatsViewModel(
         _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_pdf_title), com.pinbeatfinder.data.print.BeatSheetPdf.MIME_TYPE)))
     }
 
+    /**
+     * Quick add after a search miss: the typed name (or the village word of a pasted address)
+     * becomes the locality; the office fields come from the office last opened, else the filters.
+     */
+    private fun addFromQuery() {
+        _state.update { s ->
+            val name = (s.addressQuery?.candidates?.firstOrNull() ?: s.query).trim()
+            if (name.isEmpty()) return@update s
+            val office = s.lastOffice
+            val sample = office?.let { o -> s.records.firstOrNull { it.officeName.equals(o.officeName, true) && it.pincode in o.pincodes } }
+            val draft = if (office != null) {
+                BeatDraft(
+                    localityName = name,
+                    officeType = office.officeType.code,
+                    officeName = office.officeName,
+                    accountOffice = sample?.accountOffice.orEmpty(),
+                    pincode = s.addressQuery?.pincode ?: office.pincodes.first(),
+                    district = sample?.district.orEmpty(),
+                    state = sample?.state.orEmpty(),
+                )
+            } else {
+                BeatDraft(
+                    localityName = name,
+                    state = s.filters.state.orEmpty(),
+                    district = s.filters.district.orEmpty(),
+                    officeType = s.filters.officeType?.code ?: BeatDraft().officeType,
+                    officeName = s.filters.officeName.orEmpty(),
+                    beatNumber = s.filters.beatNumber.orEmpty(),
+                    pincode = s.addressQuery?.pincode ?: s.filters.pincode.orEmpty(),
+                )
+            }
+            s.copy(editor = EditorState(draft), selectedIds = emptySet(), confirmBulkDelete = false)
+        }
+    }
+
+    /** One page per office (within the current filters): its beats and their villages. */
+    private suspend fun printOfficeSummary() {
+        val records = repository.listAll(_state.value.filters)
+        if (records.isEmpty()) {
+            _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_nothing_to_share)))
+            return
+        }
+        val sections = BeatGrouping.summarizeOffices(records).map { office ->
+            val groups = BeatGrouping.group(BeatGrouping.recordsOf(records, office))
+            BeatSheetPdf.OfficeSection(
+                title = office.officeDisplay,
+                subtitle = groups.firstOrNull()?.let { subtitleFor(it) }.orEmpty(),
+                beats = groups.map { g -> g.beatNumber to g.records.map { it.localityName } },
+            )
+        }
+        val file = excel.exportOfficeSummaryPdf(sections)
+        _effects.send(LocalBeatsEffect.LaunchIntent(excel.shareIntent(file, excel.string(R.string.share_summary_title), BeatSheetPdf.MIME_TYPE)))
+    }
+
     private fun findDuplicates() {
         if (_state.value.isScanningDuplicates) return
         viewModelScope.launch {
@@ -481,6 +586,7 @@ class LocalBeatsViewModel(
                 repository.save(DuplicateFinder.merged(keep, drop))
                 repository.delete(drop.id)
                 dataVersion.update { it + 1 }
+                backupReminder?.recordEdits(2)
                 _state.update { s ->
                     // Drop every pair that involved the deleted record; the kept one may still pair with others.
                     s.copy(duplicates = s.duplicates?.filter { it.first.id != drop.id && it.second.id != drop.id })
@@ -526,6 +632,7 @@ class LocalBeatsViewModel(
             try {
                 val changed = repository.setOfficeType(intent.office.officeName, intent.office.pincodes, intent.type)
                 dataVersion.update { it + 1 }
+                backupReminder?.recordEdits(changed)
                 _effects.send(LocalBeatsEffect.ShowMessage(UiText.Plural(R.plurals.msg_office_type_updated, changed, intent.type.code)))
             } catch (e: CancellationException) {
                 throw e
@@ -544,6 +651,7 @@ class LocalBeatsViewModel(
                 try {
                     repository.save(validation.record)
                     dataVersion.update { it + 1 }
+                    backupReminder?.recordEdits()
                     if (editor.isBatch) advanceQueue() else _state.update { it.copy(editor = null) }
                     _effects.send(LocalBeatsEffect.Saved)
                     _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(if (editor.isNew) R.string.msg_record_added else R.string.msg_record_updated)))
@@ -570,6 +678,7 @@ class LocalBeatsViewModel(
             try {
                 repository.delete(record.id)
                 dataVersion.update { it + 1 }
+                backupReminder?.recordEdits()
                 _state.update { it.copy(selectedIds = it.selectedIds - record.id) }
                 _effects.send(LocalBeatsEffect.ShowUndoDelete(record))
             } catch (e: CancellationException) {
@@ -585,6 +694,7 @@ class LocalBeatsViewModel(
             try {
                 repository.save(record.copy(id = 0L))
                 dataVersion.update { it + 1 }
+                backupReminder?.recordEdits()
                 _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_restored, record.localityName)))
             } catch (e: CancellationException) {
                 throw e
@@ -604,6 +714,7 @@ class LocalBeatsViewModel(
             try {
                 val undo = change()
                 dataVersion.update { it + 1 }
+                backupReminder?.recordEdits()
                 lastUndo = undo
                 _effects.send(LocalBeatsEffect.ShowUndoChange(message))
             } catch (e: CancellationException) {
@@ -663,6 +774,7 @@ class LocalBeatsViewModel(
             try {
                 undo()
                 dataVersion.update { it + 1 }
+                backupReminder?.recordEdits()
                 _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_change_undone)))
             } catch (e: CancellationException) {
                 throw e
@@ -679,6 +791,7 @@ class LocalBeatsViewModel(
             try {
                 repository.deleteMany(ids)
                 dataVersion.update { it + 1 }
+                backupReminder?.recordEdits(ids.size)
                 _state.update { it.copy(selectedIds = emptySet(), confirmBulkDelete = false) }
                 _effects.send(LocalBeatsEffect.ShowMessage(UiText.Plural(R.plurals.msg_deleted_n, ids.size)))
             } catch (e: CancellationException) {
@@ -707,6 +820,7 @@ class LocalBeatsViewModel(
         fileOperation(UiText.Res(if (preview.mode == ImportMode.REPLACE_ALL) R.string.busy_replacing else R.string.busy_importing)) {
             val report = excel.commitImport(preview)
             dataVersion.update { it + 1 }
+            backupReminder?.recordEdits(report.inserted + preview.existingCount)
             _state.update { it.copy(importReport = report) }
         }
     }

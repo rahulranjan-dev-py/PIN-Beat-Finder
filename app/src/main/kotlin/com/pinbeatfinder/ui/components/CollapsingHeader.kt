@@ -18,6 +18,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Velocity
+import com.pinbeatfinder.ui.theme.LocalReduceMotion
 import kotlin.math.roundToInt
 
 /**
@@ -43,7 +44,9 @@ fun CollapsingHeader(
 
     LaunchedEffect(revealKey) { offset = 0f }
 
-    val connection = remember {
+    // With animations off in the system settings the header snaps instead of sliding.
+    val reduceMotion = LocalReduceMotion.current
+    val connection = remember(reduceMotion) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val dy = available.y
@@ -60,7 +63,8 @@ fun CollapsingHeader(
                 if (h > 0f) {
                     val target = if (offset > -h / 2f) 0f else -h
                     if (offset != target) {
-                        animate(initialValue = offset, targetValue = target, animationSpec = tween(SETTLE_MS)) { value, _ -> offset = value }
+                        if (reduceMotion) offset = target
+                        else animate(initialValue = offset, targetValue = target, animationSpec = tween(SETTLE_MS)) { value, _ -> offset = value }
                     }
                 }
                 return Velocity.Zero

@@ -1,6 +1,8 @@
 package com.pinbeatfinder.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.pinbeatfinder.ui.theme.LocalReduceMotion
 
 /** Centered placeholder for empty/error states with an optional action. */
 @Composable
@@ -31,6 +37,9 @@ fun EmptyState(
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    /** A quieter second choice under the main button (e.g. "Add X as a new village"). */
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -53,6 +62,14 @@ fun EmptyState(
             Spacer(Modifier.height(20.dp))
             PrimaryButton(onClick = onAction) { Text(actionLabel) }
         }
+        if (secondaryLabel != null && onSecondary != null) {
+            Spacer(Modifier.height(if (actionLabel != null) 8.dp else 20.dp))
+            OutlinedButton(onClick = onSecondary) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(secondaryLabel, textAlign = TextAlign.Center)
+            }
+        }
     }
 }
 
@@ -68,5 +85,15 @@ fun LabeledValue(label: String, value: String, modifier: Modifier = Modifier, la
             modifier = Modifier.width(labelWidth).padding(end = 8.dp, top = 2.dp),
         )
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+    }
+}
+
+/** [AnimatedVisibility] that switches without animating when the system "remove animations" setting is on. */
+@Composable
+fun MotionVisibility(visible: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    if (LocalReduceMotion.current) {
+        if (visible) Box(modifier) { content() }
+    } else {
+        AnimatedVisibility(visible = visible, modifier = modifier) { content() }
     }
 }

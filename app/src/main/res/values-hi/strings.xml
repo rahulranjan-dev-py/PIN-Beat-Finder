@@ -443,4 +443,65 @@
         <item quantity="one">%1$d गाँव</item>
         <item quantity="other">%1$d गाँव</item>
     </plurals>
+    <!-- v0.20.0 -->
+    <string name="quick_add_village">“%1$s” को नया गाँव जोड़ें</string>
+    <string name="voice_search">बोलकर खोजें</string>
+    <string name="voice_search_prompt">गाँव का नाम या पिन बोलें</string>
+    <string name="voice_search_unavailable">इस फ़ोन पर आवाज़ से इनपुट उपलब्ध नहीं है।</string>
+    <string name="preview_section_changes">क्या बदलेगा</string>
+    <string name="preview_added_samples">नए: %1$s</string>
+    <string name="preview_removed_samples">हटेंगे: %1$s</string>
+    <string name="preview_more">और %1$d</string>
+    <string name="health_title">निर्देशिका की स्थिति</string>
+    <string name="health_all_good">कोई समस्या नहीं मिली। हर गाँव का लेखा डाकघर, ज्ञात पिन और हर डाकघर का एक ही प्रकार है।</string>
+    <string name="health_fix">सुधारें</string>
+    <string name="health_issue_blank_account_title">बिना लेखा डाकघर वाले गाँव</string>
+    <string name="health_issue_unknown_pin_title">अज्ञात पिन वाले गाँव</string>
+    <string name="health_issue_hint">संपादित करने के लिए गाँव पर टैप करें।</string>
+    <string name="backup_due_title">अपनी निर्देशिका का बैकअप लें</string>
+    <string name="backup_due_never">आपने %1$d बदलाव किए हैं और कभी बैकअप नहीं सहेजा। बैकअप एक स्प्रेडशीट है जिससे आप सब वापस ला सकते हैं।</string>
+    <string name="backup_due_old">पिछले बैकअप (%2$s) के बाद %1$d बदलाव।</string>
+    <string name="backup_now">बैकअप लें</string>
+    <string name="backup_later">बाद में</string>
+    <string name="settings_last_backup">पिछला बैकअप: %1$s</string>
+    <string name="settings_last_backup_never">पिछला बैकअप: कभी नहीं</string>
+    <string name="menu_office_summary">डाकघर सारांश (PDF)</string>
+    <string name="pdf_office_summary">डाकघर सारांश • PIN Beat Finder</string>
+    <string name="share_summary_title">डाकघर सारांश साझा करें (PDF)</string>
+    <string name="share_image_title">बीट को चित्र के रूप में साझा करें</string>
+    <string name="action_share_image">चित्र के रूप में साझा करें</string>
+    <string name="settings_qr_title">ऐप साझा करें</string>
+    <string name="settings_qr_desc">नवीनतम रिलीज़ का डाउनलोड पेज खोलने के लिए स्कैन करें।</string>
+    <string name="settings_qr_content_description">डाउनलोड पेज का QR कोड</string>
+    <string name="action_share_link">लिंक साझा करें</string>
+    <string name="share_link_text">PIN Beat Finder – भारतीय डाक की शाखाओं के लिए ऑफ़लाइन बीट निर्देशिका। डाउनलोड: %1$s</string>
+    <string name="share_link_title">डाउनलोड लिंक साझा करें</string>
+    <string name="shortcut_online_short">अखिल भारतीय</string>
+    <string name="shortcut_online_long">अखिल भारतीय पिन निर्देशिका खोजें</string>
+    <string name="shortcut_add_short">गाँव जोड़ें</string>
+    <string name="shortcut_add_long">स्थानीय बीट में गाँव जोड़ें</string>
+    <string name="tablet_pick_office">बाईं ओर कोई डाकघर चुनें, उसकी बीट यहाँ दिखेंगी।</string>
+    <string name="a11y_pin">पिन %1$s</string>
+    <string name="a11y_office_card">%1$s, पिन %2$s, %3$s। डाकघर खोलता है।</string>
+    <string name="a11y_selected">चुना गया</string>
+    <plurals name="health_blank_account_n">
+        <item quantity="one">%1$d गाँव बिना लेखा डाकघर</item>
+        <item quantity="other">%1$d गाँव बिना लेखा डाकघर</item>
+    </plurals>
+    <plurals name="health_mixed_offices_n">
+        <item quantity="one">%1$d डाकघर मिश्रित प्रकार का</item>
+        <item quantity="other">%1$d डाकघर मिश्रित प्रकार के</item>
+    </plurals>
+    <plurals name="health_unknown_pins_n">
+        <item quantity="one">%1$d गाँव ऐसे पिन पर जो अखिल भारतीय निर्देशिका में नहीं है</item>
+        <item quantity="other">%1$d गाँव ऐसे पिन पर जो अखिल भारतीय निर्देशिका में नहीं हैं</item>
+    </plurals>
+    <plurals name="preview_removed">
+        <item quantity="one">निर्देशिका का %1$d गाँव इस फ़ाइल में नहीं है और हटा दिया जाएगा</item>
+        <item quantity="other">निर्देशिका के %1$d गाँव इस फ़ाइल में नहीं हैं और हटा दिए जाएँगे</item>
+    </plurals>
+    <plurals name="preview_unchanged_n">
+        <item quantity="one">पहले से मौजूद %1$d गाँव रहेगा</item>
+        <item quantity="other">पहले से मौजूद %1$d गाँव रहेंगे</item>
+    </plurals>
 </resources>

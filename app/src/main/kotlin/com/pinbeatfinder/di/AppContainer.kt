@@ -13,6 +13,7 @@ import com.pinbeatfinder.data.update.GithubReleasesService
 import com.pinbeatfinder.data.update.UpdateChecker
 import com.pinbeatfinder.data.local.BeatFinderDatabase
 import com.pinbeatfinder.data.prefs.AppSettingsRepository
+import com.pinbeatfinder.data.prefs.BackupReminder
 import com.pinbeatfinder.data.prefs.RecentSearchesRepository
 import com.pinbeatfinder.data.prefs.SharedPrefsStore
 import com.pinbeatfinder.data.remote.AndroidConnectivityChecker
@@ -97,6 +98,9 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
     val recentSearchesRepository: RecentSearchesRepository by lazy {
         RecentSearchesRepository(SharedPrefsStore(appContext))
     }
+
+    /** Edits-since-backup counter behind the "back up your directory" nudge. */
+    val backupReminder: BackupReminder by lazy { BackupReminder(SharedPrefsStore(appContext)) }
 
     val excelSyncManager: ExcelSyncManager by lazy {
         ExcelSyncManager(appContext, beatDirectoryRepository) { appSettingsRepository.settings.value.language }

@@ -28,6 +28,13 @@ data class ImportPreview(
     val errors: List<RowError>,
     /** Rows that will be deleted first when [mode] is REPLACE_ALL. */
     val existingCount: Int,
+    /** REPLACE_ALL: existing villages that are not in the spreadsheet and so disappear. */
+    val removedCount: Int = 0,
+    val removedSamples: List<String> = emptyList(),
+    /** Villages that are new to the directory (a few names, for the preview). */
+    val addedSamples: List<String> = emptyList(),
+    /** Villages present both in the directory and the spreadsheet. */
+    val unchangedCount: Int = 0,
 ) {
     val willInsert: Int get() = records.size
     val hasErrors: Boolean get() = errors.isNotEmpty()

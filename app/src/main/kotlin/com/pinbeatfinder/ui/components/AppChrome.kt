@@ -92,6 +92,8 @@ fun PillSearchField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     /** The × button; defaults to emptying the value through [onValueChange]. */
     onClear: (() -> Unit)? = null,
+    /** Shown at the end while the field is empty (e.g. the microphone); the × replaces it once there is text. */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(26.dp)
     val textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
@@ -133,6 +135,8 @@ fun PillSearchField(
                     IconButton(onClick = { onClear?.invoke() ?: onValueChange("") }) {
                         Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_clear), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                } else if (trailing != null) {
+                    trailing()
                 } else {
                     Spacer(Modifier.width(12.dp))
                 }
