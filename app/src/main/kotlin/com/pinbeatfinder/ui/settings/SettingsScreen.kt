@@ -2,6 +2,7 @@ package com.pinbeatfinder.ui.settings
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -54,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -76,6 +79,9 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** Where the QR code in About points; the latest release page always carries the newest APK. */
+private const val RELEASE_PAGE_URL = "https://github.com/rahulranjan-dev-py/PIN-Beat-Finder/releases/latest"
 
 private enum class AppLanguage(val tag: String, val labelRes: Int) {
     SYSTEM("", R.string.lang_system),
@@ -268,6 +274,31 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
             }
 
+            SettingGroup(stringResource(R.string.settings_qr_title), description = stringResource(R.string.settings_qr_desc)) {
+                // Black on white whatever the theme: phone cameras read it reliably that way.
+                Image(
+                    painter = painterResource(R.drawable.qr_release_page),
+                    contentDescription = stringResource(R.string.settings_qr_content_description),
+                    modifier = Modifier
+                        .size(200.dp)
+                        .background(Color.White, RoundedCornerShape(12.dp))
+                        .padding(8.dp),
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(RELEASE_PAGE_URL, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(onClick = {
+                    val send = Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.share_link_text, RELEASE_PAGE_URL))
+                    context.startActivity(Intent.createChooser(send, context.getString(R.string.share_link_title)))
+                }) {
+                    Icon(Icons.Default.Share, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.action_share_link))
+                }
+            }
+
             HorizontalDivider()
 
             // ---- Data --------------------------------------------------------------------
@@ -282,6 +313,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+
+            val backup by container.backupReminder.state.collectAsStateWithLifecycle()
+            Text(
+                backup.lastBackupAt?.let { stringResource(R.string.settings_last_backup, displayDateTime(Date(it))) }
+                    ?: stringResource(R.string.settings_last_backup_never),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             SettingGroup(stringResource(R.string.settings_clear_cache), description = stringResource(R.string.settings_clear_cache_desc)) {
                 OutlinedButton(onClick = {

@@ -56,6 +56,10 @@ import com.pinbeatfinder.ui.online.OnlineSearchViewModel
 import com.pinbeatfinder.ui.settings.SettingsScreen
 import com.pinbeatfinder.ui.theme.LocalExtraColors
 
+/** Values of the launcher-shortcut extra (see MainActivity.SHORTCUT_EXTRA and res/xml/shortcuts.xml). */
+private const val START_ONLINE = "online"
+private const val START_ADD = "add"
+
 private enum class MainTab(val labelRes: Int) {
     ONLINE(R.string.tab_online),
     LOCAL(R.string.tab_local),
@@ -66,7 +70,7 @@ private enum class MainTab(val labelRes: Int) {
  * title, and the tabs live in a bottom navigation bar with a pill behind the active icon.
  */
 @Composable
-fun MainScreen() {
+fun MainScreen(startAction: String? = null, onStartActionConsumed: () -> Unit = {}) {
     val container = LocalContext.current.appContainer
     val onlineViewModel: OnlineSearchViewModel = viewModel(
         factory = viewModelFactory {
@@ -83,7 +87,14 @@ fun MainScreen() {
     )
     val localViewModel: LocalBeatsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { LocalBeatsViewModel(container.beatDirectoryRepository, container.excelSyncManager, container.indiaPostDirectory) }
+            initializer {
+                LocalBeatsViewModel(
+                    container.beatDirectoryRepository,
+                    container.excelSyncManager,
+                    container.indiaPostDirectory,
+                    backupReminder = container.backupReminder,
+                )
+            }
         },
     )
 
@@ -94,6 +105,15 @@ fun MainScreen() {
     val tab = MainTab.entries[selectedTab]
     val snackbarHostState = remember { SnackbarHostState() }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+
+    // Launcher shortcuts: "All-India" opens the search tab, "Add village" opens a blank form.
+    LaunchedEffect(startAction) {
+        when (startAction) {
+            START_ONLINE -> { showSettings = false; selectedTab = MainTab.ONLINE.ordinal }
+            START_ADD -> { showSettings = false; selectedTab = MainTab.LOCAL.ordinal; localViewModel.onIntent(LocalBeatsIntent.OpenEditor()) }
+        }
+        if (startAction != null) onStartActionConsumed()
+    }
 
     // Cross-tab bridge: each side asks the host to switch tabs and hand over a query/draft.
     val onlineBridge = remember(onlineViewModel, localViewModel) {

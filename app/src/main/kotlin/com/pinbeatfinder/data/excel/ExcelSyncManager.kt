@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import com.pinbeatfinder.R
 import com.pinbeatfinder.core.util.BeatDraftValidator
+import com.pinbeatfinder.data.print.BeatSheetImage
 import com.pinbeatfinder.data.print.BeatSheetPdf
 import com.pinbeatfinder.data.repository.BeatDirectoryRepository
 import com.pinbeatfinder.domain.model.BeatRecord
@@ -72,13 +73,24 @@ class ExcelSyncManager(
             }
         }
         val (fresh, duplicates) = repository.partitionForImport(valid, replaceExisting = mode == ImportMode.REPLACE_ALL)
+        // What the import changes, village by village, so "replace all" is never a blind step.
+        val existing = repository.getAll()
+        val existingKeys = existing.map { it.dedupeKey }.toHashSet()
+        val newKeys = fresh.map { it.dedupeKey }.toHashSet()
+        val removed = if (mode == ImportMode.REPLACE_ALL) existing.filter { it.dedupeKey !in newKeys } else emptyList()
+        val added = fresh.filter { it.dedupeKey !in existingKeys }
+        val unchanged = if (mode == ImportMode.REPLACE_ALL) existing.size - removed.size else duplicates
         ImportPreview(
             mode = mode,
             records = fresh,
             duplicatesSkipped = duplicates,
             blankRowsSkipped = parsed.blankRowsSkipped,
             errors = errors,
-            existingCount = if (mode == ImportMode.REPLACE_ALL) repository.getAll().size else 0,
+            existingCount = if (mode == ImportMode.REPLACE_ALL) existing.size else 0,
+            removedCount = removed.size,
+            removedSamples = removed.take(SAMPLE_NAMES).map { it.localityName },
+            addedSamples = added.take(SAMPLE_NAMES).map { it.localityName },
+            unchangedCount = unchanged,
         )
     }
 
@@ -127,6 +139,34 @@ class ExcelSyncManager(
             page = { p, n -> string(R.string.pdf_page, p, n) },
         )
         BeatSheetPdf.write(title, subtitle, records, file.outputStream().buffered(), labels = labels)
+        file
+    }
+
+    /** One page per office: its beats and village names, for the branch wall. */
+    suspend fun exportOfficeSummaryPdf(sections: List<BeatSheetPdf.OfficeSection>): File = withContext(ioDispatcher) {
+        val file = File(exportDir, ExcelCodec.exportFileName("office summary").removeSuffix(".xlsx") + ".pdf")
+        val labels = BeatSheetPdf.SummaryLabels(
+            heading = string(R.string.pdf_office_summary),
+            beatLine = { beat, n -> string(R.string.local_beat_title, beat) + " • " + plural(R.plurals.count_villages, n) },
+            printed = { stamp -> string(R.string.pdf_printed, stamp) },
+            page = { p, n -> string(R.string.pdf_page, p, n) },
+        )
+        BeatSheetPdf.writeOfficeSummary(sections, file.outputStream().buffered(), labels)
+        file
+    }
+
+    /** A beat as a PNG for chat groups. */
+    suspend fun exportImage(records: List<BeatRecord>, label: String, title: String, subtitle: String): File = withContext(ioDispatcher) {
+        val file = File(exportDir, ExcelCodec.exportFileName(label).removeSuffix(".xlsx") + ".png")
+        BeatSheetImage.write(
+            title = title,
+            subtitle = subtitle,
+            records = records,
+            footer = string(R.string.pdf_printed, java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.US).format(java.util.Date())),
+            out = file.outputStream().buffered(),
+            columnBeat = plural(R.plurals.count_villages, records.size),
+            columnPin = string(R.string.pdf_col_pin),
+        )
         file
     }
 
@@ -186,5 +226,7 @@ class ExcelSyncManager(
         const val MAX_IMPORT_BYTES = 20L * 1024 * 1024
         const val MAX_IMPORT_ROWS = 50_000
         const val EXPORT_DIR = "exports"
+        /** How many village names an import preview lists per change kind. */
+        const val SAMPLE_NAMES = 6
     }
 }

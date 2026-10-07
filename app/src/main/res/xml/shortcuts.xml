@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the launcher icon: jump straight to the All-India search or to a blank village form. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="search_online"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutShortLabel="@string/shortcut_online_short"
+        android:shortcutLongLabel="@string/shortcut_online_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.pinbeatfinder"
+            android:targetClass="com.pinbeatfinder.MainActivity">
+            <extra android:name="pbf.shortcut" android:value="online" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="add_record"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_add_short"
+        android:shortcutLongLabel="@string/shortcut_add_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.pinbeatfinder"
+            android:targetClass="com.pinbeatfinder.MainActivity">
+            <extra android:name="pbf.shortcut" android:value="add" />
+        </intent>
+    </shortcut>
+</shortcuts>

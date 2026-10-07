@@ -119,6 +119,95 @@ object BeatSheetPdf {
         return pages
     }
 
+    /** One office on the summary sheet: its beats and the villages of each. */
+    data class OfficeSection(val title: String, val subtitle: String, val beats: List<Pair<String, List<String>>>)
+
+    data class SummaryLabels(
+        val heading: String,
+        /** "Beat 2 • 12 villages". */
+        val beatLine: (String, Int) -> String,
+        val printed: (String) -> String,
+        val page: (Int, Int) -> String,
+    )
+
+    /**
+     * Writes one section per office, each starting on a new page: a heading, the office line,
+     * then every beat as a bold line followed by its village names flowed across the width.
+     */
+    fun writeOfficeSummary(sections: List<OfficeSection>, out: OutputStream, labels: SummaryLabels, now: Date = Date()): Int {
+        val headingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; color = Color.DKGRAY }
+        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 16f; typeface = Typeface.DEFAULT_BOLD; color = Color.BLACK }
+        val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; color = Color.DKGRAY }
+        val beatPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 11f; typeface = Typeface.DEFAULT_BOLD; color = Color.BLACK }
+        val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; color = Color.BLACK }
+        val footerText = labels.printed(SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.US).format(now))
+        val width = PAGE_W - 2 * MARGIN
+        val bottom = PAGE_H - MARGIN - 20f
+
+        // Pass 1: lay every line out into pages (text + paint + indent), breaking pages as the text grows.
+        data class Line(val text: String, val paint: Paint, val indent: Float, val height: Float)
+        val pages = ArrayList<ArrayList<Line>>()
+        var current = ArrayList<Line>()
+        var y = MARGIN
+        fun newPage() { if (current.isNotEmpty()) pages += current; current = ArrayList(); y = MARGIN }
+        fun line(text: String, paint: Paint, indent: Float = 0f, height: Float = ROW_H * 0.75f) {
+            if (y + height > bottom) newPage()
+            current += Line(text, paint, indent, height)
+            y += height
+        }
+
+        for (section in sections) {
+            newPage()
+            line(labels.heading, headingPaint, height = 14f)
+            line(section.title, titlePaint, height = 22f)
+            line(section.subtitle, subPaint, height = 20f)
+            for ((beat, villages) in section.beats) {
+                if (y + 32f > bottom) newPage()
+                line(labels.beatLine(beat, villages.size), beatPaint, height = 18f)
+                // Flow the names across the width, comma separated.
+                var buffer = StringBuilder()
+                for ((i, name) in villages.withIndex()) {
+                    val piece = if (i == villages.size - 1) name else "$name,"
+                    val candidate = if (buffer.isEmpty()) piece else "$buffer $piece"
+                    if (buffer.isNotEmpty() && bodyPaint.measureText(candidate) > width - 12f) {
+                        line(buffer.toString(), bodyPaint, indent = 12f)
+                        buffer = StringBuilder(piece)
+                    } else {
+                        buffer = StringBuilder(candidate)
+                    }
+                }
+                if (buffer.isNotEmpty()) line(buffer.toString(), bodyPaint, indent = 12f)
+                y += 6f
+            }
+        }
+        newPage()
+        if (pages.isEmpty()) pages += arrayListOf(Line(labels.heading, headingPaint, 0f, 14f))
+
+        // Pass 2: draw.
+        val doc = PdfDocument()
+        out.use { stream ->
+            try {
+                pages.forEachIndexed { index, lines ->
+                    val page = doc.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, index + 1).create())
+                    val c = page.canvas
+                    var py = MARGIN
+                    for (l in lines) {
+                        py += l.height
+                        drawClipped(c, l.text, MARGIN + l.indent, py - 4f, width - l.indent, l.paint)
+                    }
+                    c.drawText(footerText, MARGIN, PAGE_H - MARGIN + 12f, subPaint)
+                    val pageLabel = labels.page(index + 1, pages.size)
+                    c.drawText(pageLabel, PAGE_W - MARGIN - subPaint.measureText(pageLabel), PAGE_H - MARGIN + 12f, subPaint)
+                    doc.finishPage(page)
+                }
+                doc.writeTo(stream)
+            } finally {
+                doc.close()
+            }
+        }
+        return pages.size
+    }
+
     /** Draws [text] truncated with an ellipsis so it never spills into the next column. */
     private fun drawClipped(c: Canvas, text: String, x: Float, y: Float, maxWidth: Float, paint: Paint) {
         if (text.isEmpty()) return

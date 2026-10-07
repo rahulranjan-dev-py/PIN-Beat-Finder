@@ -1,10 +1,12 @@
 package com.pinbeatfinder
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,6 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,11 +29,17 @@ import kotlinx.coroutines.launch
 import com.pinbeatfinder.data.prefs.ThemeMode
 import com.pinbeatfinder.ui.MainScreen
 import com.pinbeatfinder.ui.theme.LocalHapticsEnabled
+import com.pinbeatfinder.ui.theme.LocalReduceMotion
 import com.pinbeatfinder.data.prefs.LocaleSupport
 import com.pinbeatfinder.ui.theme.PinBeatFinderTheme
 
 /** AppCompatActivity (not ComponentActivity) so per-app language selection works on every API level. */
 class MainActivity : AppCompatActivity() {
+    /** A launcher-shortcut request ("online" / "add") waiting for the UI to act on it. */
+    private var startAction by mutableStateOf<String?>(null)
+    /** Mirrors the system "remove animations" setting; re-read on every resume. */
+    private var reduceMotion by mutableStateOf(false)
+
     /** The activity's own resources follow the saved language from the first frame. */
     override fun attachBaseContext(newBase: Context) {
         migrateStoredLocale(newBase)
@@ -43,6 +53,8 @@ class MainActivity : AppCompatActivity() {
         // AppCompat only knows the platform-stored locale once its delegate is attached; retry here.
         migrateStoredLocale(this)
         applyWindowBackground()
+        startAction = intent?.getStringExtra(SHORTCUT_EXTRA)
+        reduceMotion = readReduceMotion()
         setContent {
             val settings by appContainer.appSettingsRepository.settings.collectAsStateWithLifecycle()
             val darkTheme = when (settings.themeMode) {
@@ -65,8 +77,9 @@ class MainActivity : AppCompatActivity() {
                     CompositionLocalProvider(
                         LocalDensity provides Density(base.density, base.fontScale * settings.textScale.factor),
                         LocalHapticsEnabled provides settings.hapticsEnabled,
+                        LocalReduceMotion provides reduceMotion,
                     ) {
-                        MainScreen()
+                        MainScreen(startAction = startAction, onStartActionConsumed = { startAction = null })
                     }
                 }
             }
@@ -87,9 +100,17 @@ class MainActivity : AppCompatActivity() {
         if (tag.isNotBlank()) repo.update { it.copy(language = tag) }
     }
 
+    /** singleTop: a shortcut tapped while the app is open arrives here instead of in a new activity. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra(SHORTCUT_EXTRA)?.let { startAction = it }
+    }
+
     /** Every return to the app re-checks for a newer release (throttled inside the checker). */
     override fun onResume() {
         super.onResume()
+        reduceMotion = readReduceMotion()
         lifecycleScope.launch {
             val c = appContainer
             if (c.connectivity.isOnline()) c.updateChecker.checkOnForeground()
@@ -105,6 +126,10 @@ class MainActivity : AppCompatActivity() {
             ThemeMode.DARK -> true
         }
     }
+
+    /** True when the user has set the animator duration scale to 0 (Accessibility → Remove animations). */
+    private fun readReduceMotion(): Boolean =
+        runCatching { Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }.getOrDefault(false)
 
     /** Transparent edge-to-edge bars with light icons on the dark theme and dark icons on the light one. */
     private fun applySystemBars(dark: Boolean) {
@@ -127,5 +152,10 @@ class MainActivity : AppCompatActivity() {
             else -> 0xFFF7F7F5.toInt()
         }
         window.setBackgroundDrawable(ColorDrawable(colour))
+    }
+
+    companion object {
+        /** Intent extra set by res/xml/shortcuts.xml: "online" or "add". */
+        const val SHORTCUT_EXTRA = "pbf.shortcut"
     }
 }

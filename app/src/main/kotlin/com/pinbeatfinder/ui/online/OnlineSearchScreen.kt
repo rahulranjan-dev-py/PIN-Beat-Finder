@@ -76,6 +76,7 @@ import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.PillSearchField
 import com.pinbeatfinder.ui.components.PlainListBottomPadding
 import com.pinbeatfinder.ui.components.ScreenTitleBar
+import com.pinbeatfinder.ui.components.VoiceSearchButton
 import com.pinbeatfinder.ui.components.branchTypeLabel
 import com.pinbeatfinder.ui.components.deliveryLabel
 import com.pinbeatfinder.ui.components.displayCase
@@ -255,6 +256,12 @@ private fun OnlineHeader(state: OnlineSearchState, onIntent: (OnlineSearchIntent
                 keyboard?.hide()
                 onIntent(OnlineSearchIntent.Submit)
             }),
+            trailing = {
+                VoiceSearchButton(onResult = { spoken ->
+                    onIntent(OnlineSearchIntent.QueryChanged(spoken))
+                    onIntent(OnlineSearchIntent.Submit)
+                })
+            },
         )
         Text(
             stringResource(R.string.online_supporting),
