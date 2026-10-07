@@ -2,6 +2,7 @@ package com.pinbeatfinder.ui.online
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pinbeatfinder.core.util.AddressParser
 import com.pinbeatfinder.core.util.AppResult
 import com.pinbeatfinder.data.directory.SeedState
 import com.pinbeatfinder.data.prefs.RecentSearchesRepository
@@ -45,7 +46,7 @@ class OnlineSearchViewModel(
 
     fun onIntent(intent: OnlineSearchIntent) {
         when (intent) {
-            is OnlineSearchIntent.QueryChanged -> _state.update { it.copy(query = intent.query) }
+            is OnlineSearchIntent.QueryChanged -> _state.update { it.copy(query = intent.query.replace('\n', ' ').replace('\r', ' ')) }
             OnlineSearchIntent.Submit -> search(_state.value.query)
             OnlineSearchIntent.Retry -> search(_state.value.submittedQuery)
             OnlineSearchIntent.Clear -> {
@@ -82,12 +83,18 @@ class OnlineSearchViewModel(
     }
 
     private fun search(raw: String) {
-        val query = raw.trim()
-        if (query.isEmpty()) return
+        val typed = raw.trim()
+        if (typed.isEmpty()) return
+        // A pasted address: search its PIN, or failing that its most likely office or locality word.
+        val fromAddress = AddressParser.onlineQuery(typed)?.takeIf { it != typed }
+        val query = fromAddress ?: typed
         inFlight?.cancel()
         inFlight = viewModelScope.launch {
             _state.update {
-                it.copy(isLoading = true, error = null, submittedQuery = query, stateFilter = null, districtFilter = null, selectedOffice = null)
+                it.copy(
+                    isLoading = true, error = null, submittedQuery = query, stateFilter = null, districtFilter = null, selectedOffice = null,
+                    addressSource = if (fromAddress != null) typed else null,
+                )
             }
             when (val result = repository.lookup(query)) {
                 is AppResult.Success -> {

@@ -53,6 +53,32 @@ class BeatDirectoryDaoTest {
     fun tearDown() = db.close()
 
     @Test
+    fun `move to beat and rename office can be undone`() = runBlocking {
+        val rampur = repo.listAll().filter { it.officeName == "Rampur BO" }
+        assertEquals(2, rampur.size)
+        val moved = repo.moveToBeat(rampur.map { it.id }, "5")
+        assertEquals(setOf("5"), repo.listAll().filter { it.officeName == "Rampur BO" }.map { it.beatNumber }.toSet())
+        repo.restoreBeatNumbers(moved)
+        assertEquals(setOf("2"), repo.listAll().filter { it.officeName == "Rampur BO" }.map { it.beatNumber }.toSet())
+
+        val renamed = repo.renameOffice("Rampur BO", listOf("261001"), "Rampur Kalan BO")
+        assertEquals(2, renamed.size)
+        assertEquals(2, repo.listAll().count { it.officeName == "Rampur Kalan BO" })
+        assertEquals(0, repo.listAll().count { it.officeName == "Rampur BO" })
+        repo.restoreOfficeNames(renamed)
+        assertEquals(2, repo.listAll().count { it.officeName == "Rampur BO" })
+    }
+
+    @Test
+    fun `a pasted address finds the village and prefers its PIN`() = runBlocking {
+        val result = repo.searchSmart("Shri Mohan, Vill Rampur Kalan, PO Rampur, Dist Sitapur, UP 261001")
+        assertTrue(result.parsed != null && result.parsed!!.isAddress)
+        assertEquals("261001", result.parsed!!.pincode)
+        assertEquals("Rampur Kalan", result.hits.first().record.localityName)
+        assertTrue(repo.searchSmart("Rampur").parsed == null)
+    }
+
+    @Test
     fun `phonetic search tolerates misspelling and ranks exact first`() = runBlocking {
         // "Rampoor" normalises to "rampur", a prefix of both names (TEXT tier); order between the two is a tie-break.
         val hits = repo.search("Rampoor")

@@ -116,7 +116,17 @@ class ExcelSyncManager(
     /** Renders [records] as a printable PDF (see [BeatSheetPdf]) into the app cache. */
     suspend fun exportPdf(records: List<BeatRecord>, label: String, title: String, subtitle: String): File = withContext(ioDispatcher) {
         val file = File(exportDir, ExcelCodec.exportFileName(label).removeSuffix(".xlsx") + ".pdf")
-        BeatSheetPdf.write(title, subtitle, records, file.outputStream().buffered())
+        val labels = BeatSheetPdf.Labels(
+            serial = string(R.string.pdf_col_sl),
+            locality = string(R.string.pdf_col_locality),
+            beat = string(R.string.pdf_col_beat),
+            pin = string(R.string.pdf_col_pin),
+            remarks = string(R.string.pdf_col_remarks),
+            localities = { n -> plural(R.plurals.pdf_localities, n) },
+            printed = { stamp -> string(R.string.pdf_printed, stamp) },
+            page = { p, n -> string(R.string.pdf_page, p, n) },
+        )
+        BeatSheetPdf.write(title, subtitle, records, file.outputStream().buffered(), labels = labels)
         file
     }
 
@@ -160,6 +170,10 @@ class ExcelSyncManager(
 
     /** Localised string lookup for callers without a Context (share-sheet titles). */
     fun string(resId: Int, vararg args: Any): String = LocaleSupport.wrapBase(appContext, languageTag()).getString(resId, *args)
+
+    /** Quantity string in the app language; [count] is also the first format argument. */
+    fun plural(resId: Int, count: Int, vararg args: Any): String =
+        LocaleSupport.wrapBase(appContext, languageTag()).resources.getQuantityString(resId, count, count, *args)
 
     /** Removes exports older than [maxAgeMillis]; call opportunistically at start-up. */
     suspend fun pruneOldExports(maxAgeMillis: Long = 7L * 24 * 60 * 60 * 1000) = withContext(ioDispatcher) {

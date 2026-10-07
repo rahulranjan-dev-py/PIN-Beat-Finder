@@ -58,6 +58,7 @@ import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.domain.model.plainName
 import com.pinbeatfinder.ui.components.AppBottomSheet
 import com.pinbeatfinder.ui.components.OfficeTypeDropdown
+import com.pinbeatfinder.ui.components.deliveryLabel
 import com.pinbeatfinder.ui.components.labelRes
 import com.pinbeatfinder.ui.components.message
 
@@ -384,7 +385,7 @@ private fun OfficePickerDialog(
                             Column(Modifier.weight(1f)) {
                                 Text(office.name, style = MaterialTheme.typography.bodyLarge)
                                 val account = if (office.accountOffice.isBlank()) "" else stringResource(R.string.fetch_account_office, office.accountOffice)
-                                val details = listOf(office.officeType.fullName, office.deliveryStatus, account).filter { it.isNotBlank() }
+                                val details = listOf(stringResource(office.officeType.labelRes()), deliveryLabel(LocalContext.current, office.deliveryStatus), account).filter { it.isNotBlank() }
                                 Text(details.joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 stats[office.plainName().lowercase()]?.let { local ->
                                     val counts = pluralStringResource(R.plurals.count_beats, local.beats, local.beats) + ", " +

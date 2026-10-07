@@ -79,8 +79,8 @@ class LocalBeatsViewModel(
         ) { (q, f), v -> SearchKey(q, f, v) }
             .debounce { key -> if (key.query.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
             .onEach { _state.update { it.copy(isSearching = true) } }
-            .mapLatest { key -> repository.search(key.query, key.filters) }
-            .onEach { hits -> _state.update { it.copy(hits = hits, isSearching = false) } }
+            .mapLatest { key -> repository.searchSmart(key.query, key.filters) }
+            .onEach { result -> _state.update { it.copy(hits = result.hits, addressQuery = result.parsed, isSearching = false) } }
             .launchIn(viewModelScope)
 
         // Office cards, the office screen and the By-beat view all derive from the filtered listing.
@@ -170,7 +170,8 @@ class LocalBeatsViewModel(
         when (intent) {
             // Any change to what is listed drops the selection: a "delete 3 selected" must never
             // act on rows the list no longer shows.
-            is LocalBeatsIntent.QueryChanged -> _state.update { it.copy(query = intent.query, selectedIds = emptySet(), confirmBulkDelete = false) }
+            // Pasted addresses arrive with line breaks; one line keeps the field and the parser simple.
+            is LocalBeatsIntent.QueryChanged -> _state.update { it.copy(query = intent.query.replace('\n', ' ').replace('\r', ' '), selectedIds = emptySet(), confirmBulkDelete = false) }
             is LocalBeatsIntent.FiltersChanged -> _state.update { it.copy(filters = intent.filters, selectedIds = emptySet(), confirmBulkDelete = false) }
             LocalBeatsIntent.ClearFilters -> _state.update { it.copy(filters = BeatSearchFilters(), selectedIds = emptySet(), confirmBulkDelete = false) }
             LocalBeatsIntent.ShowFilters -> _state.update { it.copy(showFilters = true) }
@@ -240,12 +241,12 @@ class LocalBeatsViewModel(
             }
             is LocalBeatsIntent.PrintBeat -> fileOperation(UiText.Res(R.string.busy_pdf)) {
                 val g = intent.group
-                printNow(g.records, "${g.officeDisplay} beat ${g.beatNumber}", "${g.officeDisplay} • Beat ${g.beatNumber}", subtitleFor(g))
+                printNow(g.records, "${g.officeDisplay} beat ${g.beatNumber}", "${g.officeDisplay} • " + excel.string(R.string.local_beat_title, g.beatNumber), subtitleFor(g))
             }
             is LocalBeatsIntent.PrintOffice -> fileOperation(UiText.Res(R.string.busy_pdf)) {
                 val g = intent.group
                 val records = officeRecords(g).sortedWith(compareBy<BeatRecord> { it.beatNumber.length }.thenBy { it.beatNumber }.thenBy { it.localityName.lowercase() })
-                printNow(records, g.officeDisplay, "${g.officeDisplay} • all beats", subtitleFor(g))
+                printNow(records, g.officeDisplay, "${g.officeDisplay} • " + excel.string(R.string.pdf_all_beats), subtitleFor(g))
             }
             LocalBeatsIntent.FindDuplicates -> findDuplicates()
             LocalBeatsIntent.DismissDuplicates -> _state.update { it.copy(duplicates = null) }
@@ -272,6 +273,16 @@ class LocalBeatsViewModel(
             }
             LocalBeatsIntent.ClearSelection -> _state.update { it.copy(selectedIds = emptySet(), confirmBulkDelete = false) }
             LocalBeatsIntent.RequestBulkDelete -> _state.update { it.copy(confirmBulkDelete = it.selectedIds.isNotEmpty()) }
+            LocalBeatsIntent.RequestMoveToBeat -> _state.update { it.copy(showMoveToBeat = it.selectedIds.isNotEmpty()) }
+            LocalBeatsIntent.CancelMoveToBeat -> _state.update { it.copy(showMoveToBeat = false) }
+            is LocalBeatsIntent.MoveSelectedToBeat -> moveSelectedToBeat(intent.beat)
+            is LocalBeatsIntent.RequestMergeBeat -> _state.update { it.copy(mergeSource = intent.group) }
+            LocalBeatsIntent.CancelMergeBeat -> _state.update { it.copy(mergeSource = null) }
+            is LocalBeatsIntent.MergeBeat -> mergeBeat(intent.group, intent.intoBeat)
+            LocalBeatsIntent.RequestRenameOffice -> _state.update { it.copy(showRenameOffice = it.openOffice != null) }
+            LocalBeatsIntent.CancelRenameOffice -> _state.update { it.copy(showRenameOffice = false) }
+            is LocalBeatsIntent.RenameOffice -> renameOffice(intent.office, intent.newName)
+            LocalBeatsIntent.UndoLastChange -> undoLastChange()
             LocalBeatsIntent.CancelBulkDelete -> _state.update { it.copy(confirmBulkDelete = false) }
             LocalBeatsIntent.ConfirmBulkDelete -> bulkDelete()
 
@@ -421,8 +432,8 @@ class LocalBeatsViewModel(
     private fun subtitleFor(group: BeatGroup): String {
         val sample = group.records.firstOrNull()
         return listOfNotNull(
-            group.accountOffice.takeIf { it.isNotBlank() }?.let { "Account office $it" },
-            "PIN ${group.pincodes.joinToString(", ")}",
+            group.accountOffice.takeIf { it.isNotBlank() }?.let { excel.string(R.string.pdf_account_office, it) },
+            excel.string(R.string.local_beat_subtitle_pin, group.pincodes.joinToString(", ")),
             sample?.let { listOf(it.district, it.state).filter { s -> s.isNotBlank() }.joinToString(", ") }?.takeIf { it.isNotBlank() },
         ).joinToString(" • ")
     }
@@ -579,6 +590,84 @@ class LocalBeatsViewModel(
                 throw e
             } catch (e: Exception) {
                 _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_restore_failed, e.message.orEmpty())))
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ move / merge / rename (undoable)
+
+    /** The revert of the most recent move, merge or rename; one level deep, like the delete undo. */
+    private var lastUndo: (suspend () -> Unit)? = null
+
+    private fun undoableChange(message: UiText, change: suspend () -> (suspend () -> Unit)) {
+        viewModelScope.launch {
+            try {
+                val undo = change()
+                dataVersion.update { it + 1 }
+                lastUndo = undo
+                _effects.send(LocalBeatsEffect.ShowUndoChange(message))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_change_failed, e.message.orEmpty())))
+            }
+        }
+    }
+
+    private fun moveSelectedToBeat(beat: String) {
+        val ids = _state.value.selectedIds
+        val target = beat.trim()
+        if (ids.isEmpty() || target.isEmpty()) return
+        _state.update { it.copy(showMoveToBeat = false, selectedIds = emptySet(), confirmBulkDelete = false) }
+        undoableChange(UiText.Plural(R.plurals.msg_moved_to_beat, ids.size, target)) {
+            val previous = repository.moveToBeat(ids, target)
+            val undo: suspend () -> Unit = { repository.restoreBeatNumbers(previous) }
+            undo
+        }
+    }
+
+    private fun mergeBeat(group: BeatGroup, intoBeat: String) {
+        val target = intoBeat.trim()
+        if (target.isEmpty() || target.equals(group.beatNumber, ignoreCase = true)) return
+        _state.update { it.copy(mergeSource = null) }
+        undoableChange(UiText.Res(R.string.msg_beat_merged, group.beatNumber, target)) {
+            val previous = repository.moveToBeat(group.records.map { it.id }, target)
+            val undo: suspend () -> Unit = { repository.restoreBeatNumbers(previous) }
+            undo
+        }
+    }
+
+    private fun renameOffice(office: OfficeSummary, newName: String) {
+        val name = newName.trim()
+        if (name.isEmpty() || name == office.officeName) {
+            _state.update { it.copy(showRenameOffice = false) }
+            return
+        }
+        _state.update { it.copy(showRenameOffice = false) }
+        undoableChange(UiText.Res(R.string.msg_office_renamed, name)) {
+            val previous = repository.renameOffice(office.officeName, office.pincodes, name)
+            // The open office screen follows the record set it was showing.
+            _state.update { s -> if (s.openOffice?.key == office.key) s.copy(openOffice = office.copy(officeName = name)) else s }
+            val undo: suspend () -> Unit = {
+                repository.restoreOfficeNames(previous)
+                _state.update { s -> if (s.openOffice?.officeName == name) s.copy(openOffice = office) else s }
+            }
+            undo
+        }
+    }
+
+    private fun undoLastChange() {
+        val undo = lastUndo ?: return
+        lastUndo = null
+        viewModelScope.launch {
+            try {
+                undo()
+                dataVersion.update { it + 1 }
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_change_undone)))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effects.send(LocalBeatsEffect.ShowMessage(UiText.Res(R.string.msg_change_failed, e.message.orEmpty())))
             }
         }
     }

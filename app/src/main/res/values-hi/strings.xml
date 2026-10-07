@@ -291,7 +291,7 @@
     <string name="settings_section_data">डेटा</string>
     <string name="settings_api_key_hint">अपनी कुंजी यहाँ चिपकाएँ</string>
     <string name="settings_disclaimer">अनौपचारिक ऐप। डाक विभाग से संबद्ध या उसके द्वारा अनुमोदित नहीं।</string>
-    <string name="launcher_label">PIN Beat</string>
+    <string name="launcher_label">पिन बीट</string>
     <string name="local_switch_to_beats">बीट के अनुसार देखें</string>
     <string name="local_switch_to_offices">डाकघर देखें</string>
     <string name="office_overflow">डाकघर के विकल्प</string>
@@ -393,5 +393,54 @@
     <plurals name="duplicates_hint">
         <item quantity="one">%1$d जोड़ी एक ही गाँव दो बार दर्ज लगती है। एक को रखने पर दूसरा हट जाता है; रखे गए में टिप्पणी न हो तो दूसरे की टिप्पणी ले ली जाती है। संपादित करने के लिए नाम पर टैप करें।</item>
         <item quantity="other">%1$d जोड़ियाँ एक ही गाँव दो बार दर्ज लगती हैं। एक को रखने पर दूसरा हट जाता है; रखे गए में टिप्पणी न हो तो दूसरे की टिप्पणी ले ली जाती है। संपादित करने के लिए नाम पर टैप करें।</item>
+    </plurals>
+
+    <!-- v0.19.0: address search, merge/rename tools, remaining translations -->
+    <string name="local_address_hint">पते से: %1$s</string>
+    <string name="online_address_hint">चिपकाए गए पते से “%1$s” खोजा गया</string>
+    <string name="action_rename_office">डाकघर का नाम बदलें…</string>
+    <string name="rename_office_title">डाकघर का नाम बदलें</string>
+    <string name="rename_office_message">%1$s के सभी रिकॉर्ड को नया नाम मिलेगा। तुरंत बाद पूर्ववत कर सकते हैं।</string>
+    <string name="field_new_office_name">नया डाकघर नाम</string>
+    <string name="action_rename">नाम बदलें</string>
+    <string name="action_merge_beat">दूसरी बीट में मिलाएँ…</string>
+    <string name="merge_beat_title">बीट %1$s मिलाएँ</string>
+    <string name="merge_beat_message">बीट %1$s के सभी गाँव चुनी गई बीट में चले जाएँगे; फिर बीट %1$s नहीं रहेगी। तुरंत बाद पूर्ववत कर सकते हैं।</string>
+    <string name="action_merge">मिलाएँ</string>
+    <string name="action_move_to_beat">बीट बदलें…</string>
+    <string name="move_beat_pick">बीट चुनें या नंबर लिखें</string>
+    <string name="field_target_beat">बीट नंबर</string>
+    <string name="action_move">ले जाएँ</string>
+    <string name="msg_beat_merged">बीट %1$s को बीट %2$s में मिला दिया गया।</string>
+    <string name="msg_office_renamed">डाकघर का नाम बदलकर %1$s किया गया।</string>
+    <string name="msg_change_undone">बदलाव पूर्ववत किया गया।</string>
+    <string name="msg_change_failed">बदलाव लागू नहीं हो सका: %1$s</string>
+    <string name="pdf_col_sl">क्र.</string>
+    <string name="pdf_col_locality">मोहल्ला / गाँव</string>
+    <string name="pdf_col_beat">बीट</string>
+    <string name="pdf_col_pin">पिन</string>
+    <string name="pdf_col_remarks">टिप्पणी</string>
+    <string name="pdf_printed">मुद्रित %1$s • PIN Beat Finder</string>
+    <string name="pdf_page">पृष्ठ %1$d / %2$d</string>
+    <string name="pdf_account_office">लेखा डाकघर %1$s</string>
+    <string name="pdf_all_beats">सभी बीट</string>
+    <string name="office_type_gpo">जनरल पोस्ट ऑफिस</string>
+    <string name="office_type_ho">प्रधान डाकघर</string>
+    <string name="office_type_idc">IDC</string>
+    <string name="office_type_so">उप डाकघर</string>
+    <string name="office_type_bo">शाखा डाकघर</string>
+    <string name="delivery_yes">वितरण</string>
+    <string name="delivery_no">गैर-वितरण</string>
+    <plurals name="move_beat_title">
+        <item quantity="one">%1$d गाँव दूसरी बीट में ले जाएँ</item>
+        <item quantity="other">%1$d गाँव दूसरी बीट में ले जाएँ</item>
+    </plurals>
+    <plurals name="msg_moved_to_beat">
+        <item quantity="one">%1$d गाँव बीट %2$s में ले जाया गया।</item>
+        <item quantity="other">%1$d गाँव बीट %2$s में ले जाए गए।</item>
+    </plurals>
+    <plurals name="pdf_localities">
+        <item quantity="one">%1$d गाँव</item>
+        <item quantity="other">%1$d गाँव</item>
     </plurals>
 </resources>

@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.19.0 — address search, merge and rename tools, Hindi everywhere
+
+### Added
+- **Search from a pasted address.** Paste a whole article address ("Vill Ambona, PO Baliapur,
+  Dist Dhanbad 828201") into either search field. Local Beats picks out the village and office
+  words and the PIN, searches them all and lists records on that PIN first, with a line showing
+  what it looked for. All-India searches the PIN, or the office name when there is none.
+- **Rename office.** Office screen → ⋮ → Rename office: every record of that office gets the new
+  name in one step.
+- **Merge beats.** Share menu of a beat → Merge into another beat: all its villages move to the
+  beat you pick.
+- **Move villages to a beat.** Long-press to select villages, then the move button in the
+  selection bar.
+- Each of these shows an Undo in the snackbar.
+
+### Changed
+- Hindi now covers the PDF beat sheets (headers, counts, footer), the PDF titles, office kinds
+  ("शाखा डाकघर" instead of "Branch Office") and delivery status in All-India results and the
+  share text, and the launcher label on phones set to Hindi.
+
 ## v0.18.0 — "Night Mail" redesign and large-font fixes
 
 ### Changed

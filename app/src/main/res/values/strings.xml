@@ -400,4 +400,53 @@
         <item quantity="one">%1$d pair looks like the same village entered twice. Keeping one deletes the other; its remarks are carried over if the kept one has none. Tap a name to edit it instead.</item>
         <item quantity="other">%1$d pairs look like the same village entered twice. Keeping one deletes the other; its remarks are carried over if the kept one has none. Tap a name to edit it instead.</item>
     </plurals>
+
+    <!-- v0.19.0: address search, merge/rename tools, remaining translations -->
+    <string name="local_address_hint">From the address: %1$s</string>
+    <string name="online_address_hint">Searched “%1$s” from the pasted address</string>
+    <string name="action_rename_office">Rename office…</string>
+    <string name="rename_office_title">Rename office</string>
+    <string name="rename_office_message">Every record of %1$s gets the new name. You can undo right after.</string>
+    <string name="field_new_office_name">New office name</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_merge_beat">Merge into another beat…</string>
+    <string name="merge_beat_title">Merge beat %1$s</string>
+    <string name="merge_beat_message">All villages of beat %1$s move to the beat you pick; beat %1$s is then gone. You can undo right after.</string>
+    <string name="action_merge">Merge</string>
+    <string name="action_move_to_beat">Move to beat…</string>
+    <string name="move_beat_pick">Pick a beat or type a number</string>
+    <string name="field_target_beat">Beat number</string>
+    <string name="action_move">Move</string>
+    <string name="msg_beat_merged">Beat %1$s merged into beat %2$s.</string>
+    <string name="msg_office_renamed">Office renamed to %1$s.</string>
+    <string name="msg_change_undone">Change undone.</string>
+    <string name="msg_change_failed">Could not apply the change: %1$s</string>
+    <string name="pdf_col_sl">Sl.</string>
+    <string name="pdf_col_locality">Locality / Village</string>
+    <string name="pdf_col_beat">Beat</string>
+    <string name="pdf_col_pin">PIN</string>
+    <string name="pdf_col_remarks">Remarks</string>
+    <string name="pdf_printed">Printed %1$s • PIN Beat Finder</string>
+    <string name="pdf_page">Page %1$d of %2$d</string>
+    <string name="pdf_account_office">Account office %1$s</string>
+    <string name="pdf_all_beats">all beats</string>
+    <string name="office_type_gpo">General Post Office</string>
+    <string name="office_type_ho">Head Post Office</string>
+    <string name="office_type_idc">IDC</string>
+    <string name="office_type_so">Sub Post Office</string>
+    <string name="office_type_bo">Branch Office</string>
+    <string name="delivery_yes">Delivery</string>
+    <string name="delivery_no">Non-delivery</string>
+    <plurals name="move_beat_title">
+        <item quantity="one">Move %1$d village to a beat</item>
+        <item quantity="other">Move %1$d villages to a beat</item>
+    </plurals>
+    <plurals name="msg_moved_to_beat">
+        <item quantity="one">Moved %1$d village to beat %2$s.</item>
+        <item quantity="other">Moved %1$d villages to beat %2$s.</item>
+    </plurals>
+    <plurals name="pdf_localities">
+        <item quantity="one">%1$d locality</item>
+        <item quantity="other">%1$d localities</item>
+    </plurals>
 </resources>

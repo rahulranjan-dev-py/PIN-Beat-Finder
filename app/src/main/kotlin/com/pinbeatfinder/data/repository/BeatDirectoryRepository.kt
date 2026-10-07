@@ -1,6 +1,7 @@
 package com.pinbeatfinder.data.repository
 
 import com.pinbeatfinder.core.phonetic.PhoneticSearchEngine
+import com.pinbeatfinder.core.util.AddressParser
 import com.pinbeatfinder.data.local.BeatDirectoryDao
 import com.pinbeatfinder.data.local.BeatDirectoryEntity
 import com.pinbeatfinder.data.local.OfficeStats
@@ -75,6 +76,68 @@ class BeatDirectoryRepository(
             .sortedWith(compareByDescending<BeatSearchHit> { it.score }.thenBy { it.record.localityName })
             .take(limit)
             .toList()
+    }
+
+    /**
+     * Search that also understands a pasted address: when [query] looks like one, every likely
+     * locality or office word in it is searched and the hits are merged, records on the
+     * address's PIN first. [AddressSearch.parsed] is null for an ordinary query.
+     */
+    suspend fun searchSmart(
+        query: String,
+        filters: BeatSearchFilters = BeatSearchFilters(),
+        limit: Int = RESULT_LIMIT,
+    ): AddressSearch = withContext(ioDispatcher) {
+        val parsed = AddressParser.parse(query)
+        if (!parsed.isAddress) return@withContext AddressSearch(search(query, filters, limit), null)
+
+        val best = LinkedHashMap<Long, BeatSearchHit>()
+        val terms = parsed.candidates.ifEmpty { listOfNotNull(parsed.pincode) }
+        for (term in terms) {
+            for (hit in search(term, filters, limit)) {
+                val current = best[hit.record.id]
+                if (current == null || hit.score > current.score) best[hit.record.id] = hit
+            }
+        }
+        if (parsed.pincode != null) {
+            // Rows on the address's own PIN also match when the village word is missing.
+            for (hit in search(parsed.pincode, filters, limit)) {
+                best.putIfAbsent(hit.record.id, hit.copy(score = PIN_ONLY_SCORE, matchKind = MatchKind.TEXT))
+            }
+        }
+        val hits = best.values
+            .map { hit -> if (parsed.pincode != null && hit.record.pincode == parsed.pincode) hit.copy(score = minOf(1.0, hit.score + PIN_BOOST)) else hit }
+            .sortedWith(compareByDescending<BeatSearchHit> { it.score }.thenBy { it.record.localityName })
+            .take(limit)
+        AddressSearch(hits, parsed)
+    }
+
+    /** One changed field on one record, kept so the change can be undone. */
+    data class FieldChange(val id: Long, val previous: String)
+
+    /** Moves the records to [beat]; returns what each had before, for [restoreBeatNumbers]. */
+    suspend fun moveToBeat(ids: Collection<Long>, beat: String): List<FieldChange> = withContext(ioDispatcher) {
+        val list = ids.toList()
+        if (list.isEmpty()) return@withContext emptyList()
+        val previous = dao.getByIds(list).map { FieldChange(it.id, it.beatNumber) }
+        dao.setBeatNumber(list, beat.trim(), System.currentTimeMillis())
+        previous
+    }
+
+    suspend fun restoreBeatNumbers(changes: List<FieldChange>) = withContext(ioDispatcher) {
+        if (changes.isNotEmpty()) dao.restoreBeatNumbers(changes.map { it.id to it.previous }, System.currentTimeMillis())
+    }
+
+    /** Renames the office (name + PINs) on every record that belongs to it; returns the previous names. */
+    suspend fun renameOffice(officeName: String, pincodes: Collection<String>, newName: String): List<FieldChange> = withContext(ioDispatcher) {
+        val rows = dao.ofOffice(officeName.trim(), pincodes.toList())
+        if (rows.isEmpty()) return@withContext emptyList()
+        dao.setOfficeName(rows.map { it.id }, newName.trim(), System.currentTimeMillis())
+        rows.map { FieldChange(it.id, it.officeName) }
+    }
+
+    suspend fun restoreOfficeNames(changes: List<FieldChange>) = withContext(ioDispatcher) {
+        if (changes.isNotEmpty()) dao.restoreOfficeNames(changes.map { it.id to it.previous }, System.currentTimeMillis())
     }
 
     fun observeCount(): Flow<Int> = dao.observeCount()
@@ -178,9 +241,16 @@ class BeatDirectoryRepository(
     companion object {
         const val RESULT_LIMIT = 200
         const val CANDIDATE_LIMIT = 400
+        /** Score given to a row matched only through the address's PIN. */
+        const val PIN_ONLY_SCORE = 0.45
+        /** Added to a hit that sits on the address's PIN, so it outranks the same name elsewhere. */
+        const val PIN_BOOST = 0.15
 
         /** `%` and `_` are LIKE wildcards; a village literally named "100%" should still work. */
         /** For `LIKE :pattern ESCAPE '\\'`: the wildcards and the escape itself become literal. */
         fun escapeLike(raw: String): String = raw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     }
 }
+
+/** Hits of an ordinary query, or of the terms picked out of a pasted address ([parsed] non-null). */
+data class AddressSearch(val hits: List<BeatSearchHit>, val parsed: AddressParser.Parsed?)

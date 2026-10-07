@@ -28,6 +28,8 @@ data class OnlineSearchState(
     val collapsedStates: Set<String> = emptySet(),
     /** Progress of the one-time bundled directory load. */
     val seedState: SeedState = SeedState.NotStarted,
+    /** The pasted address the current [submittedQuery] was taken from, if any. */
+    val addressSource: String? = null,
 ) {
     /** Grouped view applies when several states are present and none is selected. */
     val isGrouped: Boolean get() = stateFilter == null && states.size > 1
