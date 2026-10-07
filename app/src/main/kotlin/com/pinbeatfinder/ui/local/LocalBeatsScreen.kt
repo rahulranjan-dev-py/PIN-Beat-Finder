@@ -12,6 +12,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
@@ -61,12 +64,14 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -196,6 +201,14 @@ fun LocalBeatsScreen(
                 is LocalBeatsEffect.ShowMessage -> launch { snackbarHostState.showSnackbar(effect.text.asString(context)) }
                 is LocalBeatsEffect.LaunchIntent -> launchIntent(effect.intent)
                 LocalBeatsEffect.Saved -> haptic(HapticFeedbackType.Confirm)
+                is LocalBeatsEffect.ShowUndoChange -> launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = effect.text.asString(context),
+                        actionLabel = context.getString(R.string.action_undo),
+                        duration = SnackbarDuration.Long,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) onIntent(LocalBeatsIntent.UndoLastChange)
+                }
                 is LocalBeatsEffect.ShowUndoDelete -> launch {
                     val result = snackbarHostState.showSnackbar(
                         message = context.getString(R.string.msg_deleted, effect.record.localityName),
@@ -258,6 +271,45 @@ fun LocalBeatsScreen(
             confirmButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.ConfirmBulkDelete) }) { Text(stringResource(R.string.action_delete)) } },
             dismissButton = { TextButton(onClick = { onIntent(LocalBeatsIntent.CancelBulkDelete) }) { Text(stringResource(R.string.action_cancel)) } },
         )
+    }
+
+    if (state.showMoveToBeat) {
+        val selected = state.records.filter { it.id in state.selectedIds }
+        val beats = state.beatGroups
+            .filter { g -> selected.any { r -> r.officeName.equals(g.officeName, true) && r.pincode in g.pincodes } }
+            .map { it.beatNumber }.distinct()
+        BeatPickerDialog(
+            title = pluralStringResource(R.plurals.move_beat_title, state.selectedIds.size, state.selectedIds.size),
+            message = null,
+            beats = beats,
+            confirmLabel = stringResource(R.string.action_move),
+            onConfirm = { onIntent(LocalBeatsIntent.MoveSelectedToBeat(it)) },
+            onDismiss = { onIntent(LocalBeatsIntent.CancelMoveToBeat) },
+        )
+    }
+
+    state.mergeSource?.let { source ->
+        val beats = (state.officeGroups.ifEmpty { state.beatGroups })
+            .filter { it.key != source.key && it.officeName.equals(source.officeName, true) && it.pincodes.any { p -> p in source.pincodes } }
+            .map { it.beatNumber }.distinct()
+        BeatPickerDialog(
+            title = stringResource(R.string.merge_beat_title, source.beatNumber),
+            message = stringResource(R.string.merge_beat_message, source.beatNumber),
+            beats = beats,
+            confirmLabel = stringResource(R.string.action_merge),
+            onConfirm = { onIntent(LocalBeatsIntent.MergeBeat(source, it)) },
+            onDismiss = { onIntent(LocalBeatsIntent.CancelMergeBeat) },
+        )
+    }
+
+    if (state.showRenameOffice) {
+        state.openOffice?.let { office ->
+            RenameOfficeDialog(
+                office = office,
+                onConfirm = { onIntent(LocalBeatsIntent.RenameOffice(office, it)) },
+                onDismiss = { onIntent(LocalBeatsIntent.CancelRenameOffice) },
+            )
+        }
     }
 
     state.duplicates?.let { pairs ->
@@ -528,6 +580,11 @@ private fun OfficeScreen(
                     IconButton(onClick = { moreMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.office_overflow)) }
                     DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
                         DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_rename_office), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                            onClick = { moreMenu = false; onIntent(LocalBeatsIntent.RequestRenameOffice) },
+                        )
+                        DropdownMenuItem(
                             text = { Text(stringResource(R.string.office_types_title), maxLines = 1) },
                             leadingIcon = { Icon(Icons.Default.Tune, contentDescription = null) },
                             onClick = { moreMenu = false; onIntent(LocalBeatsIntent.ShowOfficeTypes) },
@@ -606,15 +663,88 @@ private fun SelectionBar(state: LocalBeatsState, onIntent: (LocalBeatsIntent) ->
             color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.weight(1f),
         )
-        TextButton(
-            onClick = { onIntent(LocalBeatsIntent.RequestBulkDelete) },
-            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
-        ) {
-            Icon(Icons.Default.Delete, contentDescription = null)
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.action_delete))
+        IconButton(onClick = { onIntent(LocalBeatsIntent.RequestMoveToBeat) }) {
+            Icon(Icons.Default.SwapHoriz, contentDescription = stringResource(R.string.action_move_to_beat), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+        }
+        IconButton(onClick = { onIntent(LocalBeatsIntent.RequestBulkDelete) }) {
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = MaterialTheme.colorScheme.onSecondaryContainer)
         }
     }
+}
+
+/** Beat chooser for "move to beat" and "merge beat": existing beats as chips plus a free number. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BeatPickerDialog(
+    title: String,
+    message: String?,
+    beats: List<String>,
+    confirmLabel: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var beat by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                if (message != null) {
+                    Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(10.dp))
+                }
+                if (beats.isNotEmpty()) {
+                    Text(stringResource(R.string.move_beat_pick), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        beats.forEach { b ->
+                            FilterChip(selected = b == beat, onClick = { beat = b }, label = { Text(stringResource(R.string.local_beat_title, b)) })
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+                OutlinedTextField(
+                    value = beat,
+                    onValueChange = { beat = it },
+                    label = { Text(stringResource(R.string.field_target_beat)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(beat) }, enabled = beat.isNotBlank()) { Text(confirmLabel) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
+
+@Composable
+private fun RenameOfficeDialog(office: OfficeSummary, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by rememberSaveable { mutableStateOf(office.officeName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Edit, contentDescription = null) },
+        title = { Text(stringResource(R.string.rename_office_title)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.rename_office_message, office.officeDisplay),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.field_new_office_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank() && name.trim() != office.officeName) { Text(stringResource(R.string.action_rename)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
 
 /**
@@ -715,6 +845,12 @@ private fun BeatHeaderRow(group: BeatGroup, onIntent: (LocalBeatsIntent) -> Unit
                     leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                     onClick = { menu = false; onIntent(LocalBeatsIntent.PrintBeat(group)) },
                 )
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_merge_beat), maxLines = 1) },
+                    leadingIcon = { Icon(Icons.Default.CallMerge, contentDescription = null) },
+                    onClick = { menu = false; onIntent(LocalBeatsIntent.RequestMergeBeat(group)) },
+                )
             }
         }
     }
@@ -758,6 +894,19 @@ private fun LocalHeader(state: LocalBeatsState, onIntent: (LocalBeatsIntent) -> 
                 icon = Icons.Default.FilterList,
                 contentDescription = stringResource(R.string.filter_button),
                 active = state.hasFilters,
+            )
+        }
+        state.addressQuery?.let { parsed ->
+            // The query was read as a pasted address: say which words and PIN were searched.
+            val parts = parsed.candidates.take(3).toMutableList()
+            parsed.pincode?.let { parts += stringResource(R.string.local_beat_subtitle_pin, it) }
+            Text(
+                stringResource(R.string.local_address_hint, parts.joinToString(", ")),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.tertiary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 2.dp),
             )
         }
         if (state.viewMode == LocalViewMode.SEARCH && state.query.isBlank()) {
@@ -1160,6 +1309,7 @@ private fun BeatGroupsList(state: LocalBeatsState, onIntent: (LocalBeatsIntent) 
                 onShareOffice = { onIntent(LocalBeatsIntent.ShareOffice(group)) },
                 onPrintBeat = { onIntent(LocalBeatsIntent.PrintBeat(group)) },
                 onPrintOffice = { onIntent(LocalBeatsIntent.PrintOffice(group)) },
+                onMergeBeat = { onIntent(LocalBeatsIntent.RequestMergeBeat(group)) },
             )
         }
     }
@@ -1178,6 +1328,7 @@ private fun BeatGroupCard(
     onShareOffice: () -> Unit,
     onPrintBeat: () -> Unit,
     onPrintOffice: () -> Unit,
+    onMergeBeat: () -> Unit = {},
 ) {
     var shareMenu by remember { mutableStateOf(false) }
     AppCard(modifier = modifier.fillMaxWidth(), onClick = onToggle) {
@@ -1223,6 +1374,12 @@ private fun BeatGroupCard(
                             text = { Text(stringResource(R.string.print_whole_office), maxLines = 1) },
                             leadingIcon = { Icon(Icons.Default.PictureAsPdf, contentDescription = null) },
                             onClick = { shareMenu = false; onPrintOffice() },
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_merge_beat), maxLines = 1) },
+                            leadingIcon = { Icon(Icons.Default.CallMerge, contentDescription = null) },
+                            onClick = { shareMenu = false; onMergeBeat() },
                         )
                     }
                 }

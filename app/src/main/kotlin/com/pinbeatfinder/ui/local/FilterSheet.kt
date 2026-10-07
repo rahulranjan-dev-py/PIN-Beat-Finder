@@ -41,6 +41,7 @@ import com.pinbeatfinder.domain.model.FilterOptions
 import com.pinbeatfinder.domain.model.OfficeType
 import com.pinbeatfinder.ui.components.AppBottomSheet
 import com.pinbeatfinder.ui.components.displayCase
+import com.pinbeatfinder.ui.components.labelRes
 
 /**
  * One-line filter bar: a "Filters" button with the active count, followed by one removable
@@ -133,11 +134,12 @@ fun FilterSheet(
         ) {
             ChipGroup(stringResource(R.string.filter_state), options.states, filters.state, labelOf = { it.displayCase() }) { onChange(filters.copy(state = it, district = null)) }
             ChipGroup(stringResource(R.string.filter_district), options.districts, filters.district, labelOf = { it.displayCase() }) { onChange(filters.copy(district = it)) }
+            val typeLabels = OfficeType.entries.associate { it.code to "${it.code} • ${stringResource(it.labelRes())}" }
             ChipGroup(
                 stringResource(R.string.filter_office_type),
                 options.officeTypes.map { it.code },
                 filters.officeType?.code,
-                labelOf = { code -> OfficeType.parse(code)?.let { "${it.code} • ${it.fullName}" } ?: code },
+                labelOf = { code -> typeLabels[OfficeType.parse(code)?.code] ?: code },
             ) { onChange(filters.copy(officeType = OfficeType.parse(it))) }
             ChipGroup(stringResource(R.string.filter_office), options.offices, filters.officeName) { onChange(filters.copy(officeName = it)) }
             ChipGroup(stringResource(R.string.filter_beat), options.beats, filters.beatNumber) { onChange(filters.copy(beatNumber = it)) }

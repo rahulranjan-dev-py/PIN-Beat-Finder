@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +36,8 @@ import com.pinbeatfinder.ui.components.PrimaryButton
 import com.pinbeatfinder.domain.model.PostOffice
 import com.pinbeatfinder.ui.components.AppBottomSheet
 import com.pinbeatfinder.ui.components.LabeledValue
+import com.pinbeatfinder.ui.components.branchTypeLabel
+import com.pinbeatfinder.ui.components.deliveryLabel
 import com.pinbeatfinder.ui.components.displayCase
 import com.pinbeatfinder.ui.components.displayRegion
 
@@ -72,11 +75,12 @@ fun PostOfficeDetailSheet(
                     color = MaterialTheme.colorScheme.tertiary,
                     fontWeight = FontWeight.Bold,
                 )
+                val context = LocalContext.current
                 if (office.branchType.isNotBlank()) {
-                    Text("• " + office.branchType, style = MaterialTheme.typography.bodyMedium)
+                    Text("• " + branchTypeLabel(context, office.branchType), style = MaterialTheme.typography.bodyMedium)
                 }
                 if (office.deliveryStatus.isNotBlank()) {
-                    Text("• " + office.deliveryStatus, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("• " + deliveryLabel(context, office.deliveryStatus), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 

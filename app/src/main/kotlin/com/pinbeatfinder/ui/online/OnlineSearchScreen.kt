@@ -76,6 +76,8 @@ import com.pinbeatfinder.ui.components.FilterChipsRow
 import com.pinbeatfinder.ui.components.PillSearchField
 import com.pinbeatfinder.ui.components.PlainListBottomPadding
 import com.pinbeatfinder.ui.components.ScreenTitleBar
+import com.pinbeatfinder.ui.components.branchTypeLabel
+import com.pinbeatfinder.ui.components.deliveryLabel
 import com.pinbeatfinder.ui.components.displayCase
 import com.pinbeatfinder.ui.components.displayRegion
 import com.pinbeatfinder.ui.components.placeLine
@@ -303,6 +305,13 @@ private fun ResultsList(state: OnlineSearchState, onIntent: (OnlineSearchIntent)
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (state.addressSource != null) {
+                Text(
+                    stringResource(R.string.online_address_hint, state.submittedQuery),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
             state.results.firstOrNull()?.source?.takeIf { it.isNotBlank() }?.let { source ->
                 Text(
                     stringResource(R.string.online_source, source),
@@ -464,9 +473,10 @@ private fun PostOfficeCard(
             Spacer(Modifier.height(4.dp))
             // Whole items wrap to the next line at large font sizes; words are never split.
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(office.branchType, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
+                val context = LocalContext.current
+                Text(branchTypeLabel(context, office.branchType), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
                 if (office.deliveryStatus.isNotBlank()) {
-                    Text("• " + office.deliveryStatus, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("• " + deliveryLabel(context, office.deliveryStatus), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (office.fromCache) {
                     SuggestionChip(
@@ -505,7 +515,7 @@ private fun PostOfficeCard(
 internal fun PostOffice.shareText(context: Context): String = buildString {
     appendLine(name)
     appendLine(context.getString(R.string.detail_pin, pincode))
-    if (branchType.isNotBlank()) appendLine(branchType + if (deliveryStatus.isNotBlank()) " • $deliveryStatus" else "")
+    if (branchType.isNotBlank()) appendLine(branchTypeLabel(context, branchType) + if (deliveryStatus.isNotBlank()) " • ${deliveryLabel(context, deliveryStatus)}" else "")
     if (district.isNotBlank()) appendLine("${context.getString(R.string.label_district)}: ${district.displayCase()}")
     if (state.isNotBlank()) appendLine("${context.getString(R.string.label_state)}: ${state.displayCase()}")
     if (division.isNotBlank()) appendLine("${context.getString(R.string.label_division)}: ${division.displayCase()}")

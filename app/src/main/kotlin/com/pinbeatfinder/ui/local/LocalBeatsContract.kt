@@ -6,6 +6,7 @@ import com.pinbeatfinder.data.excel.ImportMode
 import com.pinbeatfinder.data.excel.ImportPreview
 import com.pinbeatfinder.data.excel.ImportReport
 import com.pinbeatfinder.core.dedupe.DuplicatePair
+import com.pinbeatfinder.core.util.AddressParser
 import com.pinbeatfinder.data.local.OfficeStats
 import com.pinbeatfinder.domain.model.BeatDraft
 import com.pinbeatfinder.domain.model.BeatField
@@ -63,6 +64,8 @@ data class LocalBeatsState(
     val districts: List<String> = emptyList(),
     val hits: List<BeatSearchHit> = emptyList(),
     val isSearching: Boolean = false,
+    /** Non-null when the query was read as a pasted address: the PIN and words that were searched. */
+    val addressQuery: AddressParser.Parsed? = null,
     val totalRecords: Int = 0,
     val editor: EditorState? = null,
     val pendingDelete: BeatRecord? = null,
@@ -90,6 +93,12 @@ data class LocalBeatsState(
     /** Long-press multi-select; non-empty means selection mode is active. */
     val selectedIds: Set<Long> = emptySet(),
     val confirmBulkDelete: Boolean = false,
+    /** "Move to beat" dialog for the selection. */
+    val showMoveToBeat: Boolean = false,
+    /** Beat being merged into another, while that dialog is open. */
+    val mergeSource: BeatGroup? = null,
+    /** "Rename office" dialog for the open office. */
+    val showRenameOffice: Boolean = false,
 ) {
     val hasFilters: Boolean get() = !filters.isEmpty
     val filterOptions: FilterOptions get() = FilterOptions.from(facets, filters)
@@ -166,6 +175,22 @@ sealed interface LocalBeatsIntent {
     data object ConfirmBulkDelete : LocalBeatsIntent
     data object CancelBulkDelete : LocalBeatsIntent
 
+    /** Bulk tools (each can be undone from the snackbar). */
+    data object RequestMoveToBeat : LocalBeatsIntent
+    data object CancelMoveToBeat : LocalBeatsIntent
+    /** Move every selected record to [beat]. */
+    data class MoveSelectedToBeat(val beat: String) : LocalBeatsIntent
+    data class RequestMergeBeat(val group: BeatGroup) : LocalBeatsIntent
+    data object CancelMergeBeat : LocalBeatsIntent
+    /** Move every record of [group] to [intoBeat]; the source beat ceases to exist. */
+    data class MergeBeat(val group: BeatGroup, val intoBeat: String) : LocalBeatsIntent
+    data object RequestRenameOffice : LocalBeatsIntent
+    data object CancelRenameOffice : LocalBeatsIntent
+    /** Rename [office] (name + PINs) on all of its records. */
+    data class RenameOffice(val office: OfficeSummary, val newName: String) : LocalBeatsIntent
+    /** Reverts the last move, merge or rename. */
+    data object UndoLastChange : LocalBeatsIntent
+
     data class ImportFile(val uri: Uri, val mode: ImportMode) : LocalBeatsIntent
     data object ConfirmImport : LocalBeatsIntent
     data object CancelImport : LocalBeatsIntent
@@ -183,4 +208,6 @@ sealed interface LocalBeatsEffect {
     data class ShowUndoDelete(val record: BeatRecord) : LocalBeatsEffect
     /** A record was saved; the screen may vibrate briefly. */
     data object Saved : LocalBeatsEffect
+    /** Snackbar with an Undo action for the last move, merge or rename. */
+    data class ShowUndoChange(val text: UiText) : LocalBeatsEffect
 }

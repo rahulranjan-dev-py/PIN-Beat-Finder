@@ -19,6 +19,30 @@ import java.util.Locale
 object BeatSheetPdf {
     const val MIME_TYPE = "application/pdf"
 
+    /** Every piece of fixed text on the sheet, so the caller can hand in the app language. */
+    data class Labels(
+        val serial: String,
+        val locality: String,
+        val beat: String,
+        val pin: String,
+        val remarks: String,
+        /** "12 localities" for the count under the subtitle. */
+        val localities: (Int) -> String,
+        /** Footer; receives the formatted date-time. */
+        val printed: (String) -> String,
+        /** "Page 1 of 3". */
+        val page: (Int, Int) -> String,
+    ) {
+        companion object {
+            val ENGLISH = Labels(
+                serial = "Sl.", locality = "Locality / Village", beat = "Beat", pin = "PIN", remarks = "Remarks",
+                localities = { n -> "$n localit${if (n == 1) "y" else "ies"}" },
+                printed = { stamp -> "Printed $stamp • PIN Beat Finder" },
+                page = { p, n -> "Page $p of $n" },
+            )
+        }
+    }
+
     // A4 at 72 dpi.
     private const val PAGE_W = 595
     private const val PAGE_H = 842
@@ -31,14 +55,21 @@ object BeatSheetPdf {
     private val COL_W = floatArrayOf(36f, 200f, 60f, 60f, PAGE_W - 2 * MARGIN - 356f)
 
     /** Writes [records] under [title] / [subtitle] to [out] and closes it. Returns the page count. */
-    fun write(title: String, subtitle: String, records: List<BeatRecord>, out: OutputStream, now: Date = Date()): Int {
+    fun write(
+        title: String,
+        subtitle: String,
+        records: List<BeatRecord>,
+        out: OutputStream,
+        now: Date = Date(),
+        labels: Labels = Labels.ENGLISH,
+    ): Int {
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 16f; typeface = Typeface.DEFAULT_BOLD; color = Color.BLACK }
         val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; color = Color.DKGRAY }
         val headPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; typeface = Typeface.DEFAULT_BOLD; color = Color.BLACK }
         val cellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 10f; color = Color.BLACK }
         val linePaint = Paint().apply { color = Color.LTGRAY; strokeWidth = 0.5f }
         val fillPaint = Paint().apply { color = 0xFFEFEFEF.toInt() }
-        val footerText = "Printed ${SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.US).format(now)} • PIN Beat Finder"
+        val footerText = labels.printed(SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.US).format(now))
 
         val doc = PdfDocument()
         val rowsPerPage = ((PAGE_H - 2 * MARGIN - 70f - HEADER_H - 24f) / ROW_H).toInt()
@@ -53,12 +84,12 @@ object BeatSheetPdf {
                     y += 16f
                     c.drawText(subtitle, MARGIN, y, subPaint)
                     y += 10f
-                    c.drawText("${records.size} localit${if (records.size == 1) "y" else "ies"}", MARGIN, y + 10f, subPaint)
+                    c.drawText(labels.localities(records.size), MARGIN, y + 10f, subPaint)
                     y += 28f
 
                     // header row
                     c.drawRect(MARGIN, y, PAGE_W - MARGIN, y + HEADER_H, fillPaint)
-                    val headers = listOf("Sl.", "Locality / Village", "Beat", "PIN", "Remarks")
+                    val headers = listOf(labels.serial, labels.locality, labels.beat, labels.pin, labels.remarks)
                     headers.forEachIndexed { i, h -> c.drawText(h, MARGIN + COL_X[i] + 4f, y + 16f, headPaint) }
                     y += HEADER_H
 
@@ -76,7 +107,7 @@ object BeatSheetPdf {
                     c.drawLine(PAGE_W - MARGIN, y - slice.size * ROW_H - HEADER_H, PAGE_W - MARGIN, y, linePaint)
 
                     c.drawText(footerText, MARGIN, PAGE_H - MARGIN + 12f, subPaint)
-                    val pageLabel = "Page ${pageIndex + 1} of $pages"
+                    val pageLabel = labels.page(pageIndex + 1, pages)
                     c.drawText(pageLabel, PAGE_W - MARGIN - subPaint.measureText(pageLabel), PAGE_H - MARGIN + 12f, subPaint)
                     doc.finishPage(page)
                 }

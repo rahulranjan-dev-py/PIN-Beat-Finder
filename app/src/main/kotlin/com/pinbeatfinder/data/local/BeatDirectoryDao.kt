@@ -185,6 +185,31 @@ interface BeatDirectoryDao {
     @Query("SELECT localityName || '|' || branchOffice || '|' || beatNumber || '|' || pincode FROM local_beat_directory")
     suspend fun naturalKeys(): List<String>
 
+    @Query("SELECT * FROM local_beat_directory WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<BeatDirectoryEntity>
+
+    /** Every record of one office (name + PINs), the unit the rename and merge tools act on. */
+    @Query("SELECT * FROM local_beat_directory WHERE branchOffice = :officeName AND pincode IN (:pincodes)")
+    suspend fun ofOffice(officeName: String, pincodes: List<String>): List<BeatDirectoryEntity>
+
+    @Query("UPDATE local_beat_directory SET beatNumber = :beat, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setBeatNumber(ids: List<Long>, beat: String, now: Long): Int
+
+    @Query("UPDATE local_beat_directory SET branchOffice = :name, updatedAt = :now WHERE id IN (:ids)")
+    suspend fun setOfficeName(ids: List<Long>, name: String, now: Long): Int
+
+    /** Undo of [setBeatNumber]: each id gets its own previous value back, in one transaction. */
+    @Transaction
+    suspend fun restoreBeatNumbers(previous: List<Pair<Long, String>>, now: Long) {
+        for ((id, beat) in previous) setBeatNumber(listOf(id), beat, now)
+    }
+
+    /** Undo of [setOfficeName]. */
+    @Transaction
+    suspend fun restoreOfficeNames(previous: List<Pair<Long, String>>, now: Long) {
+        for ((id, name) in previous) setOfficeName(listOf(id), name, now)
+    }
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(entity: BeatDirectoryEntity): Long
 
