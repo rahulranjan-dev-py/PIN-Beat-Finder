@@ -80,8 +80,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Where the QR code in About points; the latest release page always carries the newest APK. */
-private const val RELEASE_PAGE_URL = "https://github.com/rahulranjan-dev-py/PIN-Beat-Finder/releases/latest"
+/**
+ * Where the QR code in About points: GitHub's stable "latest" download URL for the fixed asset name
+ * the release workflow publishes, so any browser downloads the newest APK straight away.
+ */
+private const val APK_DOWNLOAD_URL = "https://github.com/rahulranjan-dev-py/PIN-Beat-Finder/releases/latest/download/pin-beat-finder-latest.apk"
 
 private enum class AppLanguage(val tag: String, val labelRes: Int) {
     SYSTEM("", R.string.lang_system),
@@ -285,12 +288,12 @@ fun SettingsScreen(onBack: () -> Unit) {
                         .padding(8.dp),
                 )
                 Spacer(Modifier.height(6.dp))
-                Text(RELEASE_PAGE_URL, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(APK_DOWNLOAD_URL, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
                 OutlinedButton(onClick = {
                     val send = Intent(Intent.ACTION_SEND)
                         .setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.share_link_text, RELEASE_PAGE_URL))
+                        .putExtra(Intent.EXTRA_TEXT, context.getString(R.string.share_link_text, APK_DOWNLOAD_URL))
                     context.startActivity(Intent.createChooser(send, context.getString(R.string.share_link_title)))
                 }) {
                     Icon(Icons.Default.Share, contentDescription = null)

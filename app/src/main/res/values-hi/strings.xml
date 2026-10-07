@@ -471,8 +471,8 @@
     <string name="share_image_title">बीट को चित्र के रूप में साझा करें</string>
     <string name="action_share_image">चित्र के रूप में साझा करें</string>
     <string name="settings_qr_title">ऐप साझा करें</string>
-    <string name="settings_qr_desc">नवीनतम रिलीज़ का डाउनलोड पेज खोलने के लिए स्कैन करें।</string>
-    <string name="settings_qr_content_description">डाउनलोड पेज का QR कोड</string>
+    <string name="settings_qr_desc">किसी भी फ़ोन कैमरे से स्कैन करें: नवीनतम APK सीधे डाउनलोड हो जाएगा।</string>
+    <string name="settings_qr_content_description">नवीनतम APK डाउनलोड करने वाला QR कोड</string>
     <string name="action_share_link">लिंक साझा करें</string>
     <string name="share_link_text">PIN Beat Finder – भारतीय डाक की शाखाओं के लिए ऑफ़लाइन बीट निर्देशिका। डाउनलोड: %1$s</string>
     <string name="share_link_title">डाउनलोड लिंक साझा करें</string>
